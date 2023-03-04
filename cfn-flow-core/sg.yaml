@@ -1,0 +1,30 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: ---
+
+Parameters: 
+  Env:
+    Type: String
+    Default: dev
+
+  VpcId:
+    Description: vpc id 
+    Type: AWS::EC2::VPC::Id
+
+Resources: 
+  Sg:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: sample-sg
+      GroupDescription: sample sg
+      VpcId: !Ref VpcId
+      # SecurityGroupIngress:
+      # SecurityGroupEgress:
+      Tags:
+        - Key: ENV
+          Value: !Ref Env
+
+Outputs:
+
+  SGID:
+    Description: sg id
+    Value: !Ref Sg

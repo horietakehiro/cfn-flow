@@ -1,0 +1,98 @@
+{
+    "Comment": "Handle Cloudformation operation",
+    "StartAt": "InvokeHandlerFunction",
+    "States": {
+      "InvokeHandlerFunction": {
+        "Type": "Task",
+        "Resource": "arn:aws:states:::lambda:invoke.waitForTaskToken",
+        "Parameters": {
+          "FunctionName.$": "$.HandlerFunctionArn",
+          "Payload": {
+            "TaskToken.$": "$$.Task.Token",
+            "CfnFlowParameters/$": "$.CfnFlowParameters",
+            "OperationType.$": "$.OperationType",
+            "StackRegion.$": "$.StackRegion",
+            "StackInput.$": "$.StackInput"
+          }
+        },
+        "Retry": [
+          {
+            "ErrorEquals": [
+              "Lambda.ServiceException",
+              "Lambda.AWSLambdaException",
+              "Lambda.SdkClientException"
+            ],
+            "IntervalSeconds": 2,
+            "MaxAttempts": 6,
+            "BackoffRate": 2
+          }
+        ],
+        "Next": "WatchStackStatus",
+        "ResultPath": "$.InvokeResult"
+      },
+      "WatchStackStatus": {
+        "Type": "Task",
+        "Resource": "arn:aws:states:::lambda:invoke.waitForTaskToken",
+        "Parameters": {
+          "FunctionName.$": "$.HandlerFunctionArn",
+          "Payload": {
+            "TaskToken.$": "$$.Task.Token",
+            "OperationType": "WAIT",
+            "StackRegion.$": "$.StackRegion",
+            "StackInput.$": "$.StackInput"
+          }
+        },
+        "Retry": [
+          {
+            "ErrorEquals": [
+              "Lambda.ServiceException",
+              "Lambda.AWSLambdaException",
+              "Lambda.SdkClientException"
+            ],
+            "IntervalSeconds": 2,
+            "MaxAttempts": 6,
+            "BackoffRate": 2
+          }
+        ],
+        "Next": "Wait",
+        "ResultPath": "$.StatusResult"
+      },
+      "Wait": {
+        "Type": "Wait",
+        "Seconds": 5,
+        "Next": "Choice"
+      },
+      "Choice": {
+        "Type": "Choice",
+        "Choices": [
+          {
+            "And": [
+              {
+                "Not": {
+                  "Variable": "$.StatusResult.StackStatus",
+                  "StringEquals": "CREATE_COMPLETE"
+                }
+              },
+              {
+                "Not": {
+                  "Variable": "$.StatusResult.StackStatus",
+                  "StringEquals": "UPDATE_COMPLETE"
+                }
+              },
+              {
+                "Not": {
+                  "Variable": "$.StatusResult.StackStatus",
+                  "StringEquals": "DELETE_COMPLETE"
+                }
+              }
+            ],
+            "Next": "WatchStackStatus"
+          }
+        ],
+        "Default": "Success"
+      },
+      "Success": {
+        "Type": "Succeed"
+      }
+    }
+  }

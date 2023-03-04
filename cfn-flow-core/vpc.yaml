@@ -1,0 +1,22 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: ---
+Parameters: 
+  Env:
+    Type: String
+    Default: dev
+
+Resources: 
+  VPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: 10.0.0.0/16
+      EnableDnsSupport: true
+      Tags:
+        - Key: ENV
+          Value: !Ref Env
+
+Outputs:
+
+  VPCID:
+    Description: vpc id
+    Value: !Ref VPC
