@@ -5,13 +5,18 @@ import Grid from '@mui/material/Grid';
 import Stack from '@mui/material/Stack';
 import Button from "@mui/material/Button"
 import RefreshIcon from '@mui/icons-material/Refresh';
-import { Divider } from '@mui/material';
+import { Divider, Typography } from '@mui/material';
 import TextField from '@mui/material/TextField';
 import Dialog from '@mui/material/Dialog';
 import DialogActions from '@mui/material/DialogActions';
 import DialogContent from '@mui/material/DialogContent';
-import DialogContentText from '@mui/material/DialogContentText';
 import DialogTitle from '@mui/material/DialogTitle';
+import Radio from '@mui/material/Radio';
+import RadioGroup from '@mui/material/RadioGroup';
+import FormControlLabel from '@mui/material/FormControlLabel';
+import FormControl from '@mui/material/FormControl';
+import FormLabel from '@mui/material/FormLabel';
+import FileUploadIcon from '@mui/icons-material/FileUpload';
 
 import { DataGrid, GridColDef } from '@mui/x-data-grid';
 
@@ -45,66 +50,15 @@ const columns: GridColDef[] = [
 
 ]
 const rows = [
-  {...createData('Template1', "https://example.com/template1.yaml", "s3://example/template1.yaml", "2023-03-01T10:00:00+0900", "-"), id: 1},
-  {...createData('Template2', "https://example.com/template2.yaml", "s3://example/template2.yaml", "2023-03-01T10:00:00+0900", "2023-03-02T10:00:00+0900"), id: 2},
+  { ...createData('Template1', "https://example.com/template1.yaml", "s3://example/template1.yaml", "2023-03-01T10:00:00+0900", "-"), id: 1 },
+  { ...createData('Template2', "https://example.com/template2.yaml", "s3://example/template2.yaml", "2023-03-01T10:00:00+0900", "2023-03-02T10:00:00+0900"), id: 2 },
 ];
 
 
 
-// const Item = styled(Paper)(({ theme }) => ({
-//   backgroundColor: theme.palette.mode === 'dark' ? '#1A2027' : '#fff',
-//   ...theme.typography.body2,
-//   padding: theme.spacing(1),
-//   textAlign: 'center',
-//   color: theme.palette.text.secondary,
-// }));
-
-// const Search = styled('div')(({ theme }) => ({
-//   position: 'relative',
-//   border: "0.5px solid",
-//   borderRadius: theme.shape.borderRadius,
-//   backgroundColor: alpha(theme.palette.common.white, 0.15),
-//   '&:hover': {
-//     backgroundColor: alpha(theme.palette.common.white, 0.25),
-//   },
-//   marginLeft: 0,
-//   width: '100%',
-//   [theme.breakpoints.up('sm')]: {
-//     marginLeft: theme.spacing(1),
-//     width: 'auto',
-//   },
-// }));
-
-// const SearchIconWrapper = styled('div')(({ theme }) => ({
-//   padding: theme.spacing(0, 2),
-//   height: '100%',
-//   position: 'absolute',
-//   pointerEvents: 'none',
-//   display: 'flex',
-//   alignItems: 'center',
-//   justifyContent: 'center',
-// }));
-
-// const StyledInputBase = styled(InputBase)(({ theme }) => ({
-//   color: 'inherit',
-//   '& .MuiInputBase-input': {
-//     padding: theme.spacing(1, 1, 1, 0),
-//     // vertical padding + font size from searchIcon
-//     paddingLeft: `calc(1em + ${theme.spacing(4)})`,
-//     transition: theme.transitions.create('width'),
-//     width: '100%',
-//     [theme.breakpoints.up('sm')]: {
-//       width: '12ch',
-//       '&:focus': {
-//         width: '20ch',
-//       },
-//     },
-//   },
-// }));
 
 
-
-export const TemplatesMainMenu: React.FC =() => {
+export const TemplatesMainMenu: React.FC = () => {
   const [createDialogOpen, setCreateDialogOpen] = React.useState(false)
 
   return (
@@ -121,7 +75,7 @@ export const TemplatesMainMenu: React.FC =() => {
                 <Button variant="outlined" style={{ textTransform: 'none' }}>View details</Button>
                 <Button variant="outlined" style={{ textTransform: 'none' }}>Edit</Button>
                 <Button variant="outlined" style={{ textTransform: 'none' }}>Delete</Button>
-                <Button 
+                <Button
                   variant="contained"
                   style={{ textTransform: 'none' }}
                   onClick={() => setCreateDialogOpen(true)}
@@ -143,22 +97,22 @@ export const TemplatesMainMenu: React.FC =() => {
   );
 }
 
-export const TemplatesTable: React.FC =() => {
+export const TemplatesTable: React.FC = () => {
   return (
     <Box sx={{ height: 400, width: '100%' }}>
-    <DataGrid
-      rows={rows}
-      columns={columns}
-      initialState={{
-        pagination: {
-          paginationModel: {
-            pageSize: 10,
+      <DataGrid
+        rows={rows}
+        columns={columns}
+        initialState={{
+          pagination: {
+            paginationModel: {
+              pageSize: 10,
+            },
           },
-        },
-      }}
-      pageSizeOptions={[10]}
+        }}
+        pageSizeOptions={[10]}
       // checkboxSelection
-    />
+      />
     </ Box>
   );
 }
@@ -168,12 +122,24 @@ interface CreateDialogProps {
   dialogOpen: boolean;
   setDialogOpen: React.Dispatch<React.SetStateAction<boolean>>
 }
-const CreateTemplateDialog: React.FC<CreateDialogProps> = ({dialogOpen, setDialogOpen}) => {
+const CreateTemplateDialog: React.FC<CreateDialogProps> = ({ dialogOpen, setDialogOpen }) => {
   // const [open, setOpen] = React.useState(false);
+  enum TemplateSourceType {
+    S3 = 1,
+    Local = 2
+  }
+  const [templateSourceType, setTemplateSourceType] = React.useState(TemplateSourceType.S3)
+  const [localFile, setLocalFile] = React.useState("")
 
-  // const handleClickOpen = () => {
-  //   setOpen(true);
-  // };
+
+  const onTemplateSourceTypehange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setTemplateSourceType(Number(e.target.value))
+  }
+  const onSelectLocalFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files !== null) {
+      setLocalFile(e.target.files[0].name )
+    }
+  }
 
   const handleClose = () => {
     setDialogOpen(false);
@@ -182,25 +148,78 @@ const CreateTemplateDialog: React.FC<CreateDialogProps> = ({dialogOpen, setDialo
   return (
     <div>
       <Dialog open={dialogOpen} onClose={handleClose}>
-        <DialogTitle>Subscribe</DialogTitle>
-        <DialogContent>
-          <DialogContentText>
-            To subscribe to this website, please enter your email address here. We
-            will send updates occasionally.
-          </DialogContentText>
+        <DialogTitle>New Template</DialogTitle>
+        <DialogContent sx={{ margin: "100" }}>
           <TextField
             autoFocus
-            margin="dense"
+            margin="normal"
             id="name"
-            label="Email Address"
-            type="email"
+            label="Template Name"
+            type={"tex"}
             fullWidth
-            variant="standard"
+            variant="outlined"
           />
+          <TextField
+            autoFocus
+            margin="normal"
+            id="description"
+            label="Description"
+            type={"tex"}
+            fullWidth
+            variant="outlined"
+            multiline
+          />
+
+          <FormControl>
+            <FormLabel id="template-source">Template source</FormLabel>
+            <RadioGroup
+              row
+              aria-labelledby="template-source"
+              name="row-radio-buttons-group"
+              onChange={onTemplateSourceTypehange} 
+            >
+              <FormControlLabel
+                value={TemplateSourceType.S3}
+                control={<Radio />}
+                label="Amazon S3 URL"
+                checked={templateSourceType === TemplateSourceType.S3}
+              />
+              <FormControlLabel
+                value={TemplateSourceType.Local}
+                control={<Radio />}
+                label="Upload local file"
+                checked={templateSourceType === TemplateSourceType.Local}
+              />
+            </RadioGroup>
+          </FormControl>
+          {templateSourceType === TemplateSourceType.S3
+            ?
+            <Stack direction={"row"} spacing={2}>
+            <TextField
+              autoFocus
+              margin="normal"
+              id="url"
+              label="Template URL"
+              type={"url"}
+              fullWidth
+              variant="outlined"
+            />
+            </Stack>
+            :
+            <Stack direction={"row"} spacing={2}>
+            <Stack direction={"row"} spacing={2}>
+            <Button variant="outlined" component="label" startIcon={<FileUploadIcon />}>
+              Upload
+              <input  hidden accept=".json,.yaml" multiple={false} type="file" onChange={onSelectLocalFile}/>
+            </Button>
+            <Typography>{localFile}</Typography>
+            </Stack>
+            </Stack>
+          }
         </DialogContent>
         <DialogActions>
-          <Button onClick={handleClose}>Cancel</Button>
-          <Button onClick={handleClose}>Subscribe</Button>
+          <Button onClick={handleClose}>CANCEL</Button>
+          <Button onClick={handleClose}>CREATE</Button>
         </DialogActions>
       </Dialog>
     </div>
