@@ -67,7 +67,7 @@ export const TemplatesMainMenu: React.FC = () => {
         <Stack direction={"row"}>
           <Grid container spacing={2}>
             <Grid item xs={4}>
-              CloudFromation Templates
+              <Typography variant='h6'>CloudFromation Templates</Typography>
             </Grid>
             <Grid item xs={8}>
               <Stack spacing={2} direction="row" justifyContent={"flex-end"}>

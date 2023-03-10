@@ -1,39 +1,47 @@
 import * as React from 'react';
-import { styled, useTheme } from '@mui/material/styles';
+import { styled, Theme, CSSObject  } from '@mui/material/styles';
 import Box from '@mui/material/Box';
-import Drawer from '@mui/material/Drawer';
+import MuiDrawer from '@mui/material/Drawer';
 import CssBaseline from '@mui/material/CssBaseline';
-import MuiAppBar, { AppBarProps as MuiAppBarProps } from '@mui/material/AppBar';
-import Toolbar from '@mui/material/Toolbar';
 import List from '@mui/material/List';
 import Typography from '@mui/material/Typography';
 import Divider from '@mui/material/Divider';
 import IconButton from '@mui/material/IconButton';
 import MenuIcon from '@mui/icons-material/Menu';
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
-import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import ListItem from '@mui/material/ListItem';
 import ListItemButton from '@mui/material/ListItemButton';
-import ListItemIcon from '@mui/material/ListItemIcon';
 import ListItemText from '@mui/material/ListItemText';
-import InboxIcon from '@mui/icons-material/MoveToInbox';
-import MailIcon from '@mui/icons-material/Mail';
 import { Stack } from '@mui/material';
-import { Routes, Route, NavLink } from 'react-router-dom';
+import { Routes, Route, NavLink, useLocation, Link as RouterLink } from 'react-router-dom';
+import {Breadcrumbs, Link, LinkProps} from '@mui/material'
+import NavigateNextIcon from '@mui/icons-material/NavigateNext';
 
-import { TemplatesTable, TemplatesMainMenu } from './templates';
-import { spacing } from '@mui/system';
+import { TemplatesMainMenu } from './templates';
 
-const drawerWidth = 200;
+const drawerWidth = 240;
 
-const Router = () => {
-  return (
-    <Routes>
-      <Route path="/" element={<div>Hello</div>} />
-      <Route path='/templates' element={<TemplatesMainMenu />} />
-    </Routes>
-  );
-}
+const openedMixin = (theme: Theme): CSSObject => ({
+  width: drawerWidth,
+  transition: theme.transitions.create('width', {
+    easing: theme.transitions.easing.sharp,
+    duration: theme.transitions.duration.enteringScreen,
+  }),
+  overflowX: 'hidden',
+});
+
+const closedMixin = (theme: Theme): CSSObject => ({
+  transition: theme.transitions.create('width', {
+    easing: theme.transitions.easing.sharp,
+    duration: theme.transitions.duration.leavingScreen,
+  }),
+  overflowX: 'hidden',
+  width: `calc(${theme.spacing(3)} + 1px)`,
+  [theme.breakpoints.up('sm')]: {
+    width: `calc(${theme.spacing(4)} + 1px)`,
+  },
+});
+
 
 const Main = styled('main', { shouldForwardProp: (prop) => prop !== 'open' })<{
   open?: boolean;
@@ -44,109 +52,129 @@ const Main = styled('main', { shouldForwardProp: (prop) => prop !== 'open' })<{
     easing: theme.transitions.easing.sharp,
     duration: theme.transitions.duration.leavingScreen,
   }),
-  marginLeft: `-${drawerWidth}px`,
+  // marginLeft: `-${drawerWidth}px`,
   ...(open && {
     transition: theme.transitions.create('margin', {
       easing: theme.transitions.easing.easeOut,
       duration: theme.transitions.duration.enteringScreen,
     }),
-    marginLeft: 0,
+    // marginLeft: 0,
   }),
 }));
 
-interface AppBarProps extends MuiAppBarProps {
-  open?: boolean;
-}
-
-const AppBar = styled(MuiAppBar, {
-  shouldForwardProp: (prop) => prop !== 'open',
-})<AppBarProps>(({ theme, open }) => ({
-  transition: theme.transitions.create(['margin', 'width'], {
-    easing: theme.transitions.easing.sharp,
-    duration: theme.transitions.duration.leavingScreen,
-  }),
-  ...(open && {
-    width: `calc(100% - ${drawerWidth}px)`,
-    marginLeft: `${drawerWidth}px`,
-    transition: theme.transitions.create(['margin', 'width'], {
-      easing: theme.transitions.easing.easeOut,
-      duration: theme.transitions.duration.enteringScreen,
+const Drawer = styled(MuiDrawer, { shouldForwardProp: (prop) => prop !== 'open' })(
+  ({ theme, open }) => ({
+    width: drawerWidth,
+    flexShrink: 0,
+    whiteSpace: 'nowrap',
+    boxSizing: 'border-box',
+    ...(open && {
+      ...openedMixin(theme),
+      '& .MuiDrawer-paper': openedMixin(theme),
+    }),
+    ...(!open && {
+      ...closedMixin(theme),
+      '& .MuiDrawer-paper': closedMixin(theme),
     }),
   }),
-}));
+);
 
 const DrawerHeader = styled('div')(({ theme }) => ({
   display: 'flex',
   alignItems: 'center',
-  padding: theme.spacing(0, 1),
+  padding: theme.spacing("11", "11"),
   // necessary for content to be below app bar
   justifyContent: 'flex-end',
   ...theme.mixins.toolbar,
 }));
 
+
+const Router = () => {
+  return (
+    <Routes>
+      <Route path="/" element={<div>Hello</div>} />
+      <Route path='/templates' element={<TemplatesMainMenu />} />
+    </Routes>
+  );
+}
+interface LinkRouterProps extends LinkProps {
+  to: string
+  replace?: boolean
+}
+const LinkRouter = (props: LinkRouterProps) => <Link {...props} component={RouterLink as any} />
+const MainHeader = () => {
+  const location = useLocation()
+  const pathElems = location.pathname.split("/").filter((p) => p)
+
+  var breadcrumbs = [
+    <LinkRouter underline="hover" key="1" color="inherit" to="/">
+      cfn-flow
+    </LinkRouter >
+  ]
+
+  breadcrumbs = breadcrumbs.concat(
+    pathElems.map((value, index) => {
+      const last = index === pathElems.length - 1
+      const to = `/${pathElems.slice(0, index+1).join("/")}`
+      return last ? (
+        <Typography key={to}>{value}</Typography>
+      ) : (
+        <LinkRouter underline="hover" key={index} color="inherit" to={to}>{value}</LinkRouter>
+      )
+    })
+  )
+
+  return (
+    <Stack spacing={2}>
+      <Breadcrumbs
+        separator={<NavigateNextIcon fontSize="small" />}
+        aria-label="breadcrumb"
+      >
+        {breadcrumbs}
+      </Breadcrumbs>
+    </Stack>
+  );
+}
+
+
 export default function MainOutline() {
-  const theme = useTheme();
   const [open, setOpen] = React.useState(false);
 
-  const handleDrawerOpen = () => {
-    setOpen(true);
-  };
-
-  const handleDrawerClose = () => {
-    setOpen(false);
-  };
 
   return (
     <Box sx={{ display: 'flex' }}>
       <CssBaseline />
-      <AppBar position="fixed" open={open}>
-        <Toolbar>
-          <IconButton
-            color="inherit"
-            aria-label="open drawer"
-            onClick={handleDrawerOpen}
-            edge="start"
-            sx={{ mr: 2, ...(open && { display: 'none' }) }}
-          >
-            <MenuIcon />
-          </IconButton>
-          <Typography variant="body1" noWrap component="div">
-            cfn-flow
-          </Typography>
-        </Toolbar>
-      </AppBar>
       <Drawer
-        sx={{
-          width: drawerWidth,
-          // height: 'calc(100% - 64px)',
-          // top: 64,
-          flexShrink: 0,
-          '& .MuiDrawer-paper': {
-            width: drawerWidth,
-            boxSizing: 'border-box',
-          },
-        }}
-        variant="persistent"
-        anchor="left"
+        variant="permanent"
         open={open}
       >
         <DrawerHeader>
-          <IconButton onClick={handleDrawerClose}>
-            {theme.direction === 'ltr' ? <ChevronLeftIcon /> : <ChevronRightIcon />}
+          <IconButton onClick={() => (setOpen(!open))}
+            sx={{px: 0.5}}
+          >
+          {open ? <ChevronLeftIcon/> : <MenuIcon />}
           </IconButton>
         </DrawerHeader>
         <Divider />
         <List>
-          <ListItem key={"Templates"} disablePadding>
-            <ListItemButton>
-              <NavLink to={"/templates"}><ListItemText primary={"Templates"} /></NavLink>
+          <ListItem key={"Templates"} disablePadding  sx={{ display: 'block' }}>
+            <ListItemButton
+                sx={{
+                  minHeight: 48,
+                  justifyContent: open ? 'initial' : 'center',
+                  px: 2.5,
+                }}
+            >
+                <ListItemText primary={<NavLink to={"/templates"}><ListItemText primary={"Templates"} /></NavLink>} sx={{ opacity: open ? 1 : 0 }} />
             </ListItemButton>
           </ListItem>
         </List>
       </Drawer>
-      <Main open={open}>
-        <DrawerHeader />
+      <Main open>
+        <Stack direction={"column"} spacing={2}>
+        <MainHeader/>
         <Router />
+        </Stack>
       </Main>
     </Box>
   );
