@@ -93,7 +93,8 @@ const Router = () => {
   return (
     <Routes>
       <Route path="/" element={<div>Hello</div>} />
-      <Route path='/templates' element={<TemplatesMainMenu />} />
+      <Route path='/templates' element={<TemplatesMainMenu />}/>
+      <Route path='/templates/:templateId' element={<TemplatesMainMenu />}/>
     </Routes>
   );
 }
@@ -165,7 +166,7 @@ export default function MainOutline() {
                   px: 2.5,
                 }}
             >
-                <ListItemText primary={<NavLink to={"/templates"}><ListItemText primary={"Templates"} /></NavLink>} sx={{ opacity: open ? 1 : 0 }} />
+                <ListItemText primary={<NavLink to={"templates"}><ListItemText primary={"Templates"} /></NavLink>} sx={{ opacity: open ? 1 : 0 }} />
             </ListItemButton>
           </ListItem>
         </List>
