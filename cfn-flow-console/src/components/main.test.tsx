@@ -6,8 +6,9 @@ import React from "react";
 import { render, unmountComponentAtNode, } from "react-dom";
 import { act } from "react-dom/test-utils";
 
+import { BrowserRouter } from "react-router-dom";
 
-import App from "./App";
+import MainOutline from "./main";
 
 var container:HTMLDivElement | null = null
 
@@ -26,7 +27,7 @@ afterEach(() => {
 
 it("get home page", () => {
     act(() => {
-        render(<App/>, container)
+        render(<BrowserRouter><MainOutline/></BrowserRouter>, container)
     })
     expect(container?.textContent).toContain("Hello")
 })

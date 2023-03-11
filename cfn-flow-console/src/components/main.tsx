@@ -13,11 +13,11 @@ import ListItem from '@mui/material/ListItem';
 import ListItemButton from '@mui/material/ListItemButton';
 import ListItemText from '@mui/material/ListItemText';
 import { Stack } from '@mui/material';
-import { Routes, Route, NavLink, useLocation, Link as RouterLink } from 'react-router-dom';
+import { Routes, Route, NavLink, useLocation, Link as RouterLink, BrowserRouter } from 'react-router-dom';
 import {Breadcrumbs, Link, LinkProps} from '@mui/material'
 import NavigateNextIcon from '@mui/icons-material/NavigateNext';
 
-import { TemplatesMainMenu } from './templates';
+import { TemplatesMainMenu } from './templates/main';
 
 const drawerWidth = 240;
 
