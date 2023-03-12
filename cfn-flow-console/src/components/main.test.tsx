@@ -3,32 +3,46 @@
 */
 
 import React from "react";
-import { render, unmountComponentAtNode, } from "react-dom";
-import { act } from "react-dom/test-utils";
+import '@testing-library/jest-dom'
+import { cleanup, fireEvent, render, screen } from '@testing-library/react'
+// import { render, unmountComponentAtNode, } from "react-dom";
 
 import { BrowserRouter } from "react-router-dom";
 
 import MainOutline from "./main";
+import userEvent from "@testing-library/user-event";
+import { act } from "react-dom/test-utils";
 
-var container:HTMLDivElement | null = null
+import { Provider } from "react-redux"
+import { persistStore } from 'redux-persist';
+import { PersistGate } from 'redux-persist/integration/react';
+import { store } from "./../store"
 
-beforeEach(() => {
-    container = document.createElement("div")
-    document.body.appendChild(container)
+let persistor = persistStore(store)
+
+it("left drawer state is persistent", async () => {
+  var WrappedComponent = (
+    <Provider store={store}>
+      <PersistGate loading={null} persistor={persistor}>
+        <BrowserRouter>
+          <MainOutline />
+        </BrowserRouter>
+      </PersistGate>
+    </Provider>
+  )
+  act(() => {
+    render(WrappedComponent)
+  })
+  expect(screen.getByTestId("left-drawer-close-button")).toBeInTheDocument()
+  act(() => {
+    userEvent.click(screen.getByTestId("left-drawer-button"))
+  })
+  expect(await screen.findByTestId("left-drawer-open-button")).toBeInTheDocument()
+
+  cleanup()
+  
+  act(() => {
+    render(WrappedComponent)
+  })
+  expect(await screen.findByTestId("left-drawer-open-button")).toBeInTheDocument()
 })
-
-afterEach(() => {
-    if (container) {
-        unmountComponentAtNode(container)
-        container.remove()
-        container = null
-    }
-})
-
-it("get home page", () => {
-    act(() => {
-        render(<BrowserRouter><MainOutline/></BrowserRouter>, container)
-    })
-    expect(container?.textContent).toContain("Hello")
-})
-

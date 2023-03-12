@@ -19,6 +19,9 @@ import NavigateNextIcon from '@mui/icons-material/NavigateNext';
 
 import { TemplatesMainMenu } from './templates/main';
 
+import { useAppDispatch, useAppSelector } from '../hooks';
+import { invert, selectLeftDrawer } from "../store/slice"
+
 const drawerWidth = 240;
 
 const openedMixin = (theme: Theme): CSSObject => ({
@@ -139,8 +142,11 @@ const MainHeader = () => {
 
 
 export default function MainOutline() {
-  const [open, setOpen] = React.useState(false);
+  // const [open, setOpen] = React.useState(false);
+  const open = useAppSelector(selectLeftDrawer)
+  const dispatch = useAppDispatch()
 
+  console.log(open)
 
   return (
     <Box sx={{ display: 'flex' }}>
@@ -150,10 +156,11 @@ export default function MainOutline() {
         open={open}
       >
         <DrawerHeader>
-          <IconButton onClick={() => (setOpen(!open))}
+          <IconButton onClick={() => (dispatch(invert()))}
             sx={{px: 0.5}}
+            data-testid="left-drawer-button"
           >
-          {open ? <ChevronLeftIcon/> : <MenuIcon />}
+          {open ? <ChevronLeftIcon data-testid="left-drawer-close-button"/> : <MenuIcon data-testid="left-drawer-open-button"/>}
           </IconButton>
         </DrawerHeader>
         <Divider />
