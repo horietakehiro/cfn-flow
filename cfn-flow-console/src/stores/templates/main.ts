@@ -12,7 +12,7 @@ export const SelectedTemplateSlice = createSlice({
     name: "SelectedTemplate",
     initialState: initialState,
     reducers: {
-        select: (state, action: PayloadAction<Template>) => {
+        select: (state, action: PayloadAction<Template | null>) => {
             state.template = action.payload
         }
     }

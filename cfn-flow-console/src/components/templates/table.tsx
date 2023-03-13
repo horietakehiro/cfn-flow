@@ -71,6 +71,9 @@ export const TemplatesTable: React.FC = () => {
   // const editDialog = useAppSelector(selectEditDialog)
   // const deleteDialog = useAppSelector(selectDeleteDialog)
 
+  React.useEffect(() => {
+    dispatch(select(null))
+  }, [])
 
   const handleRowClick: GridEventListener<'rowClick'> = (params: GridRowParams<Template>) => {
     dispatch(select(params.row))

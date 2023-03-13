@@ -97,7 +97,7 @@ const Router = () => {
     <Routes>
       <Route path="/" element={<div>Hello</div>} />
       <Route path='/templates' element={<TemplatesMainMenu />}/>
-      <Route path='/templates/:templateId' element={<TemplatesMainMenu />}/>
+      <Route path='/templates/:templateName' element={<TemplatesMainMenu />}/>
     </Routes>
   );
 }
