@@ -1,0 +1,12 @@
+version = 0.1
+[default]
+[default.deploy]
+[default.deploy.parameters]
+stack_name = "cfn-flow-dev-python-layers"
+s3_bucket = "aws-sam-cli-managed-default-samclisourcebucket-1l2w6x2engrnu"
+s3_prefix = "cfn-flow-dev-python-layers"
+region = "ap-northeast-1"
+capabilities = "CAPABILITY_IAM"
+disable_rollback = true
+parameter_overrides = "SolutionName=\"cfn-flow\" EnvName=\"dev\""
+image_repositories = []

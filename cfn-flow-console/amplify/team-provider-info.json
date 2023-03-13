@@ -10,6 +10,11 @@
       "StackName": "amplify-cfnflowconsole-dev-144621",
       "StackId": "arn:aws:cloudformation:ap-northeast-1:382098889955:stack/amplify-cfnflowconsole-dev-144621/0db70c70-bb19-11ed-8ee9-0a7339f22a57",
       "AmplifyAppId": "d1osuvo1xr2vup"
+    },
+    "categories": {
+      "auth": {
+        "cfnflowconsole693b1f51": {}
+      }
     }
   }
 }

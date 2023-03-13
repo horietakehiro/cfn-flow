@@ -12,16 +12,20 @@ import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import ListItem from '@mui/material/ListItem';
 import ListItemButton from '@mui/material/ListItemButton';
 import ListItemText from '@mui/material/ListItemText';
-import { Stack } from '@mui/material';
+import { ListItemIcon, Stack } from '@mui/material';
 import { Routes, Route, NavLink, useLocation, Link as RouterLink, BrowserRouter } from 'react-router-dom';
 import {Breadcrumbs, Link, LinkProps} from '@mui/material'
 import NavigateNextIcon from '@mui/icons-material/NavigateNext';
+import LogoutIcon from '@mui/icons-material/Logout';
+
+import {
+  WithAuthenticatorProps, 
+} from '@aws-amplify/ui-react';
 
 import { TemplatesMainMenu } from './templates/main';
 
 import { useAppDispatch, useAppSelector } from '../hooks';
 import { invert, selectLeftDrawer } from "../stores/main"
-
 const drawerWidth = 240;
 
 const openedMixin = (theme: Theme): CSSObject => ({
@@ -140,8 +144,7 @@ const MainHeader = () => {
   );
 }
 
-
-export default function MainOutline() {
+export default function MainOutline({signOut, user}: WithAuthenticatorProps) {
   // const [open, setOpen] = React.useState(false);
   const open = useAppSelector(selectLeftDrawer)
   const dispatch = useAppDispatch()
@@ -172,6 +175,24 @@ export default function MainOutline() {
                 }}
             >
                 <ListItemText primary={<NavLink to={"templates"}><ListItemText primary={"Templates"} /></NavLink>} sx={{ opacity: open ? 1 : 0 }} />
+            </ListItemButton>
+          </ListItem>
+        </List>
+        <Divider />
+        <List>
+          <ListItem key={"Signout"} disablePadding  sx={{ display: 'block' }}>
+            <ListItemButton
+                sx={{
+                  minHeight: 48,
+                  justifyContent: open ? 'initial' : 'center',
+                  px: 2.5,
+                }}
+                onClick={signOut}
+            >
+              <ListItemIcon sx={{ opacity: open ? 1 : 0 }}>
+                <LogoutIcon/>
+              </ListItemIcon>
+                <ListItemText primary={"Sign out"} sx={{ opacity: open ? 1 : 0 }} />
             </ListItemButton>
           </ListItem>
         </List>
