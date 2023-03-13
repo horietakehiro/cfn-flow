@@ -10,7 +10,11 @@ import {  Link } from 'react-router-dom';
 
 import { useAppDispatch, useAppSelector } from '../../hooks';
 import { select, selectSelectedTemplate } from "../../stores/templates/main"
-
+import {
+    createDialogOpen,
+    editDialogOpen,
+    deleteDialogOpen,
+} from '../../stores/templates/common';
 
 import { CreateTemplateDialog, EditTemplateDialog, DeleteTemplateDialog } from './common';
 
@@ -60,13 +64,13 @@ const rows: Template[] = [
 
 
 export const TemplatesTable: React.FC = () => {
-
-  const selectedTemplate = useAppSelector(selectSelectedTemplate)
   const dispatch = useAppDispatch()
 
-  const [createDialogOpen, setCreateDialogOpen] = React.useState(false)
-  const [deleteDialogOpen, setDeleteDialogOpen] = React.useState(false)
-  const [editDialogOpen, setEditDialogOpen] = React.useState(false)
+  const selectedTemplate = useAppSelector(selectSelectedTemplate)
+  // const createDialog = useAppSelector(selectCreateDialog)
+  // const editDialog = useAppSelector(selectEditDialog)
+  // const deleteDialog = useAppSelector(selectDeleteDialog)
+
 
   const handleRowClick: GridEventListener<'rowClick'> = (params: GridRowParams<Template>) => {
     dispatch(select(params.row))
@@ -94,7 +98,7 @@ export const TemplatesTable: React.FC = () => {
               <Button
                 variant="outlined"
                 style={{ textTransform: 'none' }}
-                onClick={() => setEditDialogOpen(true)}
+                onClick={() => dispatch(editDialogOpen())}
                 disabled={selectedTemplate === null}
               >
                 Edit
@@ -102,7 +106,7 @@ export const TemplatesTable: React.FC = () => {
               <Button
                 variant="outlined"
                 style={{ textTransform: 'none' }}
-                onClick={() => setDeleteDialogOpen(true)}
+                onClick={() => dispatch(deleteDialogOpen())}
                 disabled={selectedTemplate === null}
               >
                 Delete
@@ -110,7 +114,7 @@ export const TemplatesTable: React.FC = () => {
               <Button
                 variant="contained"
                 style={{ textTransform: 'none' }}
-                onClick={() => setCreateDialogOpen(true)}
+                onClick={() => dispatch(createDialogOpen())}
               >
                 Create
               </Button>
@@ -137,18 +141,18 @@ export const TemplatesTable: React.FC = () => {
       </Box>
 
       <EditTemplateDialog
-        dialogOpen={editDialogOpen}
-        setDialogOpen={setEditDialogOpen}
-        selectedTemplate="dummy-template"
+        // dialogOpen={editDialogOpen}
+        // setDialogOpen={setEditDialogOpen}
+        // selectedTemplate="dummy-template"
       />
       <DeleteTemplateDialog
-        dialogOpen={deleteDialogOpen}
-        setDialogOpen={setDeleteDialogOpen}
-        selectedTemplate="dummy-template"
+        // dialogOpen={deleteDialogOpen}
+        // setDialogOpen={setDeleteDialogOpen}
+        // selectedTemplate="dummy-template"
       />
       <CreateTemplateDialog
-        dialogOpen={createDialogOpen}
-        setDialogOpen={setCreateDialogOpen}
+        // dialogOpen={createDialogOpen}
+        // setDialogOpen={setCreateDialogOpen}
       />
     </Stack>
   );

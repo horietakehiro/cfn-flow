@@ -5,10 +5,14 @@ import { combineReducers } from "@reduxjs/toolkit";
 
 import leftDrawerReducer from "./stores/main"
 import selectedTemplateRuducer from "./stores/templates/main"
+import {CreateTemplateDialogReducer, EditTemplateDialogReducer, DeleteTemplateDialogReducer} from "./stores/templates/common"
 
 const reducers = combineReducers({
     leftDrawer: leftDrawerReducer,
-    selectedTemplate: selectedTemplateRuducer
+    selectedTemplate: selectedTemplateRuducer,
+    createTemplateDialog: CreateTemplateDialogReducer,
+    editTemplateDialog: EditTemplateDialogReducer,
+    deleteTemplateDialog: DeleteTemplateDialogReducer,
 })
 
 const persistConfig = {

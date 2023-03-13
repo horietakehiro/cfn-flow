@@ -15,13 +15,17 @@ import FormControl from '@mui/material/FormControl';
 import FormLabel from '@mui/material/FormLabel';
 import FileUploadIcon from '@mui/icons-material/FileUpload';
 
+import { useAppDispatch, useAppSelector } from '../../hooks';
+import { select, selectSelectedTemplate } from "../../stores/templates/main"
+import {
+  createDialogClose, selectCreateDialog,
+  editDialogClose, selectEditDialog,
+  deleteDialogClose, selectDeleteDialog,
+} from '../../stores/templates/common';
 
-interface CreateDialogProps {
-  dialogOpen: boolean;
-  setDialogOpen: React.Dispatch<React.SetStateAction<boolean>>
-}
-export const CreateTemplateDialog: React.FC<CreateDialogProps> = ({ dialogOpen, setDialogOpen }) => {
-  // const [open, setOpen] = React.useState(false);
+export const CreateTemplateDialog: React.FC = () => {
+  const dispatch = useAppDispatch()
+  const open = useAppSelector(selectCreateDialog)
   enum TemplateSourceType {
     S3 = 1,
     Local = 2
@@ -39,13 +43,10 @@ export const CreateTemplateDialog: React.FC<CreateDialogProps> = ({ dialogOpen, 
     }
   }
 
-  const handleClose = () => {
-    setDialogOpen(false);
-  };
 
   return (
     <div>
-      <Dialog open={dialogOpen} onClose={handleClose}>
+      <Dialog open={open} onClose={() => (dispatch(createDialogClose()))}>
         <DialogTitle>New Template</DialogTitle>
         <DialogContent sx={{ margin: "100" }}>
           <TextField
@@ -116,8 +117,8 @@ export const CreateTemplateDialog: React.FC<CreateDialogProps> = ({ dialogOpen, 
           }
         </DialogContent>
         <DialogActions>
-          <Button onClick={handleClose}>CANCEL</Button>
-          <Button onClick={handleClose} variant={"contained"}>CREATE</Button>
+          <Button onClick={() => (dispatch(createDialogClose()))}>CANCEL</Button>
+          <Button onClick={() => (dispatch(createDialogClose()))} variant={"contained"}>CREATE</Button>
         </DialogActions>
       </Dialog>
     </div>
@@ -125,12 +126,10 @@ export const CreateTemplateDialog: React.FC<CreateDialogProps> = ({ dialogOpen, 
 }
 
 
-interface EditDialogProps {
-  selectedTemplate: string
-  dialogOpen: boolean;
-  setDialogOpen: React.Dispatch<React.SetStateAction<boolean>>
-}
-export const EditTemplateDialog: React.FC<EditDialogProps> = ({ dialogOpen, setDialogOpen, selectedTemplate }) => {
+export const EditTemplateDialog: React.FC = () => {
+  const dispatch = useAppDispatch()
+  const open = useAppSelector(selectEditDialog)
+  const selectedTemplate = useAppSelector(selectSelectedTemplate)
   enum TemplateSourceType {
     S3 = 1,
     Local = 2
@@ -147,14 +146,10 @@ export const EditTemplateDialog: React.FC<EditDialogProps> = ({ dialogOpen, setD
     }
   }
 
-  const handleClose = () => {
-    setDialogOpen(false);
-  };
-
   return (
     <div>
-      <Dialog open={dialogOpen} onClose={handleClose}>
-        <DialogTitle>Edit {selectedTemplate}</DialogTitle>
+      <Dialog open={open} onClose={() => (dispatch(editDialogClose()))}>
+        <DialogTitle>Edit {selectedTemplate?.name}</DialogTitle>
         <DialogContent sx={{ margin: "100" }}>
           <TextField
             autoFocus
@@ -164,18 +159,19 @@ export const EditTemplateDialog: React.FC<EditDialogProps> = ({ dialogOpen, setD
             type={"tex"}
             fullWidth
             variant="outlined"
-            value={selectedTemplate}
+            value={selectedTemplate?.name}
             disabled={true}
           />
           <TextField
             autoFocus
             margin="normal"
             id="description"
-            label="Description"
+            // label="Description"
             type={"tex"}
             fullWidth
             variant="outlined"
             multiline
+            value={selectedTemplate?.description}
           />
           <FormControl>
             <FormLabel id="template-source">Template source</FormLabel>
@@ -206,10 +202,11 @@ export const EditTemplateDialog: React.FC<EditDialogProps> = ({ dialogOpen, setD
                 autoFocus
                 margin="normal"
                 id="url"
-                label="Template URL"
+                // label="Template URL"
                 type={"url"}
                 fullWidth
                 variant="outlined"
+                value={selectedTemplate?.httpUrl}
               />
             </Stack>
             :
@@ -225,39 +222,31 @@ export const EditTemplateDialog: React.FC<EditDialogProps> = ({ dialogOpen, setD
           }
         </DialogContent>
         <DialogActions>
-          <Button onClick={handleClose}>CANCEL</Button>
-          <Button onClick={handleClose} variant={"contained"}>EDIT</Button>
+          <Button onClick={() => (dispatch(editDialogClose()))}>CANCEL</Button>
+          <Button onClick={() => (dispatch(editDialogClose()))} variant={"contained"}>EDIT</Button>
         </DialogActions>
       </Dialog>
     </div>
   );
 }
 
-
-interface DeleteDialogProps {
-  selectedTemplate: string
-  dialogOpen: boolean;
-  setDialogOpen: React.Dispatch<React.SetStateAction<boolean>>
-}
-export const DeleteTemplateDialog: React.FC<DeleteDialogProps> = ({ dialogOpen, setDialogOpen, selectedTemplate }) => {
-  console.log(`delete template ${selectedTemplate}`)
-
-  const handleClose = () => {
-    setDialogOpen(false);
-  };
+export const DeleteTemplateDialog: React.FC = () => {
+  const dispatch = useAppDispatch()
+  const open = useAppSelector(selectDeleteDialog)
+  const selectedTemplate = useAppSelector(selectSelectedTemplate)
 
   return (
     <div>
-      <Dialog open={dialogOpen} onClose={handleClose}>
-        <DialogTitle>Delete {selectedTemplate}?</DialogTitle>
+      <Dialog open={open} onClose={() => (dispatch(deleteDialogClose()))}>
+        <DialogTitle>Delete {selectedTemplate?.name}?</DialogTitle>
         <DialogContent sx={{ margin: "100" }}>
           <DialogContentText>
-            Are you sure that you want to delete template {selectedTemplate}?
+            Are you sure that you want to delete template {selectedTemplate?.name}?
           </DialogContentText>
         </DialogContent>
         <DialogActions>
-          <Button onClick={handleClose}>CANCEL</Button>
-          <Button onClick={handleClose} variant={"contained"}>DELETE</Button>
+          <Button onClick={() => (dispatch(deleteDialogClose()))}>CANCEL</Button>
+          <Button onClick={() => (dispatch(deleteDialogClose()))} variant={"contained"}>DELETE</Button>
         </DialogActions>
       </Dialog>
     </div>

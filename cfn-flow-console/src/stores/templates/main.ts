@@ -10,16 +10,13 @@ const initialState: SelectedTemplateState = {
 
 export const SelectedTemplateSlice = createSlice({
     name: "SelectedTemplate",
-    initialState,
+    initialState: initialState,
     reducers: {
         select: (state, action: PayloadAction<Template>) => {
             state.template = action.payload
         }
     }
 })
-
-
 export const {select} = SelectedTemplateSlice.actions
 export const selectSelectedTemplate = (state: RootState) => state.selectedTemplate.template
-
 export default SelectedTemplateSlice.reducer

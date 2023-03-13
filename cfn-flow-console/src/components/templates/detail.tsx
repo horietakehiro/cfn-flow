@@ -14,7 +14,11 @@ import { EditTemplateDialog, DeleteTemplateDialog } from './common';
 
 import { useAppDispatch, useAppSelector } from '../../hooks';
 import { select, selectSelectedTemplate } from "../../stores/templates/main"
-
+import {
+    createDialogOpen,
+    editDialogOpen,
+    deleteDialogOpen,
+} from '../../stores/templates/common';
 
 
 // interface TemplateDetailProps {
@@ -25,8 +29,6 @@ export const TemplateDetail: React.FC = () => {
   const selectedTemplate = useAppSelector(selectSelectedTemplate)
   const dispatch = useAppDispatch()
 
-  const [deleteDialogOpen, setDeleteDialogOpen] = React.useState(false)
-  const [editDialogOpen, setEditDialogOpen] = React.useState(false)
 
   return (
     <Stack spacing={2}>
@@ -41,7 +43,7 @@ export const TemplateDetail: React.FC = () => {
               <Button
                 variant="outlined"
                 style={{ textTransform: 'none' }}
-                onClick={() => setEditDialogOpen(true)}
+                onClick={() => dispatch(editDialogOpen())}
                 disabled={selectedTemplate === null}
               >
                 Edit
@@ -49,7 +51,7 @@ export const TemplateDetail: React.FC = () => {
               <Button
                 variant="outlined"
                 style={{ textTransform: 'none' }}
-                onClick={() => setDeleteDialogOpen(true)}
+                onClick={() => dispatch(deleteDialogOpen())}
                 disabled={selectedTemplate === null}
               >
                 Delete
@@ -210,14 +212,8 @@ export const TemplateDetail: React.FC = () => {
         </Box>
       </Stack>
       <EditTemplateDialog
-        dialogOpen={editDialogOpen}
-        setDialogOpen={setEditDialogOpen}
-        selectedTemplate="dummy-template"
       />
       <DeleteTemplateDialog
-        dialogOpen={deleteDialogOpen}
-        setDialogOpen={setDeleteDialogOpen}
-        selectedTemplate="dummy-template"
       />
     </Stack>
   );

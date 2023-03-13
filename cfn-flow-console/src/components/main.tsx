@@ -146,8 +146,6 @@ export default function MainOutline() {
   const open = useAppSelector(selectLeftDrawer)
   const dispatch = useAppDispatch()
 
-  console.log(open)
-
   return (
     <Box sx={{ display: 'flex' }}>
       <CssBaseline />
