@@ -3,10 +3,12 @@ import { persistStore, persistReducer } from "redux-persist";
 import storage from "redux-persist/lib/storage";
 import { combineReducers } from "@reduxjs/toolkit";
 
-import leftDrawerReducer from "./store/slice"
+import leftDrawerReducer from "./stores/main"
+import selectedTemplateRuducer from "./stores/templates/main"
 
 const reducers = combineReducers({
-    leftDrawer: leftDrawerReducer
+    leftDrawer: leftDrawerReducer,
+    selectedTemplate: selectedTemplateRuducer
 })
 
 const persistConfig = {

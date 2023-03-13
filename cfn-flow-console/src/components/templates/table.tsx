@@ -5,54 +5,72 @@ import Stack from '@mui/material/Stack';
 import Button from "@mui/material/Button"
 import RefreshIcon from '@mui/icons-material/Refresh';
 import { Divider, Typography } from '@mui/material';
-import { DataGrid, GridColDef } from '@mui/x-data-grid';
+import { DataGrid, GridColDef, GridEventListener, GridRowParams } from '@mui/x-data-grid';
 import {  Link } from 'react-router-dom';
+
+import { useAppDispatch, useAppSelector } from '../../hooks';
+import { select, selectSelectedTemplate } from "../../stores/templates/main"
+
 
 import { CreateTemplateDialog, EditTemplateDialog, DeleteTemplateDialog } from './common';
 
-function createData(
-  Name: string,
-  HttpURL: string,
-  S3URL: string,
-  CreateAt: string,
-  UpdateAt: string,
-) {
-  return { Name, HttpURL, S3URL, CreateAt, UpdateAt };
-}
 
 const columns: GridColDef[] = [
   {
-    field: "Name", headerName: "Name", width: 200, align: "left",
+    field: "name", headerName: "Name", width: 200, align: "left",
   },
   {
-    field: "HttpURL", headerName: "HttpURL", width: 200, align: "left",
+    field: "description", headerName: "Description", width: 200, align: "left",
   },
   {
-    field: "S3URL", headerName: "S3URL", width: 200, align: "left",
+    field: "httpUrl", headerName: "HttpURL", width: 200, align: "left",
   },
   {
-    field: "CreateAt", headerName: "CreateAt", width: 200, align: "left",
+    field: "s3Url", headerName: "S3URL", width: 200, align: "left",
   },
   {
-    field: "UpdateAt", headerName: "UpdateAt", width: 200, align: "left",
+    field: "createAt", headerName: "CreateAt", width: 200, align: "left",
+  },
+  {
+    field: "updateAt", headerName: "UpdateAt", width: 200, align: "left",
   },
 
 ]
-const rows = [
-  { ...createData('Template1', "https://example.com/template1.yaml", "s3://example/template1.yaml", "2023-03-01T10:00:00+0900", "-"), id: 1 },
-  { ...createData('Template2', "https://example.com/template2.yaml", "s3://example/template2.yaml", "2023-03-01T10:00:00+0900", "2023-03-02T10:00:00+0900"), id: 2 },
-];
+
+const rows: Template[] = [
+  {
+    id: "1",
+    name: "Template1",
+    description: "this is  template1",
+    httpUrl: "https://example.com/template1.yaml",
+    s3Url: "s3://example/template1.yaml",
+    createAt: "2023-03-01T10:00:00+0900",
+    updateAt: "2023-03-01T11:00:00+0900"
+  },
+  {
+    id: "2",
+    name: "Template2",
+    description: "this is  template2",
+    httpUrl: "https://example.com/template2.yaml",
+    s3Url: "s3://example/template2.yaml",
+    createAt: "2023-03-01T10:00:00+0900",
+    updateAt: "2023-03-01T11:00:00+0900"
+  }
+]
 
 
-interface TemplateTableProps {
-  selectedTemplate: string;
-  setSelectedTemplate: React.Dispatch<React.SetStateAction<string>>
-  setDetailPageOpen: React.Dispatch<React.SetStateAction<boolean>>
-}
-export const TemplatesTable: React.FC<TemplateTableProps> = ({ selectedTemplate, setSelectedTemplate, setDetailPageOpen }) => {
+export const TemplatesTable: React.FC = () => {
+
+  const selectedTemplate = useAppSelector(selectSelectedTemplate)
+  const dispatch = useAppDispatch()
+
   const [createDialogOpen, setCreateDialogOpen] = React.useState(false)
   const [deleteDialogOpen, setDeleteDialogOpen] = React.useState(false)
   const [editDialogOpen, setEditDialogOpen] = React.useState(false)
+
+  const handleRowClick: GridEventListener<'rowClick'> = (params: GridRowParams<Template>) => {
+    dispatch(select(params.row))
+  };
 
   return (
     <Stack spacing={2}>
@@ -67,10 +85,9 @@ export const TemplatesTable: React.FC<TemplateTableProps> = ({ selectedTemplate,
               <Button
                 variant="outlined"
                 style={{ textTransform: 'none' }}
-                onClick={() => setDetailPageOpen(true)}
-                disabled={selectedTemplate === ""}
+                disabled={selectedTemplate === null}
                 component={Link}
-                to={selectedTemplate}
+                to={`${selectedTemplate?.name}`}
               >
                 View details
               </Button>
@@ -78,7 +95,7 @@ export const TemplatesTable: React.FC<TemplateTableProps> = ({ selectedTemplate,
                 variant="outlined"
                 style={{ textTransform: 'none' }}
                 onClick={() => setEditDialogOpen(true)}
-                disabled={selectedTemplate === ""}
+                disabled={selectedTemplate === null}
               >
                 Edit
               </Button>
@@ -86,7 +103,7 @@ export const TemplatesTable: React.FC<TemplateTableProps> = ({ selectedTemplate,
                 variant="outlined"
                 style={{ textTransform: 'none' }}
                 onClick={() => setDeleteDialogOpen(true)}
-                disabled={selectedTemplate === ""}
+                disabled={selectedTemplate === null}
               >
                 Delete
               </Button>
@@ -114,7 +131,7 @@ export const TemplatesTable: React.FC<TemplateTableProps> = ({ selectedTemplate,
             },
           }}
           pageSizeOptions={[10]}
-          onRowClick={() => setSelectedTemplate("dummy-template")}
+          onRowClick={handleRowClick}
         // checkboxSelection
         />
       </Box>

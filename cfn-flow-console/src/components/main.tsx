@@ -20,7 +20,7 @@ import NavigateNextIcon from '@mui/icons-material/NavigateNext';
 import { TemplatesMainMenu } from './templates/main';
 
 import { useAppDispatch, useAppSelector } from '../hooks';
-import { invert, selectLeftDrawer } from "../store/slice"
+import { invert, selectLeftDrawer } from "../stores/main"
 
 const drawerWidth = 240;
 

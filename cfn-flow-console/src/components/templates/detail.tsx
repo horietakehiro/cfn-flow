@@ -12,10 +12,19 @@ import Card from "@mui/material/Card"
 
 import { EditTemplateDialog, DeleteTemplateDialog } from './common';
 
-interface TemplateDetailProps {
-  selectedTemplate: string;
-}
-export const TemplatesDetail: React.FC<TemplateDetailProps> = ({ selectedTemplate }) => {
+import { useAppDispatch, useAppSelector } from '../../hooks';
+import { select, selectSelectedTemplate } from "../../stores/templates/main"
+
+
+
+// interface TemplateDetailProps {
+//   selectedTemplate: string;
+// }
+export const TemplateDetail: React.FC = () => {
+
+  const selectedTemplate = useAppSelector(selectSelectedTemplate)
+  const dispatch = useAppDispatch()
+
   const [deleteDialogOpen, setDeleteDialogOpen] = React.useState(false)
   const [editDialogOpen, setEditDialogOpen] = React.useState(false)
 
@@ -24,7 +33,7 @@ export const TemplatesDetail: React.FC<TemplateDetailProps> = ({ selectedTemplat
       <Stack direction={"row"}>
         <Grid container spacing={2}>
           <Grid item xs={4}>
-            <Typography variant='h6'>{selectedTemplate}</Typography>
+            <Typography variant='h6'>{selectedTemplate?.name}</Typography>
           </Grid>
           <Grid item xs={8}>
             <Stack spacing={2} direction="row" justifyContent={"flex-end"}>
@@ -33,7 +42,7 @@ export const TemplatesDetail: React.FC<TemplateDetailProps> = ({ selectedTemplat
                 variant="outlined"
                 style={{ textTransform: 'none' }}
                 onClick={() => setEditDialogOpen(true)}
-                disabled={selectedTemplate === ""}
+                disabled={selectedTemplate === null}
               >
                 Edit
               </Button>
@@ -41,7 +50,7 @@ export const TemplatesDetail: React.FC<TemplateDetailProps> = ({ selectedTemplat
                 variant="outlined"
                 style={{ textTransform: 'none' }}
                 onClick={() => setDeleteDialogOpen(true)}
-                disabled={selectedTemplate === ""}
+                disabled={selectedTemplate === null}
               >
                 Delete
               </Button>
@@ -58,37 +67,49 @@ export const TemplatesDetail: React.FC<TemplateDetailProps> = ({ selectedTemplat
             <Grid container spacing={2}>
               <Grid item xs>
               <Stack direction={"column"} spacing={4}>
-                <TextField id="standard-basic" label="Name" variant="standard" value="dummy-temaplte" disabled
+                <TextField
+                  id="name" label="Name" variant="standard"
+                  value={selectedTemplate?.name}
                   sx={{
                     "& .MuiInputBase-input.Mui-disabled": {
                       WebkitTextFillColor: "black",
                     },
                   }}
                   size="small"
+                  disabled
                 />
-                <TextField id="standard-basic" label="Description" variant="standard" value={"this is description"} disabled multiline
+                <TextField
+                  id="description" label="Description" variant="standard"
+                  value={selectedTemplate?.description}
                   sx={{
                     "& .MuiInputBase-input.Mui-disabled": {
                       WebkitTextFillColor: "black",
                     },
                   }}
                   size="small"
+                  disabled multiline
                 />
-                <TextField id="standard-basic" label="CreateAt" variant="standard" value={"2023-03-01T10:00:00+0900"} disabled multiline
+                <TextField
+                  id="createAt" label="CreateAt" variant="standard"
+                  value={selectedTemplate?.createAt}
                   sx={{
                     "& .MuiInputBase-input.Mui-disabled": {
                       WebkitTextFillColor: "black",
                     },
                   }}
                   size="small"
+                  disabled multiline
                 />
-                <TextField id="standard-basic" label="UpdateAt" variant="standard" value={"2023-03-01T10:00:00+0900"} disabled multiline
+                <TextField
+                  id="updateAt" label="UpdateAt"
+                  variant="standard" value={selectedTemplate?.updateAt}
                   sx={{
                     "& .MuiInputBase-input.Mui-disabled": {
                       WebkitTextFillColor: "black",
                     },
                   }}
                   size="small"
+                  disabled multiline
                 />
               </Stack>
               </Grid>
@@ -99,26 +120,31 @@ export const TemplatesDetail: React.FC<TemplateDetailProps> = ({ selectedTemplat
                   <IconButton size='small'>
                     <ContentCopyIcon />
                   </IconButton>
-                  <TextField id="standard-basic" label="HttpUrl" variant="standard" value="https://example.com/template1.yaml" disabled type="ur" fullWidth multiline
+                  <TextField
+                    id="httpUrl" label="HttpUrl" variant="standard" 
+                    value={selectedTemplate?.httpUrl} 
                     sx={{
                       "& .MuiInputBase-input.Mui-disabled": {
                         WebkitTextFillColor: "black",
                       },
                     }}
                     size="small"
-                  />
+                    disabled type="ur" fullWidth multiline                  />
                 </Stack>
                 <Stack direction={"row"}>
                   <IconButton size='small'>
                     <ContentCopyIcon />
                   </IconButton>
-                  <TextField id="standard-basic" label="S3Url" variant="standard" value="s3://example/template1.yaml" disabled type="ur" fullWidth multiline
+                  <TextField
+                    id="standard-basic" label="S3Url" 
+                    variant="standard" value={selectedTemplate?.s3Url}
                     sx={{
                       "& .MuiInputBase-input.Mui-disabled": {
                         WebkitTextFillColor: "black",
                       },
                     }}
                     size="small"
+                    disabled type="ur" fullWidth multiline
                   />
                 </Stack>
               </Stack>
