@@ -2,9 +2,9 @@ version = 0.1
 [default]
 [default.deploy]
 [default.deploy.parameters]
-stack_name = "cfn-flow-dev-python-layers"
+stack_name = "cfn-flow-dev-api-backends"
 s3_bucket = "aws-sam-cli-managed-default-samclisourcebucket-1l2w6x2engrnu"
-s3_prefix = "cfn-flow-dev-python-layers"
+s3_prefix = "cfn-flow-dev-api-backends"
 region = "ap-northeast-1"
 capabilities = "CAPABILITY_IAM"
 disable_rollback = true

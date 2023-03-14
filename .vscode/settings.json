@@ -2,11 +2,11 @@
     "python.defaultInterpreterPath": "${workspaceFolder}/cfn-flow-api/python/.venv/bin/python",
     "python.envFile": "${workspaceFolder}/cfn-flow-api/python/.env",
     "terminal.integrated.env.linux": {
-        "PYTHONPATH": "${workspaceFolder}/cfn-flow-api/python/layers"
+        "PYTHONPATH": "${workspaceFolder}/cfn-flow-api/python/layers/utils"
     },
     "python.analysis.typeCheckingMode": "basic",
     "python.analysis.autoImportCompletions": true,
     "python.analysis.extraPaths": [
-        "${workspaceFolder}/cfn-flow-api/python/layers"
+        "${workspaceFolder}/cfn-flow-api/python/layers/utils"
     ]
 }

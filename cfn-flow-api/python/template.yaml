@@ -1,0 +1,113 @@
+Transform: AWS::Serverless-2016-10-31
+AWSTemplateFormatVersion: 2010-09-09
+Description: ---
+# Metadata: 
+
+Parameters: 
+  SolutionName:
+    Type: String
+    Default: cfn-flow
+  EnvName:
+    Type: String
+    Default: dev
+    AllowedValues:
+      - dev
+      - prod
+
+# Mappings: 
+
+# Conditions: 
+
+Resources:
+
+  UtilLayer:
+    Type: AWS::Serverless::LayerVersion
+    Properties:
+      ContentUri: ./layers/utils/
+      CompatibleRuntimes:
+        - python3.9
+      CompatibleArchitectures:
+        - x86_64
+      LayerName: !Sub ${SolutionName}-${EnvName}-util-layer
+      RetentionPolicy: Delete
+    Metadata:
+      BuildMethod: python3.9
+
+  CfnUtilLayer:
+    Type: AWS::Serverless::LayerVersion
+    Properties:
+      ContentUri: ./layers/cfn_utils/
+      CompatibleRuntimes:
+        - python3.9
+      CompatibleArchitectures:
+        - x86_64
+      LayerName: !Sub ${SolutionName}-${EnvName}-cfn-util-layer
+      RetentionPolicy: Delete
+    Metadata:
+      BuildMethod: python3.9
+
+
+  TemplatesFunctionsRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - 'sts:AssumeRole'
+      Path: /
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+        - arn:aws:iam::aws:policy/AmazonS3FullAccess
+        - arn:aws:iam::aws:policy/AmazonDynamoDBFullAccess
+        - arn:aws:iam::aws:policy/AWSXRayDaemonWriteAccess
+      # Policies:
+
+  PutTemplate:
+    Type: AWS::Serverless::Function
+    Properties:
+      Architectures:
+        - x86_64
+      CodeUri: ./functions/templates/
+      # Environment: Environment
+      EphemeralStorage:
+        Size: 512
+      # EventInvokeConfig: EventInvokeConfiguration
+      Events:
+        CatchAll:
+          Type: Api
+          Properties:
+            Path: "/{proxy+}"
+            Method: ANY      
+            RestApiId:  !Ref TemplatesPutApi
+        PutApi:
+          Type: Api
+          Properties:
+            Method: put
+            Path: /templates/{templateName}
+            RestApiId:  !Ref TemplatesPutApi
+      FunctionName: !Sub ${SolutionName}-${EnvName}-templates-put-function
+      Handler: put_template.lambda_handler
+      Layers:
+        - !Ref UtilLayer
+        - !Ref CfnUtilLayer
+      MemorySize: 1024
+      PackageType: Zip
+      # Policies: String | List | Map
+      Role: !GetAtt TemplatesFunctionsRole.Arn
+      # RolePath: String
+      Runtime: python3.9
+      Timeout: 60
+      Tracing: Active
+
+  TemplatesPutApi:
+    Type: AWS::Serverless::Api
+    Properties:
+      StageName: !Ref EnvName
+      Name: !Sub ${SolutionName}-${EnvName}-templates-api
+      # BinaryMediaTypes:
+        # - ""
