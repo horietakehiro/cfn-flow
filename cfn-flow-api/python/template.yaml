@@ -20,6 +20,53 @@ Parameters:
 
 Resources:
 
+  TemplatesTable:
+    DeletionPolicy: Delete
+    UpdateReplacePolicy: Delete
+    Type: AWS::DynamoDB::Table
+    Properties: 
+      AttributeDefinitions: 
+        - AttributeName: name
+          AttributeType: S
+      BillingMode: PAY_PER_REQUEST
+      # GlobalSecondaryIndexes: 
+      #   - GlobalSecondaryIndex
+      KeySchema:
+        - AttributeName: name
+          KeyType: HASH
+      PointInTimeRecoverySpecification: 
+        PointInTimeRecoveryEnabled: false
+      TableClass: STANDARD
+      TableName: !Sub ${SolutionName}-${EnvName}-templates-table
+      # TimeToLiveSpecification: 
+      #   TimeToLiveSpecification
+
+  TemplateSummariesTable:
+    DeletionPolicy: Delete
+    UpdateReplacePolicy: Delete
+    Type: AWS::DynamoDB::Table
+    Properties: 
+      AttributeDefinitions: 
+        - AttributeName: templateName
+          AttributeType: S
+        - AttributeName: sectionName
+          AttributeType: S
+      BillingMode: PAY_PER_REQUEST
+      # GlobalSecondaryIndexes: 
+      #   - GlobalSecondaryIndex
+      KeySchema:
+        - AttributeName: templateName
+          KeyType: HASH
+        - AttributeName: sectionName
+          KeyType: RANGE
+      PointInTimeRecoverySpecification: 
+        PointInTimeRecoveryEnabled: false
+      TableClass: STANDARD
+      TableName: !Sub ${SolutionName}-${EnvName}-template-summaries-table
+      # TimeToLiveSpecification: 
+      #   TimeToLiveSpecification
+
+
   UtilLayer:
     Type: AWS::Serverless::LayerVersion
     Properties:
@@ -73,7 +120,12 @@ Resources:
       Architectures:
         - x86_64
       CodeUri: ./functions/templates/
-      # Environment: Environment
+      Environment:
+        Variables:
+          DYNAMO_TEMPLATE_TABLE_NAME: !Ref TemplatesTable
+          DYNAMO_TEMPLATE_SUMMARY_TABLE_NAME: !Ref TemplateSummariesTable
+          S3_BUCKET_NAME:
+            Fn::ImportValue: !Sub ${SolutionName}-${EnvName}-templates-bucket 
       EphemeralStorage:
         Size: 512
       # EventInvokeConfig: EventInvokeConfiguration
@@ -84,12 +136,16 @@ Resources:
             Path: "/{proxy+}"
             Method: ANY      
             RestApiId:  !Ref TemplatesPutApi
+            Auth:
+              ApiKeyRequired: true
         PutApi:
           Type: Api
           Properties:
             Method: put
             Path: /templates/{templateName}
             RestApiId:  !Ref TemplatesPutApi
+            Auth:
+              ApiKeyRequired: true
       FunctionName: !Sub ${SolutionName}-${EnvName}-templates-put-function
       Handler: put_template.lambda_handler
       Layers:
@@ -111,3 +167,5 @@ Resources:
       Name: !Sub ${SolutionName}-${EnvName}-templates-api
       # BinaryMediaTypes:
         # - ""
+      Auth:
+        ApiKeyRequired: true

@@ -1,0 +1,41 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: ---
+# Metadata: 
+
+Parameters: 
+  SolutionName:
+    Type: String
+    Default: cfn-flow
+  EnvName:
+    Type: String
+    Default: dev
+    AllowedValues:
+      - dev
+      - prod
+
+# Mappings: 
+
+# Conditions: 
+
+Resources:
+
+  TemplatesBucket:
+    Type: AWS::S3::Bucket
+    Properties: 
+      AccessControl: Private
+      BucketEncryption: 
+        ServerSideEncryptionConfiguration:
+          - BucketKeyEnabled: true
+            ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      BucketName: !Sub ${SolutionName}-${EnvName}-${AWS::AccountId}-${AWS::Region}-templates-bucket
+      # VersioningConfiguration: 
+      #   VersioningConfiguration
+
+
+Outputs:
+  TemplatesBucketName:
+    Description: bucket name of templates bucket
+    Value: !Ref TemplatesBucket
+    Export: 
+      Name: !Sub ${SolutionName}-${EnvName}-templates-bucket
