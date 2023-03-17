@@ -124,7 +124,7 @@ Resources:
         Variables:
           DYNAMO_TEMPLATE_TABLE_NAME: !Ref TemplatesTable
           DYNAMO_TEMPLATE_SUMMARY_TABLE_NAME: !Ref TemplateSummariesTable
-          S3_BUCKET_NAME:
+          S3_TEMPLATE_BUCKET_NAME:
             Fn::ImportValue: !Sub ${SolutionName}-${EnvName}-templates-bucket 
       EphemeralStorage:
         Size: 512

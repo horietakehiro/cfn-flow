@@ -1,42 +1,43 @@
 import json
 import os
-from tempfile import tempdir
 import tempfile
-from typing import Dict, Optional, TypedDict
+from typing import Any, Dict, Optional, TypedDict
 import typing
-from urllib.parse import urlparse
 import boto3
 from boto3.dynamodb.conditions import Key
 import utils
-from logging import DEBUG
-from dataclasses import dataclass
-import datetime as dt
+from logging import INFO
 
 from cfn_flip import to_json
 
 
 TEMPLATE_TABLE_NAME=os.environ["DYNAMO_TEMPLATE_TABLE_NAME"]
 TEMPLATE_SUMMARY_TABLE_NAME=os.environ["DYNAMO_TEMPLATE_SUMMARY_TABLE_NAME"]
-BUCKET_NAME=os.environ["S3_BUCKET_NAME"]
+BUCKET_NAME=os.environ["S3_TEMPLATE_BUCKET_NAME"]
 
 
 dynamo = boto3.resource("dynamodb")
 s3 = boto3.client("s3")
 
 get_logger = utils.logger_manager()
-logger = get_logger(__name__, DEBUG)
+logger = get_logger(__name__, INFO)
 
 
 Template = TypedDict("Template", {
     "name": str, "description": Optional[str], 
     "httpUrl": str, "s3Url": str, "createAt": str, "updateAt": str
 })
+TemplateSummary = TypedDict("TemplateSummary", {
+    "templateName": str, "sectionName": str,
+    "summary": Dict[Any, Any]
+})
+TemplateSummaries = Dict[str, TemplateSummary]
 
 RequestBody = TypedDict("RequestBody",{
     "name": str, "description": Optional[str], "httpUrl": str,
 })
 
-Response = TypedDict("SuccessResponse", {
+Response = TypedDict("Response", {
     "statusCode": int, "body": str,
 })
 
@@ -51,15 +52,17 @@ def get_template_body(http_url:str) -> Dict:
     """
     s3_url = ""
     try:
-        s3_url = convert_http_to_s3(http_url)
-        bucket, keys = s3_url.replace("s3://", "").split("/")
+        s3_url = utils.convert_http_to_s3(http_url)
+        logger.info(f"convert {http_url} to {s3_url}")
+
+        bucket, *keys = s3_url.replace("s3://", "").split("/")
         key = "/".join(keys)
         filename = key.split("/")[-1]
         filename = s3_url.split("/")[-1]
     except Exception as ex:
         raise ex
 
-    with tempfile.TemporaryDirectory(suffix="/tmp") as td:
+    with tempfile.TemporaryDirectory() as td:
         try:
             filepath = os.path.join(td, filename)
             s3.download_file(bucket, key, filepath)
@@ -79,16 +82,6 @@ def get_template_body(http_url:str) -> Dict:
             raise ex
     return body
 
-def strftime(datetime:dt.datetime, fmt="%Y-%m-%dT%H:%M:%S%z") -> str:
-    return dt.datetime.strftime(datetime, fmt)
-
-def get_current_dt(hours=9) -> dt.datetime:
-    t_delta = dt.timedelta(hours=hours)
-    timezone = dt.timezone(t_delta, "Asia/Tokyo")
-    now = dt.datetime.now(timezone)
-
-    return now
-
 def upsert_template(req_body:RequestBody) -> Template:
     """
     if item does not exist, create new,
@@ -100,7 +93,7 @@ def upsert_template(req_body:RequestBody) -> Template:
         res = table.query(
             KeyConditionExpression=Key("name").eq(name),
         )
-        logger.debug(utils.jdumps(dict(res)))
+        logger.info(utils.jdumps(dict(res)))
 
         prev_item = {}
         if len(res["Items"]) != 0:
@@ -110,44 +103,28 @@ def upsert_template(req_body:RequestBody) -> Template:
             "name": req_body["name"],
             "description": req_body.get("description", None),
             "httpUrl": req_body["httpUrl"],
-            "s3Url": convert_http_to_s3(req_body["httpUrl"]),
+            "s3Url": utils.convert_http_to_s3(req_body["httpUrl"]),
 
-            "createAt": str(prev_item.get("createAt", strftime(get_current_dt()))),
-            "updateAt": "-" if not prev_item else strftime(get_current_dt()),
+            "createAt": str(prev_item.get("createAt", utils.strftime(utils.get_current_dt()))),
+            "updateAt": "-" if not prev_item else utils.strftime(utils.get_current_dt()),
         }
         
         res = table.put_item(
             Item=typing.cast(typing.Mapping[str, typing.Any], item),
         )
-        logger.debug(utils.jdumps(dict(res)))
+        logger.info(utils.jdumps(dict(res)))
     except Exception as ex:
         raise ex
     
     return item
 
 
-def convert_http_to_s3(url:str) -> str:
-    """
-    convert http url to s3 url
-    e.g.:
-        https://BUCKET-NAME.s3.ap-northeast-1.amazonaws.com/path/to/object
-        -> s3://BUCKEt-NAME/path/to/pbject
-    """
-    u = urlparse(url)
-    hostname = u.hostname
-    if hostname is None:
-        raise ValueError(f"given httpUrl : {url} is invalid")
-    
-    bucket = hostname.split(".")[0]
-    key = u.path
-
-    return f"s3://{bucket}{key}"
-
-def upsert_template_summaries(req_body:RequestBody ,body:Dict) -> None:
+def upsert_template_summaries(req_body:RequestBody ,body:Dict) -> TemplateSummaries:
     """
     upsert template summaries (parameters, resources, outputs)
     """
 
+    summaries:TemplateSummaries = {}
     try:
         table = dynamo.Table(TEMPLATE_SUMMARY_TABLE_NAME)
 
@@ -157,22 +134,27 @@ def upsert_template_summaries(req_body:RequestBody ,body:Dict) -> None:
         outputs = dict(body.get("Outputs", {}))
 
         for key, val in {"Parameters": parameters, "Resources": resources, "Outputs": outputs}.items():
+            item:TemplateSummary = {
+                "templateName": req_body["name"],
+                "sectionName": key,
+                "summary": val
+            }
             res = table.put_item(
-                Item={
-                    "templateName": req_body["name"],
-                    "sectionName": key,
-                    "summary": val
-                }
+                Item=typing.cast(typing.Mapping[str, Any], item),
             )
-            logger.debug(utils.jdumps(dict(res)))
+            logger.info(utils.jdumps(dict(res)))
+
+            summaries[key] = item
 
     except Exception as ex:
         raise ex
+    
+    return summaries
 
 
 def lambda_handler(event:dict, context) -> Response:
 
-    logger.debug(utils.jdumps(event))
+    logger.info(utils.jdumps(event))
 
     try:
         req_body: RequestBody = json.loads(event["body"])
@@ -240,3 +222,4 @@ def lambda_handler(event:dict, context) -> Response:
         "statusCode": 200,
         "body": utils.jdumps(dict(res))
     }
+
