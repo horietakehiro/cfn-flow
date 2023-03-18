@@ -59,12 +59,12 @@ def list_templates(limit:int=100, next_token:Optional[str]=None) -> Tuple[List[T
 def lambda_handler(event:dict, context) -> Response:
 
     logger.info(utils.jdumps(event))
-    params:RequestQueryParams = event.get("queryStringParameters", {})
+    params:RequestQueryParams = event.get("queryStringParameters", None)
 
     # get all template items as possible
     try:
-        next_token = params.get("next-token", None)
-        limit = int(typing.cast(int, params.get("limit", 100)))
+        next_token = params.get("next-token", None) if params is not None else None
+        limit = int(typing.cast(int, params.get("limit", 100))) if params is not None else 100
         templates, next_token = list_templates(limit=limit, next_token=next_token)
     except Exception as ex:
         logger.error(f"list templates failed", exc_info=True)

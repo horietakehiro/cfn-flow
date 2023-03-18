@@ -32,11 +32,20 @@ def setup_module(module):
 
     dynamo = boto3.resource("dynamodb")
     template_table = dynamo.Table(TEMPLATE_TABLE_NAME)
-    # delete new item
-    template_table.delete_item(
-        Key={"name": NEW_ITEM_NAME}
+    # # delete new item
+    # template_table.delete_item(
+    #     Key={"name": NEW_ITEM_NAME}
+    # )
+    template_table.put_item(
+        Item={
+            "name": NEW_ITEM_NAME,
+            "description": "this is new template",
+            "httpUrl": TEST_YAML_TEMPLATE_HTTP_URL,
+            "s3Url": utils.convert_http_to_s3(TEST_YAML_TEMPLATE_HTTP_URL),
+            "createAt": utils.strftime(utils.get_current_dt()),
+            "updateAt": "-",
+        }
     )
-    # create existing item
     template_table.put_item(
         Item={
             "name": EXISTING_ITEM_NAME,
