@@ -2,6 +2,9 @@ deploy:
 	sam build
 	sam deploy
 
+destroy:
+	sam delete --no-prompts
+
 test:
 	pytest
 

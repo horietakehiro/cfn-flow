@@ -33,9 +33,68 @@ Resources:
       #   VersioningConfiguration
 
 
+  TemplatesTable:
+    DeletionPolicy: Delete
+    UpdateReplacePolicy: Delete
+    Type: AWS::DynamoDB::Table
+    Properties: 
+      AttributeDefinitions: 
+        - AttributeName: name
+          AttributeType: S
+      BillingMode: PAY_PER_REQUEST
+      # GlobalSecondaryIndexes: 
+      #   - GlobalSecondaryIndex
+      KeySchema:
+        - AttributeName: name
+          KeyType: HASH
+      PointInTimeRecoverySpecification: 
+        PointInTimeRecoveryEnabled: false
+      TableClass: STANDARD
+      TableName: !Sub ${SolutionName}-${EnvName}-templates-table
+      # TimeToLiveSpecification: 
+      #   TimeToLiveSpecification
+
+  TemplateSummariesTable:
+    DeletionPolicy: Delete
+    UpdateReplacePolicy: Delete
+    Type: AWS::DynamoDB::Table
+    Properties: 
+      AttributeDefinitions: 
+        - AttributeName: templateName
+          AttributeType: S
+        - AttributeName: sectionName
+          AttributeType: S
+      BillingMode: PAY_PER_REQUEST
+      # GlobalSecondaryIndexes: 
+      #   - GlobalSecondaryIndex
+      KeySchema:
+        - AttributeName: templateName
+          KeyType: HASH
+        - AttributeName: sectionName
+          KeyType: RANGE
+      PointInTimeRecoverySpecification: 
+        PointInTimeRecoveryEnabled: false
+      TableClass: STANDARD
+      TableName: !Sub ${SolutionName}-${EnvName}-template-summaries-table
+      # TimeToLiveSpecification: 
+      #   TimeToLiveSpecification
+
+
 Outputs:
   TemplatesBucketName:
     Description: bucket name of templates bucket
     Value: !Ref TemplatesBucket
     Export: 
       Name: !Sub ${SolutionName}-${EnvName}-templates-bucket
+
+  TemplatesTableName:
+    Description: dynamodb table name of templates table
+    Value: !Ref TemplatesTable
+    Export: 
+      Name: !Sub ${SolutionName}-${EnvName}-templates-table
+
+  TemplateSummariesTableName:
+    Description: dynamodb table name of template summaries table
+    Value: !Ref TemplateSummariesTable
+    Export: 
+      Name: !Sub ${SolutionName}-${EnvName}-template-summaries-table

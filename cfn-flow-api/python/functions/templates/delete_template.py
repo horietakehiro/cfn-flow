@@ -6,18 +6,16 @@ import boto3
 from boto3.dynamodb.conditions import Key
 from typing import List, TypedDict, Optional, Dict, Any
 
-TEMPLATE_TABLE_NAME=os.environ["DYNAMO_TEMPLATE_TABLE_NAME"]
-TEMPLATE_SUMMARY_TABLE_NAME=os.environ["DYNAMO_TEMPLATE_SUMMARY_TABLE_NAME"]
-BUCKET_NAME=os.environ["S3_TEMPLATE_BUCKET_NAME"]
+from common import (
+    TEMPLATE_TABLE_NAME, TEMPLATE_SUMMARY_TABLE_NAME,
+    Response, DELETE_CORS_HEADERS,
+)
 
 dynamo = boto3.resource("dynamodb")
 
 get_logger = utils.logger_manager()
 logger = get_logger(__name__, INFO)
 
-Response = TypedDict("Response", {
-    "statusCode": int, "body": str,
-})
 ResponseBody = TypedDict("ResponseBody", {
     "error": Optional[str], "templateName": Optional[str]
 })
@@ -74,6 +72,7 @@ def lambda_handler(event:dict, context) -> Response:
         }
         return {
             "statusCode": 400,
+            "headers": DELETE_CORS_HEADERS,
             "body": utils.jdumps(dict(res))
         }
     
@@ -88,6 +87,7 @@ def lambda_handler(event:dict, context) -> Response:
         }
         return {
             "statusCode": 500,
+            "headers": DELETE_CORS_HEADERS,
             "body": utils.jdumps(dict(res))
         }
     try:
@@ -102,6 +102,7 @@ def lambda_handler(event:dict, context) -> Response:
         }
         return {
             "statusCode": 500,
+            "headers": DELETE_CORS_HEADERS,
             "body": utils.jdumps(dict(res))
         }
     
@@ -111,6 +112,7 @@ def lambda_handler(event:dict, context) -> Response:
     }
     return {
         "statusCode": 200,
+        "headers": DELETE_CORS_HEADERS,
         "body": utils.jdumps(dict(res))
     }
 

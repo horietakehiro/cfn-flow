@@ -10,10 +10,11 @@ from logging import INFO
 
 from cfn_flip import to_json
 
-
-TEMPLATE_TABLE_NAME=os.environ["DYNAMO_TEMPLATE_TABLE_NAME"]
-TEMPLATE_SUMMARY_TABLE_NAME=os.environ["DYNAMO_TEMPLATE_SUMMARY_TABLE_NAME"]
-BUCKET_NAME=os.environ["S3_TEMPLATE_BUCKET_NAME"]
+from common import (
+    TEMPLATE_TABLE_NAME, TEMPLATE_SUMMARY_TABLE_NAME, BUCKET_NAME,
+    Template, Response, TemplateSummaries, TemplateSummary,
+    PUT_CORS_HEADERS,
+)
 
 
 dynamo = boto3.resource("dynamodb")
@@ -23,22 +24,8 @@ get_logger = utils.logger_manager()
 logger = get_logger(__name__, INFO)
 
 
-Template = TypedDict("Template", {
-    "name": str, "description": Optional[str], 
-    "httpUrl": str, "s3Url": str, "createAt": str, "updateAt": str
-})
-TemplateSummary = TypedDict("TemplateSummary", {
-    "templateName": str, "sectionName": str,
-    "summary": Dict[Any, Any]
-})
-TemplateSummaries = Dict[str, TemplateSummary]
-
 RequestBody = TypedDict("RequestBody",{
     "name": str, "description": Optional[str], "httpUrl": str,
-})
-
-Response = TypedDict("Response", {
-    "statusCode": int, "body": str,
 })
 
 ResponseBody = TypedDict("ResponseBody", {
@@ -166,6 +153,7 @@ def lambda_handler(event:dict, context) -> Response:
         }
         return {
             "statusCode": 400,
+            "headers": PUT_CORS_HEADERS,
             "body": utils.jdumps(dict(res))
         }
     
@@ -183,6 +171,7 @@ def lambda_handler(event:dict, context) -> Response:
         }
         return {
             "statusCode": 500,
+            "headers": PUT_CORS_HEADERS,
             "body": utils.jdumps(dict(res))
         }
 
@@ -197,6 +186,7 @@ def lambda_handler(event:dict, context) -> Response:
         }
         return {
             "statusCode": 500,
+            "headers": PUT_CORS_HEADERS,
             "body": utils.jdumps(dict(res))
         }
     
@@ -211,6 +201,7 @@ def lambda_handler(event:dict, context) -> Response:
         }
         return {
             "statusCode": 500,
+            "headers": PUT_CORS_HEADERS,
             "body": utils.jdumps(dict(res))
         }
 
@@ -220,6 +211,7 @@ def lambda_handler(event:dict, context) -> Response:
     }
     return {
         "statusCode": 200,
+        "headers": PUT_CORS_HEADERS,
         "body": utils.jdumps(dict(res))
     }
 

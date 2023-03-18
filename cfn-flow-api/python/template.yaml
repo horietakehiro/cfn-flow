@@ -13,58 +13,15 @@ Parameters:
     AllowedValues:
       - dev
       - prod
+  UserPoolArn:
+    Type: String
+
 
 # Mappings: 
 
 # Conditions: 
 
 Resources:
-
-  TemplatesTable:
-    DeletionPolicy: Delete
-    UpdateReplacePolicy: Delete
-    Type: AWS::DynamoDB::Table
-    Properties: 
-      AttributeDefinitions: 
-        - AttributeName: name
-          AttributeType: S
-      BillingMode: PAY_PER_REQUEST
-      # GlobalSecondaryIndexes: 
-      #   - GlobalSecondaryIndex
-      KeySchema:
-        - AttributeName: name
-          KeyType: HASH
-      PointInTimeRecoverySpecification: 
-        PointInTimeRecoveryEnabled: false
-      TableClass: STANDARD
-      TableName: !Sub ${SolutionName}-${EnvName}-templates-table
-      # TimeToLiveSpecification: 
-      #   TimeToLiveSpecification
-
-  TemplateSummariesTable:
-    DeletionPolicy: Delete
-    UpdateReplacePolicy: Delete
-    Type: AWS::DynamoDB::Table
-    Properties: 
-      AttributeDefinitions: 
-        - AttributeName: templateName
-          AttributeType: S
-        - AttributeName: sectionName
-          AttributeType: S
-      BillingMode: PAY_PER_REQUEST
-      # GlobalSecondaryIndexes: 
-      #   - GlobalSecondaryIndex
-      KeySchema:
-        - AttributeName: templateName
-          KeyType: HASH
-        - AttributeName: sectionName
-          KeyType: RANGE
-      PointInTimeRecoverySpecification: 
-        PointInTimeRecoveryEnabled: false
-      TableClass: STANDARD
-      TableName: !Sub ${SolutionName}-${EnvName}-template-summaries-table
-      # TimeToLiveSpecification: 
-      #   TimeToLiveSpecification
 
 
   UtilLayer:
@@ -123,8 +80,10 @@ Resources:
       CodeUri: ./functions/templates/
       Environment:
         Variables:
-          DYNAMO_TEMPLATE_TABLE_NAME: !Ref TemplatesTable
-          DYNAMO_TEMPLATE_SUMMARY_TABLE_NAME: !Ref TemplateSummariesTable
+          DYNAMO_TEMPLATE_TABLE_NAME:
+            Fn::ImportValue: !Sub ${SolutionName}-${EnvName}-templates-table
+          DYNAMO_TEMPLATE_SUMMARY_TABLE_NAME:
+            Fn::ImportValue: !Sub ${SolutionName}-${EnvName}-template-summaries-table
           S3_TEMPLATE_BUCKET_NAME:
             Fn::ImportValue: !Sub ${SolutionName}-${EnvName}-templates-bucket 
       EphemeralStorage:
@@ -137,16 +96,16 @@ Resources:
             Path: "/{proxy+}"
             Method: ANY      
             RestApiId:  !Ref TemplatesApi
-            Auth:
-              ApiKeyRequired: true
+#             Auth:
+ #              ApiKeyRequired: true
         GetApi:
           Type: Api
           Properties:
             Method: get
             Path: /templates
             RestApiId:  !Ref TemplatesApi
-            Auth:
-              ApiKeyRequired: true
+#             Auth:
+ #              ApiKeyRequired: true
       FunctionName: !Sub ${SolutionName}-${EnvName}-templates-list-function
       Handler: list_templates.lambda_handler
       Layers:
@@ -169,8 +128,10 @@ Resources:
       CodeUri: ./functions/templates/
       Environment:
         Variables:
-          DYNAMO_TEMPLATE_TABLE_NAME: !Ref TemplatesTable
-          DYNAMO_TEMPLATE_SUMMARY_TABLE_NAME: !Ref TemplateSummariesTable
+          DYNAMO_TEMPLATE_TABLE_NAME:
+            Fn::ImportValue: !Sub ${SolutionName}-${EnvName}-templates-table
+          DYNAMO_TEMPLATE_SUMMARY_TABLE_NAME:
+            Fn::ImportValue: !Sub ${SolutionName}-${EnvName}-template-summaries-table
           S3_TEMPLATE_BUCKET_NAME:
             Fn::ImportValue: !Sub ${SolutionName}-${EnvName}-templates-bucket 
       EphemeralStorage:
@@ -183,8 +144,8 @@ Resources:
             Method: put
             Path: /templates/{templateName}
             RestApiId:  !Ref TemplatesApi
-            Auth:
-              ApiKeyRequired: true
+#             Auth:
+ #              ApiKeyRequired: true
       FunctionName: !Sub ${SolutionName}-${EnvName}-templates-put-function
       Handler: put_template.lambda_handler
       Layers:
@@ -208,8 +169,10 @@ Resources:
       CodeUri: ./functions/templates/
       Environment:
         Variables:
-          DYNAMO_TEMPLATE_TABLE_NAME: !Ref TemplatesTable
-          DYNAMO_TEMPLATE_SUMMARY_TABLE_NAME: !Ref TemplateSummariesTable
+          DYNAMO_TEMPLATE_TABLE_NAME:
+            Fn::ImportValue: !Sub ${SolutionName}-${EnvName}-templates-table
+          DYNAMO_TEMPLATE_SUMMARY_TABLE_NAME:
+            Fn::ImportValue: !Sub ${SolutionName}-${EnvName}-template-summaries-table
           S3_TEMPLATE_BUCKET_NAME:
             Fn::ImportValue: !Sub ${SolutionName}-${EnvName}-templates-bucket 
       EphemeralStorage:
@@ -222,8 +185,8 @@ Resources:
             Method: get
             Path: /templates/{templateName}/{sectionName}
             RestApiId:  !Ref TemplatesApi
-            Auth:
-              ApiKeyRequired: true
+#             Auth:
+ #              ApiKeyRequired: true
       FunctionName: !Sub ${SolutionName}-${EnvName}-template-get-function
       Handler: get_template.lambda_handler
       Layers:
@@ -246,8 +209,10 @@ Resources:
       CodeUri: ./functions/templates/
       Environment:
         Variables:
-          DYNAMO_TEMPLATE_TABLE_NAME: !Ref TemplatesTable
-          DYNAMO_TEMPLATE_SUMMARY_TABLE_NAME: !Ref TemplateSummariesTable
+          DYNAMO_TEMPLATE_TABLE_NAME:
+            Fn::ImportValue: !Sub ${SolutionName}-${EnvName}-templates-table
+          DYNAMO_TEMPLATE_SUMMARY_TABLE_NAME:
+            Fn::ImportValue: !Sub ${SolutionName}-${EnvName}-template-summaries-table
           S3_TEMPLATE_BUCKET_NAME:
             Fn::ImportValue: !Sub ${SolutionName}-${EnvName}-templates-bucket 
       EphemeralStorage:
@@ -260,8 +225,8 @@ Resources:
             Method: get
             Path: /templates/{templateName}
             RestApiId:  !Ref TemplatesApi
-            Auth:
-              ApiKeyRequired: true
+#             Auth:
+ #              ApiKeyRequired: true
       FunctionName: !Sub ${SolutionName}-${EnvName}-template-delete-function
       Handler: delete_template.lambda_handler
       Layers:
@@ -283,5 +248,15 @@ Resources:
       Name: !Sub ${SolutionName}-${EnvName}-templates-api
       # BinaryMediaTypes:
         # - ""
+      Cors:
+        # AllowCredentials: true
+        AllowHeaders: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+        AllowMethods: "'OPTIONS,GET,PUT,POST,DELETE'"
+        AllowOrigin: "'*'"
+
       Auth:
-        ApiKeyRequired: true
+        DefaultAuthorizer: MyCognitoAuthorizer
+        AddDefaultAuthorizerToCorsPreflight: false
+        Authorizers:
+          MyCognitoAuthorizer:
+            UserPoolArn: !Ref UserPoolArn

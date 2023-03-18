@@ -5,7 +5,6 @@ import { useParams } from 'react-router-dom';
 import { TemplatesTable } from './table';
 import { TemplateDetail } from './detail';
 
-
 export const TemplatesMainMenu: React.FC = () => {
 
   var { templateName } = useParams();
