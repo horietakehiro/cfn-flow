@@ -10,6 +10,8 @@ export const TemplatesMainMenu: React.FC = () => {
   var { templateName } = useParams();
   // const [selectedTemplate, setSelectedTemplate] = React.useState(templateId ? templateId : "")
 
+  React.useEffect(() => {}, [])
+
   return (
     <Box sx={{ width: '100%' }}>
       {!templateName ? <TemplatesTable/> : <TemplateDetail/>}

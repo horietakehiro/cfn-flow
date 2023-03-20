@@ -31,6 +31,28 @@ Resources:
       BucketName: !Sub ${SolutionName}-${EnvName}-${AWS::AccountId}-${AWS::Region}-templates-bucket
       # VersioningConfiguration: 
       #   VersioningConfiguration
+      CorsConfiguration:
+        CorsRules: 
+          - 
+            AllowedHeaders: 
+              - "*"
+            AllowedMethods: 
+              - GET
+              - HEAD
+              - PUT
+              - POST
+              - DELETE
+            AllowedOrigins: 
+              - "*"
+            ExposedHeaders: 
+              - x-amz-server-side-encryption
+              - x-amz-request-id
+              - x-amz-id-2
+              - ETag
+            # Id:
+            MaxAge: 3000
+
+
 
 
   TemplatesTable:

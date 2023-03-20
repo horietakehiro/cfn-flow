@@ -24,5 +24,13 @@
         ]
       }
     }
+  },
+  "custom": {},
+  "storage": {
+    "artifactsbucket": {
+      "service": "S3",
+      "providerPlugin": "awscloudformation",
+      "dependsOn": []
+    }
   }
 }

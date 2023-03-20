@@ -16,16 +16,29 @@ import FormLabel from '@mui/material/FormLabel';
 import FileUploadIcon from '@mui/icons-material/FileUpload';
 
 import { useAppDispatch, useAppSelector } from '../../hooks';
-import { select, selectSelectedTemplate } from "../../stores/templates/main"
+import { selectTemplate, selectSelectedTemplate, updateTemplate } from "../../stores/templates/main"
 import {
   createDialogClose, selectCreateDialog,
   editDialogClose, selectEditDialog,
   deleteDialogClose, selectDeleteDialog,
 } from '../../stores/templates/common';
+import {
+  pushTemplate, removeTemplate, selectTemplates,
+} from "../../stores/templates/main"
+
+import { Storage, API, Auth } from "aws-amplify"
+
+import AmplifyConfig from '../../AmplifyConfig';
+
+export const getApiAuth = async () => {
+  return `Bearer ${(await Auth.currentSession()).getIdToken().getJwtToken()}`
+}
 
 export const CreateTemplateDialog: React.FC = () => {
   const dispatch = useAppDispatch()
   const open = useAppSelector(selectCreateDialog)
+  const templates = useAppSelector(selectTemplates)
+
   enum TemplateSourceType {
     S3 = 1,
     Local = 2
@@ -33,16 +46,68 @@ export const CreateTemplateDialog: React.FC = () => {
   const [templateSourceType, setTemplateSourceType] = React.useState(TemplateSourceType.S3)
   const [localFile, setLocalFile] = React.useState("")
 
+  const [newTemplate, setNewTemplate] = React.useState<PutTemplateRequest>({
+    name: "", description: "", httpUrl: ""
+  })
+
 
   const onTemplateSourceTypehange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setTemplateSourceType(Number(e.target.value))
   }
-  const onSelectLocalFile = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files !== null) {
-      setLocalFile(e.target.files[0].name)
+  const onSelectLocalFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files === null) {
+      return
+    }
+
+    const fileObj = e.target.files[0]
+    const localFilename = fileObj.name
+    const s3Filename = `${String(Date.now())}/${localFilename}`
+    try {
+      // upload file
+      const accessLevel = "public"
+      const result = await Storage.put(s3Filename, fileObj, { level: accessLevel })
+      setLocalFile(localFilename)
+
+      // set http url
+      const httpUrl = `https://${AmplifyConfig.aws_user_files_s3_bucket}.s3.${AmplifyConfig.aws_user_files_s3_bucket_region}.amazonaws.com/${accessLevel}/${result.key}`
+      setNewTemplate({ ...newTemplate, httpUrl: httpUrl })
+    } catch (e) {
+      console.error(e)
     }
   }
 
+  const onTemplatePropsChange = (e: React.ChangeEvent<HTMLInputElement>, fieldName: string) => {
+    const prevTemplate = newTemplate
+    setNewTemplate({ ...prevTemplate, [fieldName]: e.target.value })
+  }
+
+  const onSubmit = async (submit: Boolean) => {
+    try {
+      if (submit) {
+        const apiName = 'TemplatesApi';
+        const path = `/templates/${newTemplate.name}`
+        const myInit = {
+          body: newTemplate,
+          headers: {
+            Authorization: await getApiAuth()
+          }
+        };
+        const response: PutTemplateResponse = await API.put(apiName, path, myInit)
+        if (response.template !== null) {
+          dispatch(pushTemplate(response.template))
+        }
+
+        console.log(response)
+      }
+    } catch(e) {
+      console.error(e)
+    }
+
+    setNewTemplate({ name: "", description: "", httpUrl: "" })
+    dispatch(createDialogClose())
+  }
+
+  // const onSubmmit = (e:React.)
 
   return (
     <div>
@@ -50,6 +115,7 @@ export const CreateTemplateDialog: React.FC = () => {
         <DialogTitle>New Template</DialogTitle>
         <DialogContent sx={{ margin: "100" }}>
           <TextField
+            data-testid="template-name"
             autoFocus
             margin="normal"
             id="name"
@@ -57,8 +123,11 @@ export const CreateTemplateDialog: React.FC = () => {
             type={"tex"}
             fullWidth
             variant="outlined"
+            value={newTemplate.name}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => onTemplatePropsChange(e, "name")}
           />
           <TextField
+            data-testid="description"
             autoFocus
             margin="normal"
             id="description"
@@ -67,6 +136,8 @@ export const CreateTemplateDialog: React.FC = () => {
             fullWidth
             variant="outlined"
             multiline
+            value={newTemplate.description}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => onTemplatePropsChange(e, "description")}
           />
 
           <FormControl>
@@ -78,12 +149,14 @@ export const CreateTemplateDialog: React.FC = () => {
               onChange={onTemplateSourceTypehange}
             >
               <FormControlLabel
+                data-testid="amazon-s3-url"
                 value={TemplateSourceType.S3}
                 control={<Radio />}
                 label="Amazon S3 URL"
                 checked={templateSourceType === TemplateSourceType.S3}
               />
               <FormControlLabel
+                data-testid="upload-local-file"
                 value={TemplateSourceType.Local}
                 control={<Radio />}
                 label="Upload local file"
@@ -95,6 +168,7 @@ export const CreateTemplateDialog: React.FC = () => {
             ?
             <Stack direction={"row"} spacing={2}>
               <TextField
+                data-testid="template-url"
                 autoFocus
                 margin="normal"
                 id="url"
@@ -102,6 +176,8 @@ export const CreateTemplateDialog: React.FC = () => {
                 type={"url"}
                 fullWidth
                 variant="outlined"
+                value={newTemplate.httpUrl}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => onTemplatePropsChange(e, "httpUrl")}
               />
             </Stack>
             :
@@ -117,8 +193,8 @@ export const CreateTemplateDialog: React.FC = () => {
           }
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => (dispatch(createDialogClose()))}>CANCEL</Button>
-          <Button onClick={() => (dispatch(createDialogClose()))} variant={"contained"}>CREATE</Button>
+          <Button onClick={(e) => onSubmit(false)}>CANCEL</Button>
+          <Button data-testid="create-button" onClick={(e) => onSubmit(true)} variant={"contained"}>CREATE</Button>
         </DialogActions>
       </Dialog>
     </div>
@@ -130,6 +206,9 @@ export const EditTemplateDialog: React.FC = () => {
   const dispatch = useAppDispatch()
   const open = useAppSelector(selectEditDialog)
   const selectedTemplate = useAppSelector(selectSelectedTemplate)
+  const templates = useAppSelector(selectTemplates)
+
+  const [newTemplate, setNewTemplate] = React.useState<PutTemplateRequest>({ name: "", description: "", httpUrl: "", })
   enum TemplateSourceType {
     S3 = 1,
     Local = 2
@@ -137,13 +216,70 @@ export const EditTemplateDialog: React.FC = () => {
   const [templateSourceType, setTemplateSourceType] = React.useState(TemplateSourceType.S3)
   const [localFile, setLocalFile] = React.useState("")
 
+  React.useEffect(() => {
+    if (selectedTemplate !== null) {
+      setNewTemplate({
+        name: selectedTemplate.name,
+        description: selectedTemplate.description,
+        httpUrl: selectedTemplate.httpUrl,
+      })
+    }
+  }, [selectedTemplate])
+
   const onTemplateSourceTypehange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setTemplateSourceType(Number(e.target.value))
   }
-  const onSelectLocalFile = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files !== null) {
-      setLocalFile(e.target.files[0].name)
+  const onSelectLocalFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files === null) {
+      return
     }
+
+    const fileObj = e.target.files[0]
+    const localFilename = fileObj.name
+    const s3Filename = `${String(Date.now())}/${localFilename}`
+    try {
+      // upload file
+      const accessLevel = "public"
+      const result = await Storage.put(s3Filename, fileObj, { level: accessLevel })
+      setLocalFile(localFilename)
+
+      // set http url
+      const httpUrl = `https://${AmplifyConfig.aws_user_files_s3_bucket}.s3.${AmplifyConfig.aws_user_files_s3_bucket_region}.amazonaws.com/${accessLevel}/${result.key}`
+      setNewTemplate({ ...newTemplate, httpUrl: httpUrl })
+    } catch (e) {
+      console.error(e)
+    }
+  }
+
+  const onTemplatePropsChange = (e: React.ChangeEvent<HTMLInputElement>, fieldName: string) => {
+    setNewTemplate({ ...newTemplate, [fieldName]: e.target.value })
+  }
+
+
+  const onSubmit = async (submit: Boolean) => {
+    if (submit) {
+      try {
+        const apiName = 'TemplatesApi';
+        const path = `/templates/${newTemplate.name}`
+        const myInit = {
+          body: newTemplate,
+          headers: {
+            Authorization: `Bearer ${(await Auth.currentSession()).getIdToken().getJwtToken()}`
+          }
+        };
+        const response: PutTemplateResponse = await API.put(apiName, path, myInit)
+        if (response.template !== null) {
+          dispatch(updateTemplate(response.template))
+        }
+
+      } catch (e) {
+        console.error(e)
+      }
+    }
+
+    setNewTemplate({ name: "", description: "", httpUrl: "" })
+    dispatch(selectTemplate(null))
+    dispatch(editDialogClose())
   }
 
   return (
@@ -159,7 +295,7 @@ export const EditTemplateDialog: React.FC = () => {
             type={"tex"}
             fullWidth
             variant="outlined"
-            value={selectedTemplate?.name}
+            value={newTemplate.name}
             disabled={true}
           />
           <TextField
@@ -171,7 +307,8 @@ export const EditTemplateDialog: React.FC = () => {
             fullWidth
             variant="outlined"
             multiline
-            value={selectedTemplate?.description}
+            value={newTemplate.description}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => { onTemplatePropsChange(e, "description") }}
           />
           <FormControl>
             <FormLabel id="template-source">Template source</FormLabel>
@@ -206,7 +343,8 @@ export const EditTemplateDialog: React.FC = () => {
                 type={"url"}
                 fullWidth
                 variant="outlined"
-                value={selectedTemplate?.httpUrl}
+                value={newTemplate.httpUrl}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => { onTemplatePropsChange(e, "httpUrl") }}
               />
             </Stack>
             :
@@ -222,8 +360,8 @@ export const EditTemplateDialog: React.FC = () => {
           }
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => (dispatch(editDialogClose()))}>CANCEL</Button>
-          <Button onClick={() => (dispatch(editDialogClose()))} variant={"contained"}>EDIT</Button>
+          <Button onClick={(e) => onSubmit(false)}>CANCEL</Button>
+          <Button onClick={(e) => onSubmit(true)} variant={"contained"}>EDIT</Button>
         </DialogActions>
       </Dialog>
     </div>
@@ -233,7 +371,33 @@ export const EditTemplateDialog: React.FC = () => {
 export const DeleteTemplateDialog: React.FC = () => {
   const dispatch = useAppDispatch()
   const open = useAppSelector(selectDeleteDialog)
+  const templates = useAppSelector(selectTemplates)
   const selectedTemplate = useAppSelector(selectSelectedTemplate)
+
+  const onSubmit = async (submit: boolean) => {
+    if (submit) {
+      try {
+        const apiName = 'TemplatesApi';
+        const path = `/templates/${selectedTemplate?.name}`
+        const myInit = {
+          headers: {
+            Authorization: `Bearer ${(await Auth.currentSession()).getIdToken().getJwtToken()}`
+          }
+        };
+        const response: DeleteTemplateResponse = await API.del(apiName, path, myInit)
+        if (selectedTemplate !== null) {
+          dispatch(removeTemplate(selectedTemplate))
+        }
+
+      } catch (e) {
+        console.error(e)
+      }
+    }
+
+
+    dispatch(selectTemplate(null))
+    dispatch(deleteDialogClose())
+  }
 
   return (
     <div>
@@ -245,8 +409,8 @@ export const DeleteTemplateDialog: React.FC = () => {
           </DialogContentText>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => (dispatch(deleteDialogClose()))}>CANCEL</Button>
-          <Button onClick={() => (dispatch(deleteDialogClose()))} variant={"contained"}>DELETE</Button>
+          <Button onClick={(e) => { onSubmit(false) }}>CANCEL</Button>
+          <Button onClick={(e) => { onSubmit(true) }} variant={"contained"}>DELETE</Button>
         </DialogActions>
       </Dialog>
     </div>

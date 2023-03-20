@@ -13,7 +13,7 @@ import Card from "@mui/material/Card"
 import { EditTemplateDialog, DeleteTemplateDialog } from './common';
 
 import { useAppDispatch, useAppSelector } from '../../hooks';
-import { select, selectSelectedTemplate } from "../../stores/templates/main"
+import { selectTemplate, selectSelectedTemplate } from "../../stores/templates/main"
 import {
     createDialogOpen,
     editDialogOpen,

@@ -8,7 +8,10 @@ import { Divider, Typography } from '@mui/material';
 import { DataGrid, GridColDef, GridEventListener, GridRowParams } from '@mui/x-data-grid';
 import { Link } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '../../hooks';
-import { select, selectSelectedTemplate } from "../../stores/templates/main"
+import { 
+  selectTemplate, selectSelectedTemplate,
+  createTemplates, selectTemplates,
+ } from "../../stores/templates/main"
 import {
   createDialogOpen,
   editDialogOpen,
@@ -19,16 +22,6 @@ import { CreateTemplateDialog, EditTemplateDialog, DeleteTemplateDialog } from '
 
 import { API, Auth } from "aws-amplify"
 
-async function getTemplates() {
-  const apiName = 'TemplatesApi';
-  const path = '/dev/templates';
-  const init = {
-    headers: {
-      Authorization: `Bearer ${(await Auth.currentSession()).getIdToken().getJwtToken()}`
-    }
-  }
-  return API.get(apiName, path, init);
-};
 
 const templateColumns:GridColDef[] = [
   {
@@ -56,23 +49,36 @@ export const TemplatesTable: React.FC = () => {
   const dispatch = useAppDispatch()
 
   const selectedTemplate = useAppSelector(selectSelectedTemplate)
+  // const [templates, setTemplates] = React.useState<Template[]>([])
+  const templates = useAppSelector(selectTemplates)
 
-  const [templates, setTemplates] = React.useState<Template[]>([])
-
-  React.useEffect(() => {
-    dispatch(select(null))
-
-    getTemplates()
-    .then((res:TemplatesResponse) => {
-      if (res.templates !== null) {
-        setTemplates(res.templates)
+  const getTemplates = async () => {
+    const apiName = 'TemplatesApi';
+    const path = '/templates';
+    const init = {
+      headers: {
+        Authorization: `Bearer ${(await Auth.currentSession()).getIdToken().getJwtToken()}`
       }
-    })
-    .catch(console.error)
+    }
+    return await API.get(apiName, path, init);
+  };
+  
+  React.useEffect(() => {
+    (async () => {
+      dispatch(selectTemplate(null))
+      try {
+        const response:GetTemplatesResponse = await getTemplates()
+        if (response.templates !== null) {
+          dispatch(createTemplates(response.templates))
+        }
+      } catch(e) {
+        console.log(e)
+      }  
+    })()
   }, [])
 
 const handleRowClick: GridEventListener<'rowClick'> = (params: GridRowParams<Template>) => {
-  dispatch(select(params.row))
+  dispatch(selectTemplate(params.row))
 };
 
 return (

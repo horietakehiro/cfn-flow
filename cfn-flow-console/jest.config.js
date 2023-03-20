@@ -7,6 +7,15 @@ module.exports = {
       "**/?(*.)+(spec|test).+(ts|tsx|js)"
     ],
     "transform": {
-      "^.+\\.(ts|tsx)$": "ts-jest"
+      "^.+\\.(ts|tsx|js)$": "ts-jest"
     },
+    moduleNameMapper: {
+      // Force module uuid to resolve with the CJS entry point, because Jest does not support package.json.exports. See https://github.com/uuidjs/uuid/issues/451
+      "uuid": require.resolve('uuid'),
+      // "awsExports": require.resolve("./aws-exports"),
+    },
+    // "transformIgnorePatterns": [
+    //   "node_modules/aws-amplify/",
+    //   "<rootDir>/src/aws-exports.js"
+    // ]
   }

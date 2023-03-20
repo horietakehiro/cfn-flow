@@ -1,0 +1,14 @@
+{
+  "resourceName": "artifactsbucket",
+  "policyUUID": "17650a45",
+  "bucketName": "cfnflowconsole1fd00878db704d0ea60cedd8798e9919",
+  "storageAccess": "auth",
+  "guestAccess": [],
+  "authAccess": [
+    "CREATE_AND_UPDATE",
+    "READ",
+    "DELETE"
+  ],
+  "triggerFunction": "NONE",
+  "groupAccess": {}
+}
