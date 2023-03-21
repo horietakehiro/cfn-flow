@@ -19,6 +19,12 @@ const reducers = combineReducers({
 const persistConfig = {
     key: "root",
     storage: storage,
+    blacklist: [
+        "templates",
+        "createTemplateDialog",
+        "editTemplateDialog",
+        "deleteTemplateDialog"
+    ]
     // black
 }
 

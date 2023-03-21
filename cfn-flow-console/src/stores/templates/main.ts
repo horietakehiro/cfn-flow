@@ -49,7 +49,7 @@ export const SelectedTemplateSlice = createSlice({
     reducers: {
         select: (state, action: PayloadAction<Template | null>) => {
             state.template = action.payload
-        }
+        },
     }
 })
 export const {select: selectTemplate} = SelectedTemplateSlice.actions

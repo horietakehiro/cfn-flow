@@ -2,121 +2,341 @@
  * @jest-environment jsdom
 */
 
-// import {describe, expect, test} from '@jest/globals';
 import React from "react";
 import '@testing-library/jest-dom'
-import { rest } from "msw"
-import { setupServer } from 'msw/node'
-
-import { cleanup, fireEvent, render, screen } from '@testing-library/react'
-// import { render, unmountComponentAtNode, } from "react-dom";
-
+import { render, screen } from '@testing-library/react'
 import { BrowserRouter } from "react-router-dom";
-
 import userEvent from "@testing-library/user-event";
 import { act } from "react-dom/test-utils";
-
 import { Provider } from "react-redux"
 import { persistStore } from 'redux-persist';
 import { PersistGate } from 'redux-persist/integration/react';
 import { store } from "../../store"
-
-import { getApiAuth, CreateTemplateDialog } from "./common"
+import { CreateTemplateDialog, EditTemplateDialog, DeleteTemplateDialog } from "./common"
 import * as common from "./common"
 
 import {
-  createDialogOpen, createDialogClose, selectCreateDialog,
+  createDialogOpen, deleteDialogOpen, editDialogOpen,
 } from '../../stores/templates/common';
+import {
+  pushTemplate,
+  selectTemplate
+} from "../../stores/templates/main"
 
-import { Amplify, API, Auth } from "aws-amplify";
+import { Amplify, API, Auth, Storage } from "aws-amplify";
 import AmplifyConfig from './../../AmplifyConfig';
 
-// Amplify.configure(awsExports);
 Amplify.configure(AmplifyConfig);
 
 
-const server = setupServer(
-  rest.put('/templates/:templateName', async (req, res, ctx) => {
-    try {
-      const reqBody:PutTemplateRequest = await req.json()
-      console.log(reqBody)
-      const template: PutTemplateResponse = {
-        error: null,
-        template: {
-          name: reqBody.name,
-          description: reqBody.description,
-          httpUrl: reqBody.httpUrl,
-          s3Url: "s3://example.com/test-template.json",
-          createAt: "2023-10-10T00:00:00+0900",
-          updateAt: "-"
-        }
-      }
-      return res(ctx.json(template))
-    } catch(e) {
-      console.error(e)
-    }
-
-  }),
-)
-
-beforeAll(() => server.listen())
-afterEach(() => server.resetHandlers())
-afterAll(() => server.close())
-
 let persistor = persistStore(store)
 
-
-it("create new template resource via create dialog", async () => {
-  var WrappedComponent = (
+describe("create template dialog", () => {
+  var WrappedCreateDialog = (
     <Provider store={store}>
       <PersistGate loading={null} persistor={persistor}>
         <BrowserRouter>
-          <CreateTemplateDialog/>
+          <CreateTemplateDialog />
         </BrowserRouter>
       </PersistGate>
     </Provider>
   )
+  it("create new template on create dialog", async () => {
 
-  jest.spyOn(common, "getApiAuth").mockReturnValue(
-    Promise.resolve("dummytoken")
-  )
-  jest.spyOn(API, "put").mockReturnValue(
-    
-    Promise.resolve(
-      {
-        error: null,
-        template: {
-          name: "test-template",
-          description: "test description",
-          httpUrl: "https://example.com/test-template.json",
-          s3Url: "s3://example.com/test-template.json",
-          createAt: "2023-10-10T00:00:00+0900",
-          updateAt: "-"
-        }
-      }
+    jest.spyOn(common, "getApiAuth").mockReturnValue(
+      Promise.resolve("dummytoken")
     )
-  )
+    jest.spyOn(API, "put").mockReturnValue(
+      Promise.resolve(
+        {
+          error: null,
+          template: {
+            name: "test-template",
+            description: "test description",
+            httpUrl: "https://example.com/test-template.json",
+            s3Url: "s3://example.com/test-template.json",
+            createAt: "2023-10-10T00:00:00+0900",
+            updateAt: "-"
+          }
+        }
+      )
+    )
 
-  act(() => {
-    store.dispatch(createDialogOpen())
-    render(WrappedComponent)
-  })
-  expect(screen.getByRole("dialog")).toHaveTextContent("New")
+    act(() => {
+      store.dispatch(createDialogOpen())
+      render(WrappedCreateDialog)
+    })
+    expect(screen.getByRole("dialog")).toHaveTextContent("New")
 
-  await act(async () => {
-    // enter new template props and submit
-    userEvent.type(screen.getByTestId("template-name"), "test-template")
-    userEvent.type(screen.getByTestId("description"), "test description")
-    userEvent.click(screen.getByTestId("amazon-s3-url"))
-    userEvent.type(screen.getByTestId("template-url"), "https://example.com/test-template.json")    
-    userEvent.click(screen.getByTestId("create-button"))
+    await act(async () => {
+      // enter new template props and submit
+      userEvent.type(screen.getByTestId("template-name"), "test-template")
+      userEvent.type(screen.getByTestId("description"), "test description")
+      userEvent.click(screen.getByTestId("amazon-s3-url"))
+      userEvent.type(screen.getByTestId("template-url"), "https://example.com/test-template.json")
+      userEvent.click(screen.getByTestId("create-button"))
+    })
+    const states = store.getState()
+    expect(states.createTemplateDialog.opened).toBe(false)
+    expect(
+      states.templates.templates.filter((t) => {
+        return t.name === "test-template"
+      }).length
+    ).toBe(1)
+
   })
-  const states = store.getState()
-  expect(states.createTemplateDialog.opened).toBe(false)
-  expect(
-    states.templates.templates.filter((t) => {
-      return t.name === "test-template"
-    }).length
-  ).toBe(1)
-  
+
+  it("allows upload local file and create new template with it", async () => {
+
+    jest.spyOn(common, "getApiAuth").mockReturnValue(
+      Promise.resolve("dummytoken")
+    )
+    jest.spyOn(API, "put").mockReturnValue(
+      Promise.resolve(
+        {
+          error: null,
+          template: {
+            name: "local-template",
+            description: "test description",
+            httpUrl: `https://${AmplifyConfig.aws_user_files_s3_bucket}.s3.${AmplifyConfig.aws_user_files_s3_bucket_region}.amazonaws.com/public/local-template.json`,
+            s3Url: `s3://${AmplifyConfig.aws_user_files_s3_bucket}/test-template.json`,
+            createAt: "2023-10-10T00:00:00+0900",
+            updateAt: "-"
+          }
+        }
+      )
+    )
+    jest.spyOn(Storage, "put").mockReturnValue(
+      Promise.resolve({
+        "key": "local-template.json"
+      })
+    )
+
+    act(() => {
+      store.dispatch(createDialogOpen())
+      render(WrappedCreateDialog)
+    })
+    expect(screen.getByRole("dialog")).toHaveTextContent("New")
+
+    await act(async () => {
+      // enter new template props and submit
+      userEvent.type(screen.getByTestId("template-name"), "local-template")
+      userEvent.type(screen.getByTestId("description"), "test description")
+      userEvent.click(screen.getByTestId("upload-local-file"))
+      const file = new File(['{"key": "value"}'], 'local-template.json.', { type: 'application/json' })
+      userEvent.upload(screen.getByTestId("upload-button"), file)
+      userEvent.click(screen.getByTestId("create-button"))
+    })
+    const states = store.getState()
+    expect(states.createTemplateDialog.opened).toBe(false)
+    expect(
+      states.templates.templates.filter((t) => {
+        return t.name === "local-template"
+      }).length
+    ).toBe(1)
+
+  })
+
+
+  it("can cancel to create new template", async () => {
+
+    await act(async () => {
+      store.dispatch(createDialogOpen())
+      render(WrappedCreateDialog)
+    })
+    expect(screen.getByRole("dialog")).toHaveTextContent("New")
+
+    await act(async () => {
+      // enter new template props and submit
+      userEvent.type(screen.getByTestId("template-name"), "cancel-template")
+      userEvent.type(screen.getByTestId("description"), "test description")
+      userEvent.click(screen.getByTestId("cancel-button"))
+    })
+    const states = store.getState()
+    expect(states.createTemplateDialog.opened).toBe(false)
+
+    await act(async () => {
+      store.dispatch(createDialogOpen())
+    })
+    expect(screen.getByTestId("template-name")).not.toHaveTextContent("cancel-template")
+
+  })
+
 })
+
+
+describe("edit template dialog", () => {
+  var WrappeedEditDialog = (
+    <Provider store={store}>
+      <PersistGate loading={null} persistor={persistor}>
+        <BrowserRouter>
+          <EditTemplateDialog />
+        </BrowserRouter>
+      </PersistGate>
+    </Provider>
+  )
+  it("update existing template", async () => {
+
+    jest.spyOn(common, "getApiAuth").mockReturnValue(
+      Promise.resolve("dummytoken")
+    )
+    jest.spyOn(API, "put").mockReturnValue(
+      Promise.resolve(
+        {
+          error: null,
+          template: {
+            name: "existing-template",
+            description: "update description",
+            httpUrl: "https://example.com/test-template.json",
+            s3Url: "s3://example.com/test-template.json",
+            createAt: "2023-10-10T00:00:00+0900",
+            updateAt: "2023-10-10T00:00:00+0900"
+          }
+        }
+      )
+    )
+    await act(async () => {
+      const existingTemplate:Template = {
+        name: "existing-template",
+        description: "existing description",
+        httpUrl: "https://example.com/test-template.json",
+        s3Url: "s3://example.com/test-template.json",
+        createAt: "2023-10-10T00:00:00+0900",
+        updateAt: "2023-10-10T00:00:00+0900"
+      }
+      store.dispatch(pushTemplate(existingTemplate))
+      store.dispatch(selectTemplate(existingTemplate))
+      store.dispatch(editDialogOpen())
+      render(WrappeedEditDialog)
+    })
+    expect(screen.getByRole("dialog")).toHaveTextContent("Edit")
+
+    await act(async () => {
+      userEvent.type(screen.getByTestId("description"), "update description")
+      userEvent.click(screen.getByTestId("edit-button"))
+    })
+    expect(store.getState().editTemplateDialog.opened).toBe(false)
+    console.log(store.getState().templates)
+    expect(
+      store.getState().templates.templates.filter((t) => {
+        return t.description === "update description"
+      }).length
+    ).toBe(1)
+  })
+
+  it("affect no change if edit canceled", async () => {
+    await act(async () => {
+      store.dispatch(selectTemplate({
+        name: "existing-template",
+        description: "existing description",
+        httpUrl: "https://example.com/test-template.json",
+        s3Url: "s3://example.com/test-template.json",
+        createAt: "2023-10-10T00:00:00+0900",
+        updateAt: "2023-10-10T00:00:00+0900"
+      }))
+      store.dispatch(editDialogOpen())
+      render(WrappeedEditDialog)
+    })
+    expect(screen.getByRole("dialog")).toHaveTextContent("Edit")
+
+    await act(async () => {
+      // enter new template props and submit
+      userEvent.type(screen.getByTestId("description"), "cancel description")
+      userEvent.click(screen.getByTestId("cancel-button"))
+    })
+    const states = store.getState()
+    expect(states.editTemplateDialog.opened).toBe(false)
+    expect(
+      states.templates.templates.filter((t) => {
+        return t.description === "cancel description"
+      }).length
+    ).toBe(0)
+  })
+
+})
+
+
+
+
+describe("delete template dialog", () => {
+  var WrappeedDeleteDialog = (
+    <Provider store={store}>
+      <PersistGate loading={null} persistor={persistor}>
+        <BrowserRouter>
+          <DeleteTemplateDialog />
+        </BrowserRouter>
+      </PersistGate>
+    </Provider>
+  )
+  it("delete existing template", async () => {
+
+    jest.spyOn(common, "getApiAuth").mockReturnValue(
+      Promise.resolve("dummytoken")
+    )
+    jest.spyOn(API, "del").mockReturnValue(
+      Promise.resolve(
+        {
+          error: null,
+          templateName: "deleting-template"
+        }
+      )
+    )
+    await act(async () => {
+      const existingTemplate:Template = {
+        name: "deleting-template",
+        description: "deleting description",
+        httpUrl: "https://example.com/test-template.json",
+        s3Url: "s3://example.com/test-template.json",
+        createAt: "2023-10-10T00:00:00+0900",
+        updateAt: "2023-10-10T00:00:00+0900"
+      }
+      store.dispatch(pushTemplate(existingTemplate))
+      store.dispatch(selectTemplate(existingTemplate))
+      store.dispatch(deleteDialogOpen())
+      render(WrappeedDeleteDialog)
+    })
+    store.dispatch(deleteDialogOpen())
+    expect(screen.getByRole("dialog")).toHaveTextContent("Delete")
+
+    await act(async () => {
+      userEvent.click(screen.getByTestId("delete-button"))
+    })
+    expect(store.getState().deleteTemplateDialog.opened).toBe(false)
+    expect(
+      store.getState().templates.templates.filter((t) => {
+        return t.name === "deleting-template"
+      }).length
+    ).toBe(0)
+  })
+
+  it("affect no change if delete canceled", async () => {
+    await act(async () => {
+      const existingTemplate:Template = {
+        name: "deleting-template",
+        description: "deleting description",
+        httpUrl: "https://example.com/test-template.json",
+        s3Url: "s3://example.com/test-template.json",
+        createAt: "2023-10-10T00:00:00+0900",
+        updateAt: "2023-10-10T00:00:00+0900"
+      }
+      store.dispatch(pushTemplate(existingTemplate))
+      store.dispatch(selectTemplate(existingTemplate))
+      store.dispatch(deleteDialogOpen())
+      render(WrappeedDeleteDialog)
+    })
+    expect(screen.getByRole("dialog")).toHaveTextContent("Delete")
+
+    await act(async () => {
+      userEvent.click(screen.getByTestId("cancel-button"))
+    })
+    const states = store.getState()
+    expect(states.deleteTemplateDialog.opened).toBe(false)
+    expect(
+      states.templates.templates.filter((t) => {
+        return t.name === "deleting-template"
+      }).length
+    ).toBe(1)
+  })
+
+})
+

@@ -5,8 +5,9 @@ import boto3
 
 from put_template import upsert_template_summaries
 from get_template import (
-    RequestPathParams, ResponseBody, get_template_summary, lambda_handler, validate_path_params,
+    RequestPathParams, ResponseBody, get_template, lambda_handler, validate_path_params,
 )
+import utils
 from utils import jdumps
 
 TEMPLATE_TABLE_NAME=os.environ["DYNAMO_TEMPLATE_TABLE_NAME"]
@@ -20,111 +21,82 @@ NEW_ITEM_NAME="new-test-template"
 EXISTING_ITEM_NAME="existing-test-template"
 
 def setup_module(module):
+    basename = TEST_YAML_TEMPLATE_HTTP_URL.split("/")[-1]
+    filepath = os.path.join(os.path.dirname(__file__), basename)
+    s3 = boto3.client("s3")
+    s3.upload_file(filepath, BUCKET_NAME, f"test/{basename}")
 
-    filepath = os.path.join(os.path.dirname(__file__), "template.json")
-    with open(filepath, "r", encoding="utf-8") as fp:
-        body = json.load(fp)
-    summaries = upsert_template_summaries(
-        {
-            "name": EXISTING_ITEM_NAME,
-            "description": "", "httpUrl": TEST_JSON_TEMPLATE_HTTP_URL
-        }, body,
-    )
-    # upsert test template summaries
     dynamo = boto3.resource("dynamodb")
-    template_summary_table = dynamo.Table(TEMPLATE_SUMMARY_TABLE_NAME)
-    for key, val in summaries.items():
-        template_summary_table.put_item(
-            Item={
-                "templateName": EXISTING_ITEM_NAME,
-                "sectionName": key,
-                "summary": val,
-            }
-        )
+    template_table = dynamo.Table(TEMPLATE_TABLE_NAME)
+    template_table.put_item(
+        Item={
+            "name": NEW_ITEM_NAME,
+            "description": "this is new template",
+            "httpUrl": TEST_YAML_TEMPLATE_HTTP_URL,
+            "s3Url": utils.convert_http_to_s3(TEST_YAML_TEMPLATE_HTTP_URL),
+            "createAt": utils.strftime(utils.get_current_dt()),
+            "updateAt": "-",
+        }
+    )
 
 def teardown_module(module):
     pass
 
-@pytest.mark.parametrize("section_name,expect_str", [
-    ("Parameters", "SYSTEM"), ("Resources", "AWS::EC2::VPC"), ("Outputs", "Export")
-])
-def test_get_template_summary(section_name, expect_str):
-    res = get_template_summary(
-        EXISTING_ITEM_NAME, section_name
-    )
+def test_get_template():
+    res = get_template(NEW_ITEM_NAME)
 
     assert res is not None
-    assert res["templateName"] == EXISTING_ITEM_NAME
-    assert res["sectionName"] == section_name
-    assert expect_str in jdumps(res["summary"])
+    assert res["name"] == NEW_ITEM_NAME
     
-@pytest.mark.parametrize("section_name", [
-    ("Parameters"), ("Resources"), ("Outputs")
-])
-def test_validate_path_params_pass(section_name):
-    res = validate_path_params(EXISTING_ITEM_NAME, section_name)
+def test_validate_path_params_pass():
+    res = validate_path_params("some-template")
     assert res is None
 
 def test_validate_path_params_no_template_name():
     with pytest.raises(ValueError) as ex:
-        validate_path_params("", "Parameters")
+        validate_path_params("")
         assert "templateName" in str(ex)
-def test_validate_path_params_invalid_():
-    with pytest.raises(ValueError) as ex:
-        validate_path_params(EXISTING_ITEM_NAME, "NotExistedSection")
-        assert "NotExistedSection" in str(ex)
 
-@pytest.mark.parametrize("section_name,expect_str", [
-    ("Parameters", "SYSTEM"), ("Resources", "AWS::EC2::VPC"), ("Outputs", "Export")
-])
-def test_lambda_handler_200(section_name, expect_str):
+def test_lambda_handler_200():
     path_params:RequestPathParams = {
-        "templateName": EXISTING_ITEM_NAME,
-        "sectionName": section_name
+        "templateName": NEW_ITEM_NAME,
     }
     res = lambda_handler({"pathParameters": path_params}, None)
 
     assert res["statusCode"] == 200
     ret_body:ResponseBody = json.loads(res["body"])
     assert ret_body["error"] is None
-    assert ret_body["templateSummary"] is not None
-    assert expect_str in jdumps(dict(ret_body["templateSummary"]))
+    assert ret_body["template"] is not None
+    assert NEW_ITEM_NAME in jdumps(dict(ret_body["template"]))
 
 def test_lambda_handler_200_empty():
     path_params:RequestPathParams = {
         "templateName": "NotExistTemplateName",
-        "sectionName": "Parameters"
     }
     res = lambda_handler({"pathParameters": path_params}, None)
 
     assert res["statusCode"] == 200
     ret_body:ResponseBody = json.loads(res["body"])
     assert ret_body["error"] is None
-    assert ret_body["templateSummary"] is None
+    assert ret_body["template"] is None
 
 def test_lambda_handler_400():
-    path_params:RequestPathParams = {
-        "templateName": EXISTING_ITEM_NAME,
-        "sectionName": "NotExistSection"
-    }
-    res = lambda_handler({"pathParameters": path_params}, None)
+    res = lambda_handler({"pathParameters": {}}, None)
     assert res["statusCode"] == 400
     ret_body:ResponseBody = json.loads(res["body"])
     assert ret_body["error"] is not None
-    assert "NotExistSection" in ret_body["error"]
-    assert ret_body["templateSummary"] is None
-
+    assert "templateName" in ret_body["error"]
+    assert ret_body["template"] is None
 
 def test_lambda_handler_500(mocker):
     path_params:RequestPathParams = {
-        "templateName": EXISTING_ITEM_NAME,
-        "sectionName": "Parameters"
+        "templateName": NEW_ITEM_NAME,
     }
-    mocker.patch("get_template.get_template_summary", side_effect=Exception("some exception"))
+    mocker.patch("get_template.get_template", side_effect=Exception("some exception"))
     res = lambda_handler({"pathParameters": path_params}, None)
     assert res["statusCode"] == 500
     ret_body:ResponseBody = json.loads(res["body"])
     assert ret_body["error"] is not None
     assert "some exception" in ret_body["error"]
-    assert ret_body["templateSummary"] is None
+    assert ret_body["template"] is None
 

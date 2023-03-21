@@ -21,6 +21,29 @@ Parameters:
 
 # Conditions: 
 
+Globals:
+  Function:
+    Runtime: python3.9
+    CodeUri: ./functions/templates/
+    MemorySize: 512
+    Timeout: 60
+    Environment:
+      Variables:
+        DYNAMO_TEMPLATE_TABLE_NAME:
+          Fn::ImportValue: !Sub ${SolutionName}-${EnvName}-templates-table
+        DYNAMO_TEMPLATE_SUMMARY_TABLE_NAME:
+          Fn::ImportValue: !Sub ${SolutionName}-${EnvName}-template-summaries-table
+        S3_TEMPLATE_BUCKET_NAME:
+          Fn::ImportValue: !Sub ${SolutionName}-${EnvName}-templates-bucket 
+    Tracing: Active
+    Layers:
+      - !Ref UtilLayer
+    Architectures:
+      - x86_64
+    EphemeralStorage:
+      Size: 512
+    
+
 Resources:
 
 
@@ -75,20 +98,6 @@ Resources:
   ListTemplates:
     Type: AWS::Serverless::Function
     Properties:
-      Architectures:
-        - x86_64
-      CodeUri: ./functions/templates/
-      Environment:
-        Variables:
-          DYNAMO_TEMPLATE_TABLE_NAME:
-            Fn::ImportValue: !Sub ${SolutionName}-${EnvName}-templates-table
-          DYNAMO_TEMPLATE_SUMMARY_TABLE_NAME:
-            Fn::ImportValue: !Sub ${SolutionName}-${EnvName}-template-summaries-table
-          S3_TEMPLATE_BUCKET_NAME:
-            Fn::ImportValue: !Sub ${SolutionName}-${EnvName}-templates-bucket 
-      EphemeralStorage:
-        Size: 512
-      # EventInvokeConfig: EventInvokeConfiguration
       Events:
         CatchAll:
           Type: Api
@@ -96,47 +105,20 @@ Resources:
             Path: "/{proxy+}"
             Method: ANY      
             RestApiId:  !Ref TemplatesApi
-#             Auth:
- #              ApiKeyRequired: true
         GetApi:
           Type: Api
           Properties:
             Method: get
             Path: /templates
             RestApiId:  !Ref TemplatesApi
-#             Auth:
- #              ApiKeyRequired: true
       FunctionName: !Sub ${SolutionName}-${EnvName}-templates-list-function
       Handler: list_templates.lambda_handler
-      Layers:
-        - !Ref UtilLayer
-        # - !Ref CfnUtilLayer
-      MemorySize: 1024
       PackageType: Zip
-      # Policies: String | List | Map
       Role: !GetAtt TemplatesFunctionsRole.Arn
-      # RolePath: String
-      Runtime: python3.9
-      Timeout: 60
-      Tracing: Active
 
   PutTemplate:
     Type: AWS::Serverless::Function
     Properties:
-      Architectures:
-        - x86_64
-      CodeUri: ./functions/templates/
-      Environment:
-        Variables:
-          DYNAMO_TEMPLATE_TABLE_NAME:
-            Fn::ImportValue: !Sub ${SolutionName}-${EnvName}-templates-table
-          DYNAMO_TEMPLATE_SUMMARY_TABLE_NAME:
-            Fn::ImportValue: !Sub ${SolutionName}-${EnvName}-template-summaries-table
-          S3_TEMPLATE_BUCKET_NAME:
-            Fn::ImportValue: !Sub ${SolutionName}-${EnvName}-templates-bucket 
-      EphemeralStorage:
-        Size: 512
-      # EventInvokeConfig: EventInvokeConfiguration
       Events:
         PutApi:
           Type: Api
@@ -144,80 +126,16 @@ Resources:
             Method: put
             Path: /templates/{templateName}
             RestApiId:  !Ref TemplatesApi
-#             Auth:
- #              ApiKeyRequired: true
       FunctionName: !Sub ${SolutionName}-${EnvName}-templates-put-function
       Handler: put_template.lambda_handler
       Layers:
-        - !Ref UtilLayer
         - !Ref CfnUtilLayer
-      MemorySize: 1024
       PackageType: Zip
-      # Policies: String | List | Map
       Role: !GetAtt TemplatesFunctionsRole.Arn
-      # RolePath: String
-      Runtime: python3.9
-      Timeout: 60
-      Tracing: Active
-
 
   GetTemplate:
     Type: AWS::Serverless::Function
     Properties:
-      Architectures:
-        - x86_64
-      CodeUri: ./functions/templates/
-      Environment:
-        Variables:
-          DYNAMO_TEMPLATE_TABLE_NAME:
-            Fn::ImportValue: !Sub ${SolutionName}-${EnvName}-templates-table
-          DYNAMO_TEMPLATE_SUMMARY_TABLE_NAME:
-            Fn::ImportValue: !Sub ${SolutionName}-${EnvName}-template-summaries-table
-          S3_TEMPLATE_BUCKET_NAME:
-            Fn::ImportValue: !Sub ${SolutionName}-${EnvName}-templates-bucket 
-      EphemeralStorage:
-        Size: 512
-      # EventInvokeConfig: EventInvokeConfiguration
-      Events:
-        GetApi:
-          Type: Api
-          Properties:
-            Method: get
-            Path: /templates/{templateName}/{sectionName}
-            RestApiId:  !Ref TemplatesApi
-#             Auth:
- #              ApiKeyRequired: true
-      FunctionName: !Sub ${SolutionName}-${EnvName}-template-get-function
-      Handler: get_template.lambda_handler
-      Layers:
-        - !Ref UtilLayer
-      MemorySize: 1024
-      PackageType: Zip
-      # Policies: String | List | Map
-      Role: !GetAtt TemplatesFunctionsRole.Arn
-      # RolePath: String
-      Runtime: python3.9
-      Timeout: 60
-      Tracing: Active
-
-
-  DeleteTemplate:
-    Type: AWS::Serverless::Function
-    Properties:
-      Architectures:
-        - x86_64
-      CodeUri: ./functions/templates/
-      Environment:
-        Variables:
-          DYNAMO_TEMPLATE_TABLE_NAME:
-            Fn::ImportValue: !Sub ${SolutionName}-${EnvName}-templates-table
-          DYNAMO_TEMPLATE_SUMMARY_TABLE_NAME:
-            Fn::ImportValue: !Sub ${SolutionName}-${EnvName}-template-summaries-table
-          S3_TEMPLATE_BUCKET_NAME:
-            Fn::ImportValue: !Sub ${SolutionName}-${EnvName}-templates-bucket 
-      EphemeralStorage:
-        Size: 512
-      # EventInvokeConfig: EventInvokeConfiguration
       Events:
         GetApi:
           Type: Api
@@ -225,21 +143,42 @@ Resources:
             Method: get
             Path: /templates/{templateName}
             RestApiId:  !Ref TemplatesApi
-#             Auth:
- #              ApiKeyRequired: true
+      FunctionName: !Sub ${SolutionName}-${EnvName}-template-get-function
+      Handler: get_template.lambda_handler
+      PackageType: Zip
+      Role: !GetAtt TemplatesFunctionsRole.Arn
+
+
+  GetTemplateSummary:
+    Type: AWS::Serverless::Function
+    Properties:
+      Events:
+        GetApi:
+          Type: Api
+          Properties:
+            Method: get
+            Path: /templates/{templateName}/{sectionName}
+            RestApiId:  !Ref TemplatesApi
+      FunctionName: !Sub ${SolutionName}-${EnvName}-template-summary-get-function
+      Handler: get_template_summary.lambda_handler
+      PackageType: Zip
+      Role: !GetAtt TemplatesFunctionsRole.Arn
+
+
+  DeleteTemplate:
+    Type: AWS::Serverless::Function
+    Properties:
+      Events:
+        GetApi:
+          Type: Api
+          Properties:
+            Method: delete
+            Path: /templates/{templateName}
+            RestApiId:  !Ref TemplatesApi
       FunctionName: !Sub ${SolutionName}-${EnvName}-template-delete-function
       Handler: delete_template.lambda_handler
-      Layers:
-        - !Ref UtilLayer
-      MemorySize: 1024
       PackageType: Zip
-      # Policies: String | List | Map
       Role: !GetAtt TemplatesFunctionsRole.Arn
-      # RolePath: String
-      Runtime: python3.9
-      Timeout: 60
-      Tracing: Active
-
 
   TemplatesApi:
     Type: AWS::Serverless::Api
@@ -260,3 +199,9 @@ Resources:
         Authorizers:
           MyCognitoAuthorizer:
             UserPoolArn: !Ref UserPoolArn
+
+Outputs:
+  TemplatesHttpUrl:
+    Description: https url for templates api
+    Value: !Sub https://${TemplatesApi}.execute-api.${AWS::Region}.amazonaws.com/${EnvName}
+    

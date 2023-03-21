@@ -14,7 +14,7 @@ export const TemplatesMainMenu: React.FC = () => {
 
   return (
     <Box sx={{ width: '100%' }}>
-      {!templateName ? <TemplatesTable/> : <TemplateDetail/>}
+      {!templateName ? <TemplatesTable/> : <TemplateDetail templateName={templateName}/>}
     </Box >
   );
 }

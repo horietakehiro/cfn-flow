@@ -1,7 +1,7 @@
 import * as React from 'react';
 import Stack from '@mui/material/Stack';
 import Button from "@mui/material/Button"
-import { Typography } from '@mui/material';
+import { Box, CircularProgress, Typography } from '@mui/material';
 import TextField from '@mui/material/TextField';
 import Dialog from '@mui/material/Dialog';
 import DialogActions from '@mui/material/DialogActions';
@@ -29,6 +29,7 @@ import {
 import { Storage, API, Auth } from "aws-amplify"
 
 import AmplifyConfig from '../../AmplifyConfig';
+import { useParams } from 'react-router-dom';
 
 export const getApiAuth = async () => {
   return `Bearer ${(await Auth.currentSession()).getIdToken().getJwtToken()}`
@@ -45,6 +46,7 @@ export const CreateTemplateDialog: React.FC = () => {
   }
   const [templateSourceType, setTemplateSourceType] = React.useState(TemplateSourceType.S3)
   const [localFile, setLocalFile] = React.useState("")
+  const [inProgress, setInProgress] = React.useState<boolean>(false)
 
   const [newTemplate, setNewTemplate] = React.useState<PutTemplateRequest>({
     name: "", description: "", httpUrl: ""
@@ -84,6 +86,7 @@ export const CreateTemplateDialog: React.FC = () => {
   const onSubmit = async (submit: Boolean) => {
     try {
       if (submit) {
+        setInProgress(true)
         const apiName = 'TemplatesApi';
         const path = `/templates/${newTemplate.name}`
         const myInit = {
@@ -99,8 +102,10 @@ export const CreateTemplateDialog: React.FC = () => {
 
         console.log(response)
       }
-    } catch(e) {
+    } catch (e) {
       console.error(e)
+    } finally {
+      setInProgress(false)
     }
 
     setNewTemplate({ name: "", description: "", httpUrl: "" })
@@ -111,7 +116,7 @@ export const CreateTemplateDialog: React.FC = () => {
 
   return (
     <div>
-      <Dialog open={open} onClose={() => (dispatch(createDialogClose()))}>
+      <Dialog open={open} onClose={() => onSubmit(false)}>
         <DialogTitle>New Template</DialogTitle>
         <DialogContent sx={{ margin: "100" }}>
           <TextField
@@ -183,7 +188,7 @@ export const CreateTemplateDialog: React.FC = () => {
             :
             <Stack direction={"row"} spacing={2}>
               <Stack direction={"row"} spacing={2}>
-                <Button variant="outlined" component="label" startIcon={<FileUploadIcon />}>
+                <Button data-testid="upload-button" variant="outlined" component="label" startIcon={<FileUploadIcon />}>
                   Upload
                   <input hidden accept=".json,.yaml" multiple={false} type="file" onChange={onSelectLocalFile} />
                 </Button>
@@ -193,8 +198,31 @@ export const CreateTemplateDialog: React.FC = () => {
           }
         </DialogContent>
         <DialogActions>
-          <Button onClick={(e) => onSubmit(false)}>CANCEL</Button>
-          <Button data-testid="create-button" onClick={(e) => onSubmit(true)} variant={"contained"}>CREATE</Button>
+          <Button data-testid="cancel-button" onClick={(e) => onSubmit(false)}>CANCEL</Button>
+          <Box sx={{ m: 1, position: 'relative' }}>
+            <Button
+              data-testid="create-button"
+              onClick={(e) => onSubmit(true)}
+              variant={"contained"}
+              disabled={inProgress}
+            >
+              CREATE
+            </Button>
+            {inProgress &&
+              <CircularProgress
+                size={24}
+                sx={{
+                  // color: green[500],
+                  position: 'absolute',
+                  top: '50%',
+                  left: '50%',
+                  marginTop: '-12px',
+                  marginLeft: '-12px',
+                }}
+              />
+            }
+          </Box>
+
         </DialogActions>
       </Dialog>
     </div>
@@ -203,12 +231,16 @@ export const CreateTemplateDialog: React.FC = () => {
 
 
 export const EditTemplateDialog: React.FC = () => {
+  const { templateName } = useParams()
+
   const dispatch = useAppDispatch()
   const open = useAppSelector(selectEditDialog)
   const selectedTemplate = useAppSelector(selectSelectedTemplate)
   const templates = useAppSelector(selectTemplates)
 
   const [newTemplate, setNewTemplate] = React.useState<PutTemplateRequest>({ name: "", description: "", httpUrl: "", })
+  const [inProgress, setInProgress] = React.useState<boolean>(false)
+
   enum TemplateSourceType {
     S3 = 1,
     Local = 2
@@ -259,35 +291,45 @@ export const EditTemplateDialog: React.FC = () => {
   const onSubmit = async (submit: Boolean) => {
     if (submit) {
       try {
+        console.log(templateName)
+
+        setInProgress(true)
         const apiName = 'TemplatesApi';
         const path = `/templates/${newTemplate.name}`
         const myInit = {
           body: newTemplate,
           headers: {
-            Authorization: `Bearer ${(await Auth.currentSession()).getIdToken().getJwtToken()}`
+            Authorization: await getApiAuth()
           }
         };
         const response: PutTemplateResponse = await API.put(apiName, path, myInit)
         if (response.template !== null) {
           dispatch(updateTemplate(response.template))
+          if (templateName !== undefined) {
+            dispatch(selectTemplate(response.template))
+          } else {
+            dispatch(selectTemplate(null))
+          }
         }
 
       } catch (e) {
         console.error(e)
+      } finally {
+        setInProgress(false)
       }
     }
 
     setNewTemplate({ name: "", description: "", httpUrl: "" })
-    dispatch(selectTemplate(null))
     dispatch(editDialogClose())
   }
 
   return (
     <div>
-      <Dialog open={open} onClose={() => (dispatch(editDialogClose()))}>
+      <Dialog open={open} onClose={() => onSubmit(false)}>
         <DialogTitle>Edit {selectedTemplate?.name}</DialogTitle>
         <DialogContent sx={{ margin: "100" }}>
           <TextField
+            data-testid="template-name"
             autoFocus
             margin="normal"
             id="name"
@@ -299,6 +341,7 @@ export const EditTemplateDialog: React.FC = () => {
             disabled={true}
           />
           <TextField
+            data-testid="description"
             autoFocus
             margin="normal"
             id="description"
@@ -360,8 +403,30 @@ export const EditTemplateDialog: React.FC = () => {
           }
         </DialogContent>
         <DialogActions>
-          <Button onClick={(e) => onSubmit(false)}>CANCEL</Button>
-          <Button onClick={(e) => onSubmit(true)} variant={"contained"}>EDIT</Button>
+          <Button data-testid="cancel-button" onClick={(e) => onSubmit(false)}>CANCEL</Button>
+          <Box sx={{ m: 1, position: 'relative' }}>
+            <Button
+              data-testid="edit-button"
+              onClick={(e) => onSubmit(true)}
+              variant={"contained"}
+              disabled={inProgress}
+            >
+              EDIT
+            </Button>
+            {inProgress &&
+              <CircularProgress
+                size={24}
+                sx={{
+                  // color: green[500],
+                  position: 'absolute',
+                  top: '50%',
+                  left: '50%',
+                  marginTop: '-12px',
+                  marginLeft: '-12px',
+                }}
+              />
+            }
+          </Box>
         </DialogActions>
       </Dialog>
     </div>
@@ -369,19 +434,23 @@ export const EditTemplateDialog: React.FC = () => {
 }
 
 export const DeleteTemplateDialog: React.FC = () => {
+  const { templateName } = useParams()
+
   const dispatch = useAppDispatch()
   const open = useAppSelector(selectDeleteDialog)
   const templates = useAppSelector(selectTemplates)
   const selectedTemplate = useAppSelector(selectSelectedTemplate)
+  const [inProgress, setInProgress] = React.useState<boolean>(false)
 
   const onSubmit = async (submit: boolean) => {
     if (submit) {
       try {
+        setInProgress(true)
         const apiName = 'TemplatesApi';
         const path = `/templates/${selectedTemplate?.name}`
         const myInit = {
           headers: {
-            Authorization: `Bearer ${(await Auth.currentSession()).getIdToken().getJwtToken()}`
+            Authorization: await getApiAuth()
           }
         };
         const response: DeleteTemplateResponse = await API.del(apiName, path, myInit)
@@ -391,17 +460,21 @@ export const DeleteTemplateDialog: React.FC = () => {
 
       } catch (e) {
         console.error(e)
+      } finally {
+        setInProgress(false)
       }
     }
-
-
     dispatch(selectTemplate(null))
     dispatch(deleteDialogClose())
+
+    if (templateName !== undefined) {
+      window.location.replace("/templates")
+    }
   }
 
   return (
     <div>
-      <Dialog open={open} onClose={() => (dispatch(deleteDialogClose()))}>
+      <Dialog open={open} onClose={() => onSubmit(false)}>
         <DialogTitle>Delete {selectedTemplate?.name}?</DialogTitle>
         <DialogContent sx={{ margin: "100" }}>
           <DialogContentText>
@@ -409,8 +482,30 @@ export const DeleteTemplateDialog: React.FC = () => {
           </DialogContentText>
         </DialogContent>
         <DialogActions>
-          <Button onClick={(e) => { onSubmit(false) }}>CANCEL</Button>
-          <Button onClick={(e) => { onSubmit(true) }} variant={"contained"}>DELETE</Button>
+          <Button data-testid="cancel-button" onClick={(e) => { onSubmit(false) }}>CANCEL</Button>
+          <Box sx={{ m: 1, position: 'relative' }}>
+            <Button
+              data-testid="delete-button"
+              onClick={(e) => { onSubmit(true) }}
+              variant={"contained"}
+              disabled={inProgress}
+            >
+              DELETE
+            </Button>
+            {inProgress &&
+              <CircularProgress
+                size={24}
+                sx={{
+                  // color: green[500],
+                  position: 'absolute',
+                  top: '50%',
+                  left: '50%',
+                  marginTop: '-12px',
+                  marginLeft: '-12px',
+                }}
+              />
+            }
+          </Box>
         </DialogActions>
       </Dialog>
     </div>

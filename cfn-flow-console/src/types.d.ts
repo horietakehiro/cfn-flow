@@ -34,3 +34,28 @@ type DeleteTemplateResponse = {
     error: string | null
     templateName: string | null
 }
+type GetTemplateResponse = {
+    error: string | null
+    template: Template | null    
+}
+
+type Parameter = {
+    Description?: string
+    Type?: String
+    Default?: String
+
+}
+type ParametersSummary = {
+    [key: string]: Parameter
+}
+type ResourcesSummary = {}
+type OutputsSummary = {}
+type TemplateSummary = {
+    templateName: string
+    sectionName: string
+    summary: ParametersSummary | ResourcesSummary | OutputsSummary
+}
+type GetTemplateSummaryResponse = {
+    error: string | null
+    templateSummary: TemplateSummary
+}
