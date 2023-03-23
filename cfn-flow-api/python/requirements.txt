@@ -1,0 +1,6 @@
+pytest
+pytest-cov
+pytest-mock
+boto3
+cfn-flip
+cfn-lint

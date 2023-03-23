@@ -39,21 +39,34 @@ type GetTemplateResponse = {
     template: Template | null    
 }
 
-type Parameter = {
-    Description?: string
-    Type?: String
-    Default?: String
-
+type ParameterSummary = {
+    name: String
+    type: String
+    description: string | null
+    default: String | null
+    noEcho: string | null
+    minValue: Number | null
+    maxValue: Number | null
+    minLength: Number | null
+    maxLength: Number | null
+    allowedPattern: string | null
+    allowedValues: []
+    constraintDescription: string | null
 }
-type ParametersSummary = {
-    [key: string]: Parameter
+type ResourceSummary = {
+    name: string
+    type: string
 }
-type ResourcesSummary = {}
-type OutputsSummary = {}
+type OutputSummary = {
+    name: string
+    value: string
+    description: string | null
+    exportName: string | null
+}
 type TemplateSummary = {
     templateName: string
     sectionName: string
-    summary: ParametersSummary | ResourcesSummary | OutputsSummary
+    summary: ParameterSummary[] | ResourceSummary[] | OutputSummary[]
 }
 type GetTemplateSummaryResponse = {
     error: string | null

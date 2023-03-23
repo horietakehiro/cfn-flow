@@ -46,7 +46,7 @@ def teardown_module(module):
     pass
 
 @pytest.mark.parametrize("section_name,expect_str", [
-    ("Parameters", "SYSTEM"), ("Resources", "AWS::EC2::VPC"), ("Outputs", "Export")
+    ("Parameters", "SYSTEM"), ("Resources", "AWS::EC2::VPC"), ("Outputs", "exportName")
 ])
 def test_get_template_summary(section_name, expect_str):
     res = get_template_summary(
@@ -75,7 +75,7 @@ def test_validate_path_params_invalid_():
         assert "NotExistedSection" in str(ex)
 
 @pytest.mark.parametrize("section_name,expect_str", [
-    ("Parameters", "SYSTEM"), ("Resources", "AWS::EC2::VPC"), ("Outputs", "Export")
+    ("Parameters", "SYSTEM"), ("Resources", "AWS::EC2::VPC"), ("Outputs", "exportName")
 ])
 def test_lambda_handler_200(section_name, expect_str):
     path_params:RequestPathParams = {

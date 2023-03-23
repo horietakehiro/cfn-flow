@@ -1,5 +1,5 @@
 import os
-from typing import Dict, TypedDict, Optional, Any
+from typing import Dict, List, TypedDict, Optional, Any, Union
 
 TEMPLATE_TABLE_NAME=os.environ["DYNAMO_TEMPLATE_TABLE_NAME"]
 TEMPLATE_SUMMARY_TABLE_NAME=os.environ["DYNAMO_TEMPLATE_SUMMARY_TABLE_NAME"]
@@ -30,8 +30,33 @@ Template = TypedDict("Template", {
     "name": str, "description": Optional[str], 
     "httpUrl": str, "s3Url": str, "createAt": str, "updateAt": str
 })
+Parameter = TypedDict("Parameter", {
+    "name": str,
+    "type": str,
+    "default": Optional[str],
+    "description": Optional[str],
+    "allowedPattern": Optional[str],
+    "allowedValues": List[str],
+    "constraintDescription": Optional[str],
+    "maxLength": Optional[int],
+    "minLength": Optional[int],
+    "maxValue": Optional[int],
+    "minValue": Optional[int],
+    "noEcho": bool,
+})
+Resource = TypedDict("Resource", {
+    "name": str,
+    "type": str,
+})
+Output = TypedDict("Outputs", {
+    "name": str,
+    "value": str,
+    "exportName": Optional[str],
+})
+
 TemplateSummary = TypedDict("TemplateSummary", {
     "templateName": str, "sectionName": str,
-    "summary": Dict[Any, Any]
+    "summary": Union[List[Parameter], List[Resource], List[Output]]
 })
+
 TemplateSummaries = Dict[str, TemplateSummary]
