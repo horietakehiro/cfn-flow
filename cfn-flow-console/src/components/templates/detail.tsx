@@ -9,7 +9,10 @@ import TextField from '@mui/material/TextField';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import CardContent from "@mui/material/CardContent"
 import Card from "@mui/material/Card"
-
+import { 
+  DataGrid, GridColDef, GridEventListener, GridRowParams,
+  GridRowSelectionModel
+ } from '@mui/x-data-grid';
 import { EditTemplateDialog, DeleteTemplateDialog, getApiAuth } from './common';
 
 import { useAppDispatch, useAppSelector } from '../../hooks';
@@ -21,13 +24,55 @@ import {
 import { API } from 'aws-amplify';
 
 
+const parametersCols: GridColDef[] = [
+  {
+    field: "name", headerName: "Name", flex: 1, align: "left",
+  },
+  {
+    field: "type", headerName: "Type", flex: 1, align: "left",
+  },
+  {
+    field: "description", headerName: "Description", flex: 1, align: "left",
+  },
+  {
+    field: "default", headerName: "Default", flex: 1, align: "left",
+  },
+  {
+    field: "noEcho", headerName: "NoEcho", flex: 1, align: "left",
+  },
+]
+const resourcesCols: GridColDef[] = [
+  {
+    field: "name", headerName: "Name", flex: 1, align: "left",
+  },
+  {
+    field: "type", headerName: "Type", flex: 1, align: "left",
+  },
+]
+const outputsCols: GridColDef[] = [
+  {
+    field: "name", headerName: "Name", flex: 1, align: "left",
+  },
+  {
+    field: "value", headerName: "Value", flex: 1, align: "left",
+  },
+  {
+    field: "description", headerName: "Description", flex: 1, align: "left",
+  },
+  {
+    field: "exportName", headerName: "ExportName", flex: 1, align: "left",
+  },
+]
+
 interface TemplateDetailProps {
   templateName: string;
 }
 export const TemplateDetail: React.FC<TemplateDetailProps> = ({ templateName }) => {
 
   const selectedTemplate = useAppSelector(selectSelectedTemplate)
-  const [parameters, setParameters] = React.useState<ParametersSummary>({})
+  const [parameters, setParameters] = React.useState<ParameterSummary[]>([])
+  const [resources, setResources] = React.useState<ResourceSummary[]>([])
+  const [outputs, setOutputs] = React.useState<OutputSummary[]>([])
   const dispatch = useAppDispatch()
 
   const onCopyButtonClick = (value: string | undefined) => {
@@ -70,19 +115,30 @@ export const TemplateDetail: React.FC<TemplateDetailProps> = ({ templateName }) 
           console.log(e)
         }
       }
+      
       try {
-        console.log("hoge")
-        const parametersResponse:GetTemplateSummaryResponse = await getTemplateSummary(
-          templateName, "Parameters"
-        )
-        if (parametersResponse.templateSummary !== null) {
-          setParameters(parametersResponse.templateSummary.summary as ParametersSummary)
-          console.log(parametersResponse.templateSummary.summary)
-        }  
+        const sections = ["Parameters", "Resources", "Outputs"]
+        for (let i = 0; i < sections.length; i++) {
+          const section = sections[i]
+          const response:GetTemplateSummaryResponse = await getTemplateSummary(
+            templateName, section,
+          )
+          if (response.templateSummary !== null) {
+            switch (section) {
+              case "Parameters":
+                setParameters(response.templateSummary.summary as ParameterSummary[])
+                break
+              case "Resources":
+                setResources(response.templateSummary.summary as ResourceSummary[])
+                break
+              case "Outputs":
+                setOutputs(response.templateSummary.summary as OutputSummary[])
+            }
+          }
+        }
       } catch (e) {
         console.error(e)
       }
-
     })()
   }, [])
 
@@ -218,9 +274,9 @@ export const TemplateDetail: React.FC<TemplateDetailProps> = ({ templateName }) 
       <Stack spacing={2} direction={"column"} sx={{}}>
         <Typography variant='h6'>Parameters</Typography>
         <Box sx={{ height: 400, width: '100%', }}>
-          {/* <DataGrid
-          rows={rows}
-          columns={columns}
+          <DataGrid
+          rows={parameters}
+          columns={parametersCols}
           initialState={{
             pagination: {
               paginationModel: {
@@ -229,16 +285,17 @@ export const TemplateDetail: React.FC<TemplateDetailProps> = ({ templateName }) 
             },
           }}
           pageSizeOptions={[10]}
+          getRowId={(row) => row.name}
         // checkboxSelection
-        /> */}
+        />
         </Box>
       </Stack>
       <Stack spacing={2} direction={"column"} sx={{}}>
         <Typography variant='h6'>Resources</Typography>
         <Box sx={{ height: 400, width: '100%', }}>
-          {/* <DataGrid
-          rows={rows}
-          columns={columns}
+          <DataGrid
+          rows={resources}
+          columns={resourcesCols}
           initialState={{
             pagination: {
               paginationModel: {
@@ -246,17 +303,18 @@ export const TemplateDetail: React.FC<TemplateDetailProps> = ({ templateName }) 
               },
             },
           }}
+          getRowId={(row) => row.name}
           pageSizeOptions={[10]}
         // checkboxSelection
-        /> */}
+        />
         </Box>
       </Stack>
       <Stack spacing={2} direction={"column"} sx={{}}>
         <Typography variant='h6'>Outputs</Typography>
         <Box sx={{ height: 400, width: '100%', }}>
-          {/* <DataGrid
-          rows={rows}
-          columns={columns}
+          <DataGrid
+          rows={outputs}
+          columns={outputsCols}
           initialState={{
             pagination: {
               paginationModel: {
@@ -264,9 +322,10 @@ export const TemplateDetail: React.FC<TemplateDetailProps> = ({ templateName }) 
               },
             },
           }}
+          getRowId={(row) => row.name}
           pageSizeOptions={[10]}
         // checkboxSelection
-        /> */}
+        />
         </Box>
       </Stack>
       <EditTemplateDialog

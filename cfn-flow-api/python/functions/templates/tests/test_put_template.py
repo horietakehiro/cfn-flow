@@ -6,7 +6,7 @@ from boto3.dynamodb.conditions import Key
 from pytest_mock import mocker
 
 from put_template import (
-    ResponseBody, get_template_body, upsert_template, upsert_template_summaries,
+    ResponseBody, get_template_body, parse_outputs, parse_parameters, parse_resources, upsert_template, upsert_template_summaries,
     lambda_handler,
     RequestBody
 )
@@ -79,7 +79,7 @@ def test_upsert_template_create():
     assert ret_item["updateAt"] == "-"
 
 def test_upsert_template_update():
-    sleep(1)
+    sleep(1.)
     req_body:RequestBody = {
         "name": EXISTING_ITEM_NAME,
         "description": "this is new test template",
@@ -103,7 +103,7 @@ def test_upsert_template_summaries():
 
     assert "SYSTEM" in utils.jdumps(dict(summaries["Parameters"]))
     assert "AWS::EC2::VPC" in utils.jdumps(dict(summaries["Resources"]))
-    assert "Export" in utils.jdumps(dict(summaries["Outputs"]))
+    assert "exportName" in utils.jdumps(dict(summaries["Outputs"]))
 
 
 def test_lambda_handler_success():
@@ -183,3 +183,75 @@ def test_lambda_handler_fail_template_summaries_creation_failed(mocker):
     ret_body:ResponseBody = json.loads(response["body"])
     assert ret_body["error"] is not None and ret_body["error"] == "template summaries creation failed"
     assert ret_body["template"] is None
+
+
+def test_parse_parameters():
+    cfn_parameters = {
+        "param1": {
+            "Type": "String",
+        },
+        "param2": {
+            "Type": "String",
+            "Default": "val2",
+            "Description": "this is descirption",
+            "AllowedPattern": "val.*",
+            "AllowedValues": [
+                "val1", "val2",
+            ],
+            "ConstraintDescription": "this is constraint descirption",
+            "MaxLength": 10,
+            "MinLength": 0,
+            "NoEcho": True,
+        },
+        "param3": {
+            "Type": "Number",
+            "Default": 3,
+            "MaxValue": 10,
+            "MinValue": 0
+        }
+    }
+    parameters = parse_parameters(cfn_parameters)
+
+    assert len(parameters) == 3
+
+def test_parse_resources():
+    cfn_resources = {
+        "r1": {
+            "Type": "AWS::EC2::VPC",
+            "Properties": {}
+        },
+        "r2": {
+            "Type": "Custom::SomeResource",
+            "Properties": {}
+        }
+    }
+
+    resources = parse_resources(cfn_resources)
+
+    assert len(cfn_resources) == 2
+
+def test_parse_outputs():
+    cfn_outputs = {
+        "o1": {
+            "Value": "val1"
+        },
+        "o2": {
+            "Description": "this is description",
+            "Value": {
+                "Ref": "VPC"
+            },
+            "Export": {
+                "Name": {
+                    "Ref": "VPC"
+                }
+            }
+        }
+    }
+
+    outputs = parse_outputs(cfn_outputs)
+
+    assert len(outputs) == 2
+    for o in outputs:
+        if o["exportName"] is not None:
+            assert isinstance(o["exportName"], str)
+        assert isinstance(o["value"], str)

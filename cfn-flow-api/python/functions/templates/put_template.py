@@ -1,7 +1,7 @@
 import json
 import os
 import tempfile
-from typing import Any, Dict, Optional, TypedDict
+from typing import Any, Dict, Optional, TypedDict, List
 import typing
 import boto3
 from boto3.dynamodb.conditions import Key
@@ -11,7 +11,7 @@ from logging import INFO
 from cfn_flip import to_json
 
 from common import (
-    TEMPLATE_TABLE_NAME, TEMPLATE_SUMMARY_TABLE_NAME, BUCKET_NAME,
+    TEMPLATE_TABLE_NAME, TEMPLATE_SUMMARY_TABLE_NAME, BUCKET_NAME, Output, Parameter, Resource,
     Template, Response, TemplateSummaries, TemplateSummary,
     PUT_CORS_HEADERS,
 )
@@ -31,6 +31,51 @@ RequestBody = TypedDict("RequestBody",{
 ResponseBody = TypedDict("ResponseBody", {
     "error": Optional[str], "template": Optional[Template]
 })
+
+def parse_parameters(cfn_parameters:Dict[str, Dict]) -> List[Parameter]:
+    parameters:List[Parameter] = []
+    for name, value in cfn_parameters.items():
+        parameters.append({
+            "name": name,
+            "type": value.get("Type", "String"),
+            "default": value.get("Default", None),
+            "description": value.get("Description", None),
+            "allowedPattern": value.get("AllowedPattern", None),
+            "allowedValues": value.get("AllowedValues", []),
+            "constraintDescription": value.get("ConstraintDescription", None),
+            "maxLength": value.get("MaxLength", None),
+            "minLength": value.get("MinLength", None),
+            "maxValue": value.get("MaxValue", None),
+            "minValue": value.get("minValue", None),
+            "noEcho": value.get("NoEcho", False),
+        })
+    return parameters
+
+def parse_resources(cfn_resources:Dict[str, Dict]) -> List[Resource]:
+    resources:List[Resource] = []
+    for name, value in cfn_resources.items():
+        resources.append({
+            "name": name,
+            "type": value.get("Type", "")
+        })
+    return resources
+
+def parse_outputs(cfn_outputs:Dict[str, Dict]) -> List[Output]:
+    outputs:List[Output] = []
+    for name, value in cfn_outputs.items():
+        v = value.get("Value", "")
+        export_name = value.get("Export", {}).get("Name", None)
+        if isinstance(v, dict):
+            v = utils.jdumps(v)
+        if isinstance(export_name, dict):
+            export_name = utils.jdumps(export_name)
+        outputs.append({
+            "name": name,
+            "value": v,
+            "exportName": export_name,
+        })
+
+    return outputs
 
 def get_template_body(http_url:str) -> Dict:
     """
@@ -115,10 +160,9 @@ def upsert_template_summaries(req_body:RequestBody ,body:Dict) -> TemplateSummar
     try:
         table = dynamo.Table(TEMPLATE_SUMMARY_TABLE_NAME)
 
-        parameters = dict(body.get("Parameters", {}))
-        resources_full = dict(body.get("Resources", {}))
-        resources = {rid: {"Type": rval["Type"]} for rid, rval in resources_full.items()}
-        outputs = dict(body.get("Outputs", {}))
+        parameters = parse_parameters(dict(body.get("Parameters", {})))
+        resources = parse_resources(dict(body.get("Resources", {})))
+        outputs = parse_outputs(dict(body.get("Outputs", {})))
 
         for key, val in {"Parameters": parameters, "Resources": resources, "Outputs": outputs}.items():
             item:TemplateSummary = {

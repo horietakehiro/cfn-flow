@@ -1,10 +1,10 @@
 import json
 import logging
-from typing import Callable
+from typing import Callable, Union, Dict, List
 import datetime as dt
 from urllib.parse import urlparse
 
-def jdumps(j:dict, indent=2, default=str) -> str:
+def jdumps(j:Union[Dict, List], indent=2, default=str) -> str:
     if not isinstance(j, dict):
         raise TypeError
 
