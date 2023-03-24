@@ -35,6 +35,29 @@ export const getApiAuth = async () => {
   return `Bearer ${(await Auth.currentSession()).getIdToken().getJwtToken()}`
 }
 
+type ValidationErrors = {
+  [key in "name" | "httpUrl"]: string | null
+}
+type ValidationResult = {
+  isValid: boolean
+  errors: ValidationErrors
+}
+const validatePutTemplateRequest = (template:PutTemplateRequest):ValidationResult =>  {
+  const errors:ValidationErrors = {name: null, httpUrl: null}
+  let isValid = true
+  if (template.name === "") {
+    errors["name"] = "name is required"
+    isValid = false
+  }
+  if (template.httpUrl === "") {
+    errors["httpUrl"] = "httpUrl is required"
+    isValid = false
+  }
+
+  return {isValid, errors}
+
+}
+
 export const CreateTemplateDialog: React.FC = () => {
   const dispatch = useAppDispatch()
   const open = useAppSelector(selectCreateDialog)
@@ -47,9 +70,12 @@ export const CreateTemplateDialog: React.FC = () => {
   const [templateSourceType, setTemplateSourceType] = React.useState(TemplateSourceType.S3)
   const [localFile, setLocalFile] = React.useState("")
   const [inProgress, setInProgress] = React.useState<boolean>(false)
+  const [validationErrors, setValidationErrors] = React.useState<ValidationErrors>({
+    name: null, httpUrl: null
+  })
 
   const [newTemplate, setNewTemplate] = React.useState<PutTemplateRequest>({
-    name: "", description: "", httpUrl: ""
+    name: "", httpUrl: "", description: "",
   })
 
 
@@ -86,6 +112,12 @@ export const CreateTemplateDialog: React.FC = () => {
   const onSubmit = async (submit: Boolean) => {
     try {
       if (submit) {
+        const {isValid, errors} = validatePutTemplateRequest(newTemplate)
+        if (!isValid) {
+          setValidationErrors({...errors})
+          return 
+        }
+
         setInProgress(true)
         const apiName = 'TemplatesApi';
         const path = `/templates/${newTemplate.name}`
@@ -108,6 +140,7 @@ export const CreateTemplateDialog: React.FC = () => {
       setInProgress(false)
     }
 
+    setValidationErrors({name:null, httpUrl:null})
     setNewTemplate({ name: "", description: "", httpUrl: "" })
     dispatch(createDialogClose())
   }
@@ -130,6 +163,9 @@ export const CreateTemplateDialog: React.FC = () => {
             variant="outlined"
             value={newTemplate.name}
             onChange={(e: React.ChangeEvent<HTMLInputElement>) => onTemplatePropsChange(e, "name")}
+            error={validationErrors.name !== null}
+            helperText={validationErrors.name}
+            required
           />
           <TextField
             data-testid="description"
@@ -183,7 +219,10 @@ export const CreateTemplateDialog: React.FC = () => {
                 variant="outlined"
                 value={newTemplate.httpUrl}
                 onChange={(e: React.ChangeEvent<HTMLInputElement>) => onTemplatePropsChange(e, "httpUrl")}
-              />
+                error={validationErrors.name !== null}
+                helperText={validationErrors.name}
+                required
+                />
             </Stack>
             :
             <Stack direction={"row"} spacing={2}>
@@ -240,6 +279,9 @@ export const EditTemplateDialog: React.FC = () => {
 
   const [newTemplate, setNewTemplate] = React.useState<PutTemplateRequest>({ name: "", description: "", httpUrl: "", })
   const [inProgress, setInProgress] = React.useState<boolean>(false)
+  const [validationErrors, setValidationErrors] = React.useState<ValidationErrors>({
+    name: null, httpUrl: null
+  })
 
   enum TemplateSourceType {
     S3 = 1,
@@ -291,7 +333,11 @@ export const EditTemplateDialog: React.FC = () => {
   const onSubmit = async (submit: Boolean) => {
     if (submit) {
       try {
-        console.log(templateName)
+        const {isValid, errors} = validatePutTemplateRequest(newTemplate)
+        if (!isValid) {
+          setValidationErrors({...errors})
+          return
+        }
 
         setInProgress(true)
         const apiName = 'TemplatesApi';
@@ -319,6 +365,7 @@ export const EditTemplateDialog: React.FC = () => {
       }
     }
 
+    setValidationErrors({name: null, httpUrl: null})
     setNewTemplate({ name: "", description: "", httpUrl: "" })
     dispatch(editDialogClose())
   }
@@ -339,6 +386,9 @@ export const EditTemplateDialog: React.FC = () => {
             variant="outlined"
             value={newTemplate.name}
             disabled={true}
+            error={validationErrors.name !== null}
+            helperText={validationErrors.name}
+            required
           />
           <TextField
             data-testid="description"
@@ -388,7 +438,10 @@ export const EditTemplateDialog: React.FC = () => {
                 variant="outlined"
                 value={newTemplate.httpUrl}
                 onChange={(e: React.ChangeEvent<HTMLInputElement>) => { onTemplatePropsChange(e, "httpUrl") }}
-              />
+                error={validationErrors.httpUrl !== null}
+                helperText={validationErrors.httpUrl}    
+                required
+                />
             </Stack>
             :
             <Stack direction={"row"} spacing={2}>
