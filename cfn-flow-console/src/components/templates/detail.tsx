@@ -152,7 +152,7 @@ export const TemplateDetail: React.FC<TemplateDetailProps> = ({ templateName }) 
           </Grid>
           <Grid item xs={8}>
             <Stack spacing={2} direction="row" justifyContent={"flex-end"}>
-              <Button variant="outlined" style={{ textTransform: 'none' }}><RefreshIcon /></Button>
+              {/* <Button variant="outlined" style={{ textTransform: 'none' }}><RefreshIcon /></Button> */}
               <Button
                 variant="outlined"
                 style={{ textTransform: 'none' }}

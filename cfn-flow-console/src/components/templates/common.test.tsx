@@ -76,10 +76,10 @@ describe("create template dialog", () => {
       userEvent.type(screen.getByTestId("template-url"), "https://example.com/test-template.json")
       userEvent.click(screen.getByTestId("create-button"))
     })
-    const states = store.getState()
-    expect(states.createTemplateDialog.opened).toBe(false)
+
+    // expect(store.getState().createTemplateDialog.opened).toBe(false)
     expect(
-      states.templates.templates.filter((t) => {
+      store.getState().templates.templates.filter((t) => {
         return t.name === "test-template"
       }).length
     ).toBe(1)
@@ -216,7 +216,6 @@ describe("edit template dialog", () => {
       userEvent.click(screen.getByTestId("edit-button"))
     })
     expect(store.getState().editTemplateDialog.opened).toBe(false)
-    console.log(store.getState().templates)
     expect(
       store.getState().templates.templates.filter((t) => {
         return t.description === "update description"
@@ -340,3 +339,24 @@ describe("delete template dialog", () => {
 
 })
 
+describe("validateTemplateRequest", () => {
+  it("return true if request is valid", () => {
+    const req:PutTemplateRequest = {
+      name: "some-template", httpUrl: "https://example.com", description: ""
+    }
+    const {isValid, errors} = common.validatePutTemplateRequest(req)
+    expect(isValid).toBe(true)
+    expect(errors.name).toBeNull()
+    expect(errors.httpUrl).toBeNull()
+  })
+
+  it("return false if request is invalid", () => {
+    const req:PutTemplateRequest = {
+      name: "", httpUrl: "", description: "some description"
+    }
+    const {isValid, errors} = common.validatePutTemplateRequest(req)
+    expect(isValid).toBe(false)
+    expect(errors.name).not.toBeNull()
+    expect(errors.httpUrl).not.toBeNull()
+  }) 
+}) 

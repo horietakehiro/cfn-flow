@@ -42,7 +42,7 @@ type ValidationResult = {
   isValid: boolean
   errors: ValidationErrors
 }
-const validatePutTemplateRequest = (template:PutTemplateRequest):ValidationResult =>  {
+export const validatePutTemplateRequest = (template:PutTemplateRequest):ValidationResult =>  {
   const errors:ValidationErrors = {name: null, httpUrl: null}
   let isValid = true
   if (template.name === "") {
@@ -131,8 +131,6 @@ export const CreateTemplateDialog: React.FC = () => {
         if (response.template !== null) {
           dispatch(pushTemplate(response.template))
         }
-
-        console.log(response)
       }
     } catch (e) {
       console.error(e)
@@ -144,8 +142,6 @@ export const CreateTemplateDialog: React.FC = () => {
     setNewTemplate({ name: "", description: "", httpUrl: "" })
     dispatch(createDialogClose())
   }
-
-  // const onSubmmit = (e:React.)
 
   return (
     <div>
