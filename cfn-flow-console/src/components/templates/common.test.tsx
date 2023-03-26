@@ -4,7 +4,7 @@
 
 import React from "react";
 import '@testing-library/jest-dom'
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import { BrowserRouter } from "react-router-dom";
 import userEvent from "@testing-library/user-event";
 import { act } from "react-dom/test-utils";
@@ -42,7 +42,6 @@ describe("create template dialog", () => {
     </Provider>
   )
   it("create new template on create dialog", async () => {
-
     jest.spyOn(common, "getApiAuth").mockReturnValue(
       Promise.resolve("dummytoken")
     )
@@ -74,10 +73,12 @@ describe("create template dialog", () => {
       userEvent.type(screen.getByTestId("description"), "test description")
       userEvent.click(screen.getByTestId("amazon-s3-url"))
       userEvent.type(screen.getByTestId("template-url"), "https://example.com/test-template.json")
+    })
+    await act(async () => {
       userEvent.click(screen.getByTestId("create-button"))
     })
 
-    // expect(store.getState().createTemplateDialog.opened).toBe(false)
+    expect(store.getState().createTemplateDialog.opened).toBe(false)
     expect(
       store.getState().templates.templates.filter((t) => {
         return t.name === "test-template"
@@ -127,10 +128,14 @@ describe("create template dialog", () => {
       userEvent.upload(screen.getByTestId("upload-button"), file)
       userEvent.click(screen.getByTestId("create-button"))
     })
-    const states = store.getState()
-    expect(states.createTemplateDialog.opened).toBe(false)
+    await waitFor(() => expect(screen.getByTestId("template-name")).not.toBe(""))
+    await act(async () => {
+      userEvent.click(screen.getByTestId("create-button"))
+    })
+
+    expect(store.getState().createTemplateDialog.opened).toBe(false)
     expect(
-      states.templates.templates.filter((t) => {
+      store.getState().templates.templates.filter((t) => {
         return t.name === "local-template"
       }).length
     ).toBe(1)

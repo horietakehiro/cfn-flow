@@ -71,4 +71,3 @@ export const DeleteDialogSlice = createSlice({
 export const {deleteDialogOpen, deleteDialogClose} = DeleteDialogSlice.actions
 export const selectDeleteDialog = (state: RootState) => state.deleteTemplateDialog.opened
 export const DeleteTemplateDialogReducer = DeleteDialogSlice.reducer
-

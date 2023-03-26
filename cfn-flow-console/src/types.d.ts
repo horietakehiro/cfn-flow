@@ -72,3 +72,17 @@ type GetTemplateSummaryResponse = {
     error: string | null
     templateSummary: TemplateSummary
 }
+
+
+type Flow = {
+    name: string,
+    description: string | null,
+    createAt: string,
+    updateAt: string,
+}
+type Alert = {
+    opened: boolean
+    message: string | null
+    persist: number | null
+    severity: "success" | "error"
+}

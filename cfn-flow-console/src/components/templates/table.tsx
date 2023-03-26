@@ -52,7 +52,6 @@ export const TemplatesTable: React.FC = () => {
   const dispatch = useAppDispatch()
 
   const selectedTemplate = useAppSelector(selectSelectedTemplate)
-  const [selectionModel, setSelectionModel] = React.useState<Template[]>()
 
   // const [templates, setTemplates] = React.useState<Template[]>([])
   const templates = useAppSelector(selectTemplates)

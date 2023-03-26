@@ -4,9 +4,9 @@ from typing import Any, Dict, List, Optional, Tuple, TypedDict
 import typing
 
 import boto3
-from templates_common import (
-    GET_CORS_HEADERS, TEMPLATE_TABLE_NAME,
-    Response, Template,
+from flows_common import (
+    GET_CORS_HEADERS, FLOW_TABLE_NAME,
+    Response, Flow,
 )
 import utils
 
@@ -20,16 +20,16 @@ RequestQueryParams = TypedDict("RequestQueryParams", {
     "next-token": Optional[str], "limit": Optional[int]
 })
 ResponseBody = TypedDict("ResponseBody", {
-    "error": Optional[str], "templates": Optional[List[Template]], "nextToken": Optional[str]
+    "error": Optional[str], "flows": Optional[List[Flow]], "nextToken": Optional[str]
 })
 
-def list_templates(limit:int=100, next_token:Optional[str]=None) -> Tuple[List[Template], Optional[str]]:
+def list_flows(limit:int=100, next_token:Optional[str]=None) -> Tuple[List[Flow], Optional[str]]:
     """
-    scan templates table and get all items as all as possible
+    scan flows table and get all items as all as possible
     """
 
     try:
-        table = dynamo.Table(TEMPLATE_TABLE_NAME)
+        table = dynamo.Table(FLOW_TABLE_NAME)
 
         kwargs:Dict[str, Any] = {"Limit": limit}
         if next_token:
@@ -38,9 +38,9 @@ def list_templates(limit:int=100, next_token:Optional[str]=None) -> Tuple[List[T
 
         logger.info(f"Count: {res['Count']} / ScanedCound : {res['ScannedCount']}")
         logger.info(f"LastEvaluatedKey : {res.get('LastEvaluatedKey', '')}")
-        templates = [typing.cast(Template, item) for item in res["Items"]]
+        flows = [typing.cast(Flow, item) for item in res["Items"]]
         last_evaluated_key = res.get("LastEvaluatedKey", None)
-        return templates, typing.cast(Optional[str], last_evaluated_key)
+        return flows, typing.cast(Optional[str], last_evaluated_key)
 
     except Exception as ex:
         raise ex
@@ -51,16 +51,16 @@ def lambda_handler(event:dict, context) -> Response:
     logger.info(utils.jdumps(event))
     params:RequestQueryParams = event.get("queryStringParameters", None)
 
-    # get all template items as possible
+    # get all flows items as possible
     try:
         next_token = params.get("next-token", None) if params is not None else None
         limit = int(typing.cast(int, params.get("limit", 100))) if params is not None else 100
-        templates, next_token = list_templates(limit=limit, next_token=next_token)
+        flows, next_token = list_flows(limit=limit, next_token=next_token)
     except Exception as ex:
-        logger.error(f"list templates failed", exc_info=True)
+        logger.error(f"list flows failed", exc_info=True)
         res:ResponseBody = {
-            "error": "list templates failed",
-            "templates": None,
+            "error": "list flows failed",
+            "flows": None,
             "nextToken": None,
         }
         return {
@@ -71,7 +71,7 @@ def lambda_handler(event:dict, context) -> Response:
     
     res: ResponseBody = {
         "error": None,
-        "templates": templates,
+        "flows": flows,
         "nextToken": next_token,
     }
     return {

@@ -6,10 +6,9 @@ import boto3
 from boto3.dynamodb.conditions import Key
 from typing import TypedDict, Optional, Dict, Any
 
-from templates_common import (
-    TEMPLATE_SUMMARY_TABLE_NAME,
-    TEMPLATE_TABLE_NAME,
-    Response, Template,
+from flows_common import (
+    FLOW_TABLE_NAME,
+    Response, Flow,
     GET_CORS_HEADERS,
 )
 
@@ -20,49 +19,49 @@ logger = get_logger(__name__, INFO)
 
 
 ResponseBody = TypedDict("ResponseBody", {
-    "error": Optional[str], "template": Optional[Template]
+    "error": Optional[str], "flow": Optional[Flow]
 })
 RequestPathParams = TypedDict("RequestPathParams", {
-    "templateName": str,
+    "flowName": str,
 })
 
 
-def get_template(template_name:str) -> Optional[Template]:
+def get_flow(flow_name:str) -> Optional[Flow]:
     """
-    get template  for specific template name
+    get flow  for specific flow name
     """
 
     try:
-        table = dynamo.Table(TEMPLATE_TABLE_NAME)
+        table = dynamo.Table(FLOW_TABLE_NAME)
         res = table.query(
-            KeyConditionExpression=Key("name").eq(template_name)
+            KeyConditionExpression=Key("name").eq(flow_name)
         )
         logger.info(utils.jdumps(dict(res)))
         if len(res["Items"]) == 0:
             return None
         
-        return typing.cast(Template, res["Items"][0])
+        return typing.cast(Flow, res["Items"][0])
     except Exception as ex:
         raise ex
 
-def validate_path_params(template_name:str):
-    if template_name == "":
-        raise ValueError("templateName must be specified")
+def validate_path_params(flow_name:str):
+    if flow_name == "":
+        raise ValueError("flowName must be specified")
 
 def lambda_handler(event:dict, context) -> Response:
 
     logger.info(utils.jdumps(event))
 
-    # get template name from path
+    # get flow name from path
     try:
         params:RequestPathParams = event.get("pathParameters", None)
-        template_name = params.get("templateName", "") if params is not None else ""
-        validate_path_params(template_name)
+        flow_name = params.get("flowName", "") if params is not None else ""
+        validate_path_params(flow_name)
     except Exception as ex:
         logger.error("invalid path parameters", exc_info=True)
         res:ResponseBody = {
             "error": "invalid path parameters : " + str(ex),
-            "template": None,
+            "flow": None,
         }
         return {
             "statusCode": 400,
@@ -70,14 +69,14 @@ def lambda_handler(event:dict, context) -> Response:
             "body": utils.jdumps(dict(res))
         }
     
-    # get template
+    # get flow
     try:
-        template = get_template(template_name)
+        flow = get_flow(flow_name)
     except Exception as ex:
-        logger.info("template summary cannot be retreived", exc_info=True)
+        logger.info("flow cannot be retreived", exc_info=True)
         res:ResponseBody = {
-            "error": "template summary cannot be retreived" + str(ex),
-            "template": None,
+            "error": "flow cannot be retreived" + str(ex),
+            "flow": None,
         }
         return {
             "statusCode": 500,
@@ -87,7 +86,7 @@ def lambda_handler(event:dict, context) -> Response:
     
     res:ResponseBody = {
         "error": None,
-        "template": template,
+        "flow": flow,
     }
     return {
         "statusCode": 200,

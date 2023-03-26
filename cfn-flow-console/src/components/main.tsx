@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { styled, Theme, CSSObject  } from '@mui/material/styles';
+import { styled, Theme, CSSObject } from '@mui/material/styles';
 import Box from '@mui/material/Box';
 import MuiDrawer from '@mui/material/Drawer';
 import CssBaseline from '@mui/material/CssBaseline';
@@ -14,12 +14,12 @@ import ListItemButton from '@mui/material/ListItemButton';
 import ListItemText from '@mui/material/ListItemText';
 import { ListItemIcon, Stack } from '@mui/material';
 import { Routes, Route, NavLink, useLocation, Link as RouterLink, BrowserRouter } from 'react-router-dom';
-import {Breadcrumbs, Link, LinkProps} from '@mui/material'
+import { Breadcrumbs, Link, LinkProps } from '@mui/material'
 import NavigateNextIcon from '@mui/icons-material/NavigateNext';
 import LogoutIcon from '@mui/icons-material/Logout';
 
 import {
-  WithAuthenticatorProps, 
+  WithAuthenticatorProps,
 } from '@aws-amplify/ui-react';
 
 import { TemplatesMainMenu } from './templates/main';
@@ -100,8 +100,10 @@ const Router = () => {
   return (
     <Routes>
       <Route path="/" element={<div>Hello</div>} />
-      <Route path='/templates' element={<TemplatesMainMenu />}/>
-      <Route path='/templates/:templateName' element={<TemplatesMainMenu />}/>
+      <Route path='/templates' element={<TemplatesMainMenu />} />
+      <Route path='/templates/:templateName' element={<TemplatesMainMenu />} />
+      <Route path='/flows' element={<TemplatesMainMenu />} />
+      <Route path='/flows/:flowName' element={<TemplatesMainMenu />} />
     </Routes>
   );
 }
@@ -123,7 +125,7 @@ const MainHeader = () => {
   breadcrumbs = breadcrumbs.concat(
     pathElems.map((value, index) => {
       const last = index === pathElems.length - 1
-      const to = `/${pathElems.slice(0, index+1).join("/")}`
+      const to = `/${pathElems.slice(0, index + 1).join("/")}`
       return last ? (
         <Typography key={to}>{value}</Typography>
       ) : (
@@ -144,7 +146,7 @@ const MainHeader = () => {
   );
 }
 
-export default function MainOutline({signOut, user}: WithAuthenticatorProps) {
+export default function MainOutline({ signOut, user }: WithAuthenticatorProps) {
   // const [open, setOpen] = React.useState(false);
   const open = useAppSelector(selectLeftDrawer)
   const dispatch = useAppDispatch()
@@ -158,49 +160,59 @@ export default function MainOutline({signOut, user}: WithAuthenticatorProps) {
       >
         <DrawerHeader>
           <IconButton onClick={() => (dispatch(invert()))}
-            sx={{px: 0.5}}
+            sx={{ px: 0.5 }}
             data-testid="left-drawer-button"
           >
-          {open ? <ChevronLeftIcon data-testid="left-drawer-close-button"/> : <MenuIcon data-testid="left-drawer-open-button"/>}
+            {open ? <ChevronLeftIcon data-testid="left-drawer-close-button" /> : <MenuIcon data-testid="left-drawer-open-button" />}
           </IconButton>
         </DrawerHeader>
         <Divider />
         <List>
-          <ListItem key={"Templates"} disablePadding  sx={{ display: 'block' }}>
+          <ListItem key={"Templates"} disablePadding sx={{ display: 'block' }}>
             <ListItemButton
-                sx={{
-                  minHeight: 48,
-                  justifyContent: open ? 'initial' : 'center',
-                  px: 2.5,
-                }}
+              sx={{
+                minHeight: 48,
+                justifyContent: open ? 'initial' : 'center',
+                px: 2.5,
+              }}
             >
-                <ListItemText primary={<NavLink to={"templates"}><ListItemText primary={"Templates"} /></NavLink>} sx={{ opacity: open ? 1 : 0 }} />
+              <ListItemText primary={<NavLink to={"flows"}><ListItemText primary={"Flows"} /></NavLink>} sx={{ opacity: open ? 1 : 0 }} />
+            </ListItemButton>
+
+            <ListItemButton
+              sx={{
+                minHeight: 48,
+                justifyContent: open ? 'initial' : 'center',
+                px: 2.5,
+              }}
+            >
+              <ListItemText primary={<NavLink to={"templates"}><ListItemText primary={"Templates"} /></NavLink>} sx={{ opacity: open ? 1 : 0 }} />
             </ListItemButton>
           </ListItem>
         </List>
         <Divider />
         <List>
-          <ListItem key={"Signout"} disablePadding  sx={{ display: 'block' }}>
+          <ListItem key={"Signout"} disablePadding sx={{ display: 'block' }}>
             <ListItemButton
-                sx={{
-                  minHeight: 48,
-                  justifyContent: open ? 'initial' : 'center',
-                  px: 2.5,
-                }}
-                onClick={signOut}
+              sx={{
+                minHeight: 48,
+                justifyContent: open ? 'initial' : 'center',
+                px: 2.5,
+              }}
+              onClick={signOut}
             >
               <ListItemIcon sx={{ opacity: open ? 1 : 0 }}>
-                <LogoutIcon/>
+                <LogoutIcon />
               </ListItemIcon>
-                <ListItemText primary={"Sign out"} sx={{ opacity: open ? 1 : 0 }} />
+              <ListItemText primary={"Sign out"} sx={{ opacity: open ? 1 : 0 }} />
             </ListItemButton>
           </ListItem>
         </List>
       </Drawer>
       <Main open>
         <Stack direction={"column"} spacing={2}>
-        <MainHeader/>
-        <Router />
+          <MainHeader />
+          <Router />
         </Stack>
       </Main>
     </Box>

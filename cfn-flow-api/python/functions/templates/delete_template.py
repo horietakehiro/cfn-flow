@@ -6,7 +6,7 @@ import boto3
 from boto3.dynamodb.conditions import Key
 from typing import List, TypedDict, Optional, Dict, Any
 
-from common import (
+from templates_common import (
     TEMPLATE_TABLE_NAME, TEMPLATE_SUMMARY_TABLE_NAME,
     Response, DELETE_CORS_HEADERS,
 )

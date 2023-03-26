@@ -18,6 +18,9 @@ import FileUploadIcon from '@mui/icons-material/FileUpload';
 import { useAppDispatch, useAppSelector } from '../../hooks';
 import { selectTemplate, selectSelectedTemplate, updateTemplate } from "../../stores/templates/main"
 import {
+  setAlert,
+} from "./../../stores/common"
+import {
   createDialogClose, selectCreateDialog,
   editDialogClose, selectEditDialog,
   deleteDialogClose, selectDeleteDialog,
@@ -25,8 +28,10 @@ import {
 import {
   pushTemplate, removeTemplate, selectTemplates,
 } from "../../stores/templates/main"
-
 import { Storage, API, Auth } from "aws-amplify"
+import {
+  AlertSnackbar
+} from "../common"
 
 import AmplifyConfig from '../../AmplifyConfig';
 import { useParams } from 'react-router-dom';
@@ -42,8 +47,8 @@ type ValidationResult = {
   isValid: boolean
   errors: ValidationErrors
 }
-export const validatePutTemplateRequest = (template:PutTemplateRequest):ValidationResult =>  {
-  const errors:ValidationErrors = {name: null, httpUrl: null}
+export const validatePutTemplateRequest = (template: PutTemplateRequest): ValidationResult => {
+  const errors: ValidationErrors = { name: null, httpUrl: null }
   let isValid = true
   if (template.name === "") {
     errors["name"] = "name is required"
@@ -54,14 +59,14 @@ export const validatePutTemplateRequest = (template:PutTemplateRequest):Validati
     isValid = false
   }
 
-  return {isValid, errors}
+  return { isValid, errors }
 
 }
+
 
 export const CreateTemplateDialog: React.FC = () => {
   const dispatch = useAppDispatch()
   const open = useAppSelector(selectCreateDialog)
-  const templates = useAppSelector(selectTemplates)
 
   enum TemplateSourceType {
     S3 = 1,
@@ -78,7 +83,6 @@ export const CreateTemplateDialog: React.FC = () => {
     name: "", httpUrl: "", description: "",
   })
 
-
   const onTemplateSourceTypehange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setTemplateSourceType(Number(e.target.value))
   }
@@ -88,6 +92,7 @@ export const CreateTemplateDialog: React.FC = () => {
     }
 
     const fileObj = e.target.files[0]
+
     const localFilename = fileObj.name
     const s3Filename = `${String(Date.now())}/${localFilename}`
     try {
@@ -112,10 +117,10 @@ export const CreateTemplateDialog: React.FC = () => {
   const onSubmit = async (submit: Boolean) => {
     try {
       if (submit) {
-        const {isValid, errors} = validatePutTemplateRequest(newTemplate)
+        const { isValid, errors } = validatePutTemplateRequest(newTemplate)
         if (!isValid) {
-          setValidationErrors({...errors})
-          return 
+          setValidationErrors({ ...errors })
+          return
         }
 
         setInProgress(true)
@@ -130,26 +135,34 @@ export const CreateTemplateDialog: React.FC = () => {
         const response: PutTemplateResponse = await API.put(apiName, path, myInit)
         if (response.template !== null) {
           dispatch(pushTemplate(response.template))
+          dispatch(setAlert({
+              persist: 5000, message: `Successfully create template : ${response.template.name}`,
+              opened: true, severity: "success"
+          }))
         }
       }
     } catch (e) {
       console.error(e)
+      dispatch(setAlert({
+        persist: null, message: `Failed to create template : ${newTemplate.name}`,
+        opened: true, severity: "error"
+      }))
     } finally {
       setInProgress(false)
     }
 
-    setValidationErrors({name:null, httpUrl:null})
+    setValidationErrors({ name: null, httpUrl: null })
     setNewTemplate({ name: "", description: "", httpUrl: "" })
     dispatch(createDialogClose())
   }
 
   return (
     <div>
+      <AlertSnackbar/>
       <Dialog open={open} onClose={() => onSubmit(false)}>
         <DialogTitle>New Template</DialogTitle>
         <DialogContent sx={{ margin: "100" }}>
           <TextField
-            data-testid="template-name"
             autoFocus
             margin="normal"
             id="name"
@@ -162,9 +175,9 @@ export const CreateTemplateDialog: React.FC = () => {
             error={validationErrors.name !== null}
             helperText={validationErrors.name}
             required
+            inputProps={{ "data-testid": "template-name" }}
           />
           <TextField
-            data-testid="description"
             autoFocus
             margin="normal"
             id="description"
@@ -175,6 +188,7 @@ export const CreateTemplateDialog: React.FC = () => {
             multiline
             value={newTemplate.description}
             onChange={(e: React.ChangeEvent<HTMLInputElement>) => onTemplatePropsChange(e, "description")}
+            inputProps={{ "data-testid": "description" }}
           />
 
           <FormControl>
@@ -205,7 +219,7 @@ export const CreateTemplateDialog: React.FC = () => {
             ?
             <Stack direction={"row"} spacing={2}>
               <TextField
-                data-testid="template-url"
+                inputProps={{ "data-testid": "template-url" }}
                 autoFocus
                 margin="normal"
                 id="url"
@@ -218,14 +232,14 @@ export const CreateTemplateDialog: React.FC = () => {
                 error={validationErrors.name !== null}
                 helperText={validationErrors.name}
                 required
-                />
+              />
             </Stack>
             :
             <Stack direction={"row"} spacing={2}>
               <Stack direction={"row"} spacing={2}>
-                <Button data-testid="upload-button" variant="outlined" component="label" startIcon={<FileUploadIcon />}>
+                <Button variant="outlined" component="label" startIcon={<FileUploadIcon />}>
                   Upload
-                  <input hidden accept=".json,.yaml" multiple={false} type="file" onChange={onSelectLocalFile} />
+                  <input data-testid="upload-button" hidden accept=".json,.yaml" multiple={false} type="file" onChange={onSelectLocalFile} />
                 </Button>
                 <Typography>{localFile}</Typography>
               </Stack>
@@ -271,7 +285,6 @@ export const EditTemplateDialog: React.FC = () => {
   const dispatch = useAppDispatch()
   const open = useAppSelector(selectEditDialog)
   const selectedTemplate = useAppSelector(selectSelectedTemplate)
-  const templates = useAppSelector(selectTemplates)
 
   const [newTemplate, setNewTemplate] = React.useState<PutTemplateRequest>({ name: "", description: "", httpUrl: "", })
   const [inProgress, setInProgress] = React.useState<boolean>(false)
@@ -329,9 +342,9 @@ export const EditTemplateDialog: React.FC = () => {
   const onSubmit = async (submit: Boolean) => {
     if (submit) {
       try {
-        const {isValid, errors} = validatePutTemplateRequest(newTemplate)
+        const { isValid, errors } = validatePutTemplateRequest(newTemplate)
         if (!isValid) {
-          setValidationErrors({...errors})
+          setValidationErrors({ ...errors })
           return
         }
 
@@ -352,27 +365,35 @@ export const EditTemplateDialog: React.FC = () => {
           } else {
             dispatch(selectTemplate(null))
           }
+          dispatch(setAlert({
+            persist: 5000, message: `Successfully update template : ${response.template.name}`,
+            opened: true, severity: "success"
+        }))
         }
 
       } catch (e) {
         console.error(e)
+        dispatch(setAlert({
+          persist: null, message: `Failed to update template : ${newTemplate.name}`,
+          opened: true, severity: "error"
+        }))
       } finally {
         setInProgress(false)
       }
     }
 
-    setValidationErrors({name: null, httpUrl: null})
+    setValidationErrors({ name: null, httpUrl: null })
     setNewTemplate({ name: "", description: "", httpUrl: "" })
     dispatch(editDialogClose())
   }
 
   return (
     <div>
+      <AlertSnackbar/>
       <Dialog open={open} onClose={() => onSubmit(false)}>
         <DialogTitle>Edit {selectedTemplate?.name}</DialogTitle>
         <DialogContent sx={{ margin: "100" }}>
           <TextField
-            data-testid="template-name"
             autoFocus
             margin="normal"
             id="name"
@@ -385,9 +406,9 @@ export const EditTemplateDialog: React.FC = () => {
             error={validationErrors.name !== null}
             helperText={validationErrors.name}
             required
+            inputProps={{ "data-testid": "template-name" }}
           />
           <TextField
-            data-testid="description"
             autoFocus
             margin="normal"
             id="description"
@@ -398,6 +419,7 @@ export const EditTemplateDialog: React.FC = () => {
             multiline
             value={newTemplate.description}
             onChange={(e: React.ChangeEvent<HTMLInputElement>) => { onTemplatePropsChange(e, "description") }}
+            inputProps={{ "data-testid": "description" }}
           />
           <FormControl>
             <FormLabel id="template-source">Template source</FormLabel>
@@ -435,9 +457,10 @@ export const EditTemplateDialog: React.FC = () => {
                 value={newTemplate.httpUrl}
                 onChange={(e: React.ChangeEvent<HTMLInputElement>) => { onTemplatePropsChange(e, "httpUrl") }}
                 error={validationErrors.httpUrl !== null}
-                helperText={validationErrors.httpUrl}    
+                helperText={validationErrors.httpUrl}
                 required
-                />
+                inputProps={{ "data-testid": "template-url" }}
+              />
             </Stack>
             :
             <Stack direction={"row"} spacing={2}>
@@ -505,12 +528,21 @@ export const DeleteTemplateDialog: React.FC = () => {
         const response: DeleteTemplateResponse = await API.del(apiName, path, myInit)
         if (selectedTemplate !== null) {
           dispatch(removeTemplate(selectedTemplate))
+          dispatch(setAlert({
+            persist: 5000, message: `Successfully delete template : ${response.templateName}`,
+            opened: true, severity: "success"
+        }))
         }
 
       } catch (e) {
         console.error(e)
+        dispatch(setAlert({
+          persist: null, message: `Failed to delete template : ${templateName}`,
+          opened: true, severity: "error"
+        }))
       } finally {
         setInProgress(false)
+
       }
     }
     dispatch(selectTemplate(null))
@@ -523,6 +555,7 @@ export const DeleteTemplateDialog: React.FC = () => {
 
   return (
     <div>
+      <AlertSnackbar/>
       <Dialog open={open} onClose={() => onSubmit(false)}>
         <DialogTitle>Delete {selectedTemplate?.name}?</DialogTitle>
         <DialogContent sx={{ margin: "100" }}>

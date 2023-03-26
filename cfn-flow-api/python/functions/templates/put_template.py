@@ -10,7 +10,7 @@ from logging import INFO
 
 from cfn_flip import to_json
 
-from common import (
+from templates_common import (
     TEMPLATE_TABLE_NAME, TEMPLATE_SUMMARY_TABLE_NAME, BUCKET_NAME, Output, Parameter, Resource,
     Template, Response, TemplateSummaries, TemplateSummary,
     PUT_CORS_HEADERS,
