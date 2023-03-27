@@ -26,6 +26,7 @@ import { TemplatesMainMenu } from './templates/main';
 
 import { useAppDispatch, useAppSelector } from '../hooks';
 import { invert, selectLeftDrawer } from "../stores/main"
+import { FlowsMainMenu } from './flows/main';
 const drawerWidth = 240;
 
 const openedMixin = (theme: Theme): CSSObject => ({
@@ -102,8 +103,8 @@ const Router = () => {
       <Route path="/" element={<div>Hello</div>} />
       <Route path='/templates' element={<TemplatesMainMenu />} />
       <Route path='/templates/:templateName' element={<TemplatesMainMenu />} />
-      <Route path='/flows' element={<TemplatesMainMenu />} />
-      <Route path='/flows/:flowName' element={<TemplatesMainMenu />} />
+      <Route path='/flows' element={<FlowsMainMenu />} />
+      <Route path='/flows/:flowName' element={<FlowsMainMenu />} />
     </Routes>
   );
 }

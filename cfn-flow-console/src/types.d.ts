@@ -79,10 +79,35 @@ type Flow = {
     description: string | null,
     createAt: string,
     updateAt: string,
+    httpUrl: string,
+    s3Url: string,
 }
 type Alert = {
     opened: boolean
     message: string | null
     persist: number | null
     severity: "success" | "error"
+}
+
+type PutFlowRequest = {
+    name: string,
+    description: string | null,
+    httpUrl: string,
+}
+type PutFlowResponse = {
+    error: string | null
+    flow: Flow | null
+}
+type GetFlowsResponse = {
+    error: string | null
+    flows: Flow[] | null
+    nextToken: string | null
+}
+type DeleteFlowResponse = {
+    error: string | null
+    flowName: string | null
+}
+type GetFlowResponse = {
+    error: string | null
+    flow: Flow | null
 }

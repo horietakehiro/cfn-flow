@@ -7,6 +7,10 @@ const AmplifyConfig = {
         {
           name: "TemplatesApi",
           endpoint: "https://7xkju28ytf.execute-api.ap-northeast-1.amazonaws.com/dev"
+        },
+        {
+          name: "FlowsApi",
+          endpoint: "https://9a8igycyzg.execute-api.ap-northeast-1.amazonaws.com/dev",
         }
       ]
     },
