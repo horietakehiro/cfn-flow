@@ -53,10 +53,6 @@ export const validatePutFlowRequest = (template: PutFlowRequest): ValidationResu
     errors["name"] = "name is required"
     isValid = false
   }
-  if (template.httpUrl === "") {
-    errors["httpUrl"] = "httpUrl is required"
-    isValid = false
-  }
 
   return { isValid, errors }
 
@@ -73,7 +69,7 @@ export const CreateFlowDialog: React.FC = () => {
   const dispatch = useAppDispatch()
   const open = useAppSelector(selectCreateDialog)
 
-  const [flowSourceType, setFlowSourceType] = React.useState(FlowSourceType.S3)
+  const [flowSourceType, setFlowSourceType] = React.useState(FlowSourceType.New)
   const [localFile, setLocalFile] = React.useState("")
   const [inProgress, setInProgress] = React.useState<boolean>(false)
   const [validationErrors, setValidationErrors] = React.useState<ValidationErrors>({
@@ -95,7 +91,7 @@ export const CreateFlowDialog: React.FC = () => {
     const fileObj = e.target.files[0]
 
     const localFilename = fileObj.name
-    const s3Filename = `${String(Date.now())}/${localFilename}`
+    const s3Filename = `flows/${String(Date.now())}/${localFilename}`
     try {
       // upload file
       const accessLevel = "public"
@@ -327,7 +323,7 @@ export const EditFlowDialog: React.FC = () => {
 
     const fileObj = e.target.files[0]
     const localFilename = fileObj.name
-    const s3Filename = `${String(Date.now())}/${localFilename}`
+    const s3Filename = `flows/${String(Date.now())}/${localFilename}`
     try {
       // upload file
       const accessLevel = "public"

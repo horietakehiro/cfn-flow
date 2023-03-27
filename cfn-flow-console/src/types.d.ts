@@ -1,13 +1,3 @@
-// type Template = {
-//     id: string,
-//     name: string,
-//     description: string,
-//     createAt: string,
-//     updateAt: string,
-//     httpUrl: string,
-//     s3Url: string,
-// }
-
 type Template = {
     name: string,
     description: string | null,
@@ -17,9 +7,9 @@ type Template = {
     updateAt: string,
 }
 type PutTemplateRequest = {
-    name: string,
+    name: string | null,
     description: string | null,
-    httpUrl: string,
+    httpUrl: string | null,
 }
 type PutTemplateResponse = {
     error: string | null
@@ -90,9 +80,9 @@ type Alert = {
 }
 
 type PutFlowRequest = {
-    name: string,
+    name: string | null,
     description: string | null,
-    httpUrl: string,
+    httpUrl: string | null,
 }
 type PutFlowResponse = {
     error: string | null

@@ -94,7 +94,7 @@ export const CreateTemplateDialog: React.FC = () => {
     const fileObj = e.target.files[0]
 
     const localFilename = fileObj.name
-    const s3Filename = `${String(Date.now())}/${localFilename}`
+    const s3Filename = `templates/${String(Date.now())}/${localFilename}`
     try {
       // upload file
       const accessLevel = "public"
@@ -134,6 +134,7 @@ export const CreateTemplateDialog: React.FC = () => {
         };
         const response: PutTemplateResponse = await API.put(apiName, path, myInit)
         if (response.template !== null) {
+          console.log(response.template)
           dispatch(pushTemplate(response.template))
           dispatch(setAlert({
               persist: 5000, message: `Successfully create template : ${response.template.name}`,
@@ -319,7 +320,7 @@ export const EditTemplateDialog: React.FC = () => {
 
     const fileObj = e.target.files[0]
     const localFilename = fileObj.name
-    const s3Filename = `${String(Date.now())}/${localFilename}`
+    const s3Filename = `templates/${String(Date.now())}/${localFilename}`
     try {
       // upload file
       const accessLevel = "public"

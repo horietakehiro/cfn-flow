@@ -26,6 +26,7 @@ const persistConfig = {
     storage: storage,
     blacklist: [
         "templates",
+        "flows",
         "createTemplateDialog",
         "editTemplateDialog",
         "deleteTemplateDialog",

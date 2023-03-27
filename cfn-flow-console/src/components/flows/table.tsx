@@ -48,6 +48,7 @@ export const FlowsTable: React.FC = () => {
   const selectedFlow = useAppSelector(selectSelectedFlow)
 
   const flows = useAppSelector(selectFlows)
+  console.log(flows)
 
   const getFlows = async () => {
     const apiName = 'FlowsApi';
@@ -62,10 +63,12 @@ export const FlowsTable: React.FC = () => {
 
   React.useEffect(() => {
     (async () => {
+      console.log("hoge")
       dispatch(selectFlow(null))
       try {
         const response:GetFlowsResponse = await getFlows()
         if (response.flows !== null) {
+          console.log(response)
           dispatch(createFlows(response.flows))
         }
       } catch (e) {

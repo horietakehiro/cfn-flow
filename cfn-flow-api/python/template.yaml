@@ -15,6 +15,11 @@ Parameters:
       - prod
   UserPoolArn:
     Type: String
+  
+  ApiDomainName:
+    Type: String
+  ApiHostedZoneId:
+    Type: AWS::Route53::HostedZone::Id
 
 
 # Mappings: 
@@ -108,13 +113,13 @@ Resources:
           Properties:
             Path: "/{proxy+}"
             Method: ANY      
-            RestApiId:  !Ref TemplatesApi
+            RestApiId:  !Ref BackendApi
         GetApi:
           Type: Api
           Properties:
             Method: get
             Path: /templates
-            RestApiId:  !Ref TemplatesApi
+            RestApiId:  !Ref BackendApi
       FunctionName: !Sub ${SolutionName}-${EnvName}-templates-list-function
       Handler: list_templates.lambda_handler
       PackageType: Zip
@@ -130,7 +135,7 @@ Resources:
           Properties:
             Method: put
             Path: /templates/{templateName}
-            RestApiId:  !Ref TemplatesApi
+            RestApiId:  !Ref BackendApi
       FunctionName: !Sub ${SolutionName}-${EnvName}-templates-put-function
       Handler: put_template.lambda_handler
       Layers:
@@ -148,7 +153,7 @@ Resources:
           Properties:
             Method: get
             Path: /templates/{templateName}
-            RestApiId:  !Ref TemplatesApi
+            RestApiId:  !Ref BackendApi
       FunctionName: !Sub ${SolutionName}-${EnvName}-template-get-function
       Handler: get_template.lambda_handler
       PackageType: Zip
@@ -165,7 +170,7 @@ Resources:
           Properties:
             Method: get
             Path: /templates/{templateName}/{sectionName}
-            RestApiId:  !Ref TemplatesApi
+            RestApiId:  !Ref BackendApi
       FunctionName: !Sub ${SolutionName}-${EnvName}-template-summary-get-function
       Handler: get_template_summary.lambda_handler
       PackageType: Zip
@@ -182,31 +187,12 @@ Resources:
           Properties:
             Method: delete
             Path: /templates/{templateName}
-            RestApiId:  !Ref TemplatesApi
+            RestApiId:  !Ref BackendApi
       FunctionName: !Sub ${SolutionName}-${EnvName}-template-delete-function
       Handler: delete_template.lambda_handler
       PackageType: Zip
       Role: !GetAtt FunctionsRole.Arn
 
-  TemplatesApi:
-    Type: AWS::Serverless::Api
-    Properties:
-      StageName: !Ref EnvName
-      Name: !Sub ${SolutionName}-${EnvName}-templates-api
-      # BinaryMediaTypes:
-        # - ""
-      Cors:
-        # AllowCredentials: true
-        AllowHeaders: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
-        AllowMethods: "'OPTIONS,GET,PUT,POST,DELETE'"
-        AllowOrigin: "'*'"
-
-      Auth:
-        DefaultAuthorizer: MyCognitoAuthorizer
-        AddDefaultAuthorizerToCorsPreflight: false
-        Authorizers:
-          MyCognitoAuthorizer:
-            UserPoolArn: !Ref UserPoolArn
 
 
 
@@ -215,18 +201,18 @@ Resources:
     Properties:
       CodeUri: ./functions/flows/
       Events:
-        CatchAll:
-          Type: Api
-          Properties:
-            Path: "/{proxy+}"
-            Method: ANY      
-            RestApiId:  !Ref FlowsApi
+        # CatchAll:
+        #   Type: Api
+        #   Properties:
+        #     Path: "/{proxy+}"
+        #     Method: ANY      
+        #     RestApiId:  !Ref BackendApi
         GetApi:
           Type: Api
           Properties:
             Method: get
             Path: /flows
-            RestApiId:  !Ref FlowsApi
+            RestApiId:  !Ref BackendApi
       FunctionName: !Sub ${SolutionName}-${EnvName}-flows-list-function
       Handler: list_flows.lambda_handler
       PackageType: Zip
@@ -242,7 +228,7 @@ Resources:
           Properties:
             Method: put
             Path: /flows/{flowName}
-            RestApiId:  !Ref FlowsApi
+            RestApiId:  !Ref BackendApi
       FunctionName: !Sub ${SolutionName}-${EnvName}-flows-put-function
       Handler: put_flow.lambda_handler
       Layers:
@@ -260,7 +246,7 @@ Resources:
           Properties:
             Method: get
             Path: /flows/{flowName}
-            RestApiId:  !Ref FlowsApi
+            RestApiId:  !Ref BackendApi
       FunctionName: !Sub ${SolutionName}-${EnvName}-flow-get-function
       Handler: get_flow.lambda_handler
       PackageType: Zip
@@ -276,18 +262,29 @@ Resources:
           Properties:
             Method: delete
             Path: /flows/{flowName}
-            RestApiId:  !Ref FlowsApi
+            RestApiId:  !Ref BackendApi
       FunctionName: !Sub ${SolutionName}-${EnvName}-flow-delete-function
       Handler: delete_flow.lambda_handler
       PackageType: Zip
       Role: !GetAtt FunctionsRole.Arn
 
+  BackendApiCert:
+    Type: AWS::CertificateManager::Certificate
+    Properties: 
+      DomainName: !Ref ApiDomainName
+      DomainValidationOptions: 
+        - 
+          DomainName: !Ref ApiDomainName
+          HostedZoneId: !Ref ApiHostedZoneId
+      ValidationMethod: DNS
 
-  FlowsApi:
+
+  BackendApi:
     Type: AWS::Serverless::Api
     Properties:
+      EndpointConfiguration: REGIONAL
       StageName: !Ref EnvName
-      Name: !Sub ${SolutionName}-${EnvName}-flows-api
+      Name: !Sub ${SolutionName}-${EnvName}-backend-api
       # BinaryMediaTypes:
         # - ""
       Cors:
@@ -302,12 +299,19 @@ Resources:
         Authorizers:
           MyCognitoAuthorizer:
             UserPoolArn: !Ref UserPoolArn
+      Domain:
+        BasePath: !Ref EnvName
+        CertificateArn: !Ref BackendApiCert
+        DomainName: !Ref ApiDomainName
+        EndpointConfiguration: REGIONAL
+        Route53:
+          EvaluateTargetHealth: false
+          HostedZoneId: !Ref ApiHostedZoneId
+      TracingEnabled: true
+
 
 Outputs:
-  TemplatesHttpUrl:
-    Description: https url for templates api
-    Value: !Sub https://${TemplatesApi}.execute-api.${AWS::Region}.amazonaws.com/${EnvName}
-  FlowsHttpUrl:
-    Description: https url for flows api
-    Value: !Sub https://${FlowsApi}.execute-api.${AWS::Region}.amazonaws.com/${EnvName}
+  BackendApiHttpUrl:
+    Description: https url for backend api
+    Value: !Sub https://${ApiDomainName}/${EnvName}
     
