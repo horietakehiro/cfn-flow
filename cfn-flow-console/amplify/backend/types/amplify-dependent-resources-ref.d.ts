@@ -1,19 +1,19 @@
 export type AmplifyDependentResourcesAttributes = {
-    "auth": {
-        "cfnflowconsole693b1f51": {
-            "IdentityPoolId": "string",
-            "IdentityPoolName": "string",
-            "UserPoolId": "string",
-            "UserPoolArn": "string",
-            "UserPoolName": "string",
-            "AppClientIDWeb": "string",
-            "AppClientID": "string"
-        }
-    },
-    "storage": {
-        "artifactsbucket": {
-            "BucketName": "string",
-            "Region": "string"
-        }
+  "auth": {
+    "cfnflowconsole693b1f51": {
+      "AppClientID": "string",
+      "AppClientIDWeb": "string",
+      "IdentityPoolId": "string",
+      "IdentityPoolName": "string",
+      "UserPoolArn": "string",
+      "UserPoolId": "string",
+      "UserPoolName": "string"
     }
+  },
+  "storage": {
+    "artifactsbucket": {
+      "BucketName": "string",
+      "Region": "string"
+    }
+  }
 }

@@ -25,6 +25,7 @@
     "react-redux": "^8.0.5",
     "react-router-dom": "^6.8.2",
     "react-scripts": "5.0.1",
+    "reactflow": "^11.7.0",
     "redux-persist": "^6.0.0",
     "redux-persist-transform-filter": "^0.0.22",
     "sort-by": "^1.2.0",
