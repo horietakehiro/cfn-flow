@@ -35,6 +35,7 @@ import {
 
 import AmplifyConfig from '../../AmplifyConfig';
 import { useParams } from 'react-router-dom';
+import axios, { Axios } from 'axios';
 
 export const getApiAuth = async () => {
   return `Bearer ${(await Auth.currentSession()).getIdToken().getJwtToken()}`
@@ -100,11 +101,13 @@ export const CreateTemplateDialog: React.FC = () => {
       const accessLevel = "public"
       const result = await Storage.put(s3Filename, fileObj, { level: accessLevel })
       setLocalFile(localFilename)
-
       // set http url
       const httpUrl = `https://${AmplifyConfig.aws_user_files_s3_bucket}.s3.${AmplifyConfig.aws_user_files_s3_bucket_region}.amazonaws.com/${accessLevel}/${result.key}`
       setNewTemplate({ ...newTemplate, httpUrl: httpUrl })
     } catch (e) {
+      if (axios.isAxiosError(e)) {
+        setLocalFile(`Failed to upload file : ${e.message}`)
+      }
       console.error(e)
     }
   }
@@ -143,9 +146,14 @@ export const CreateTemplateDialog: React.FC = () => {
         }
       }
     } catch (e) {
-      console.error(e)
+      let errorMessage = `Failed to create template : ${newTemplate.name}`
+      if (axios.isAxiosError(e)) {
+        const response:PutTemplateResponse = e.response?.data
+        errorMessage += ` : ${response.error}`
+        console.error(e.response)
+      }
       dispatch(setAlert({
-        persist: null, message: `Failed to create template : ${newTemplate.name}`,
+        persist: null, message: errorMessage,
         opened: true, severity: "error"
       }))
     } finally {
@@ -242,7 +250,7 @@ export const CreateTemplateDialog: React.FC = () => {
                   Upload
                   <input data-testid="upload-button" hidden accept=".json,.yaml" multiple={false} type="file" onChange={onSelectLocalFile} />
                 </Button>
-                <Typography>{localFile}</Typography>
+                <Typography color={localFile.startsWith("Failed to") ? "red" : "black"}>{localFile}</Typography>
               </Stack>
             </Stack>
           }
@@ -326,11 +334,13 @@ export const EditTemplateDialog: React.FC = () => {
       const accessLevel = "public"
       const result = await Storage.put(s3Filename, fileObj, { level: accessLevel })
       setLocalFile(localFilename)
-
       // set http url
       const httpUrl = `https://${AmplifyConfig.aws_user_files_s3_bucket}.s3.${AmplifyConfig.aws_user_files_s3_bucket_region}.amazonaws.com/${accessLevel}/${result.key}`
       setNewTemplate({ ...newTemplate, httpUrl: httpUrl })
     } catch (e) {
+      if (axios.isAxiosError(e)) {
+        setLocalFile(`Failed to upload file : ${e.message}`)
+      }
       console.error(e)
     }
   }
@@ -373,9 +383,14 @@ export const EditTemplateDialog: React.FC = () => {
         }
 
       } catch (e) {
-        console.error(e)
+        let errorMessage = `Failed to update template : ${newTemplate.name}`
+        if (axios.isAxiosError(e)) {
+          const response:PutTemplateResponse = e.response?.data
+          errorMessage += ` : ${response.error}`
+          console.error(e.response)
+        }
         dispatch(setAlert({
-          persist: null, message: `Failed to update template : ${newTemplate.name}`,
+          persist: null, message: errorMessage,
           opened: true, severity: "error"
         }))
       } finally {
@@ -470,7 +485,7 @@ export const EditTemplateDialog: React.FC = () => {
                   Upload
                   <input hidden accept=".json,.yaml" multiple={false} type="file" onChange={onSelectLocalFile} />
                 </Button>
-                <Typography>{localFile}</Typography>
+                <Typography color={localFile.startsWith("Failed to") ? "red" : "black"}>{localFile}</Typography>
               </Stack>
             </Stack>
           }
@@ -536,9 +551,14 @@ export const DeleteTemplateDialog: React.FC = () => {
         }
 
       } catch (e) {
-        console.error(e)
+        let errorMessage = `Failed to delete template : ${templateName}`
+        if (axios.isAxiosError(e)) {
+          const response:DeleteTemplateResponse = e.response?.data
+          errorMessage += ` : ${response.error}`
+          console.error(e.response)
+        }
         dispatch(setAlert({
-          persist: null, message: `Failed to delete template : ${templateName}`,
+          persist: null, message: errorMessage,
           opened: true, severity: "error"
         }))
       } finally {

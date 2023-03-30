@@ -34,6 +34,7 @@ import {
 
 import AmplifyConfig from '../../AmplifyConfig';
 import { useParams } from 'react-router-dom';
+import axios from 'axios';
 
 export const getApiAuth = async () => {
   return `Bearer ${(await Auth.currentSession()).getIdToken().getJwtToken()}`
@@ -102,6 +103,9 @@ export const CreateFlowDialog: React.FC = () => {
       const httpUrl = `https://${AmplifyConfig.aws_user_files_s3_bucket}.s3.${AmplifyConfig.aws_user_files_s3_bucket_region}.amazonaws.com/${accessLevel}/${result.key}`
       setNewFlow({ ...newFlow, httpUrl: httpUrl })
     } catch (e) {
+      if (axios.isAxiosError(e)) {
+        setLocalFile(`Failed to upload file : ${e.message}`)
+      }
       console.error(e)
     }
   }
@@ -139,9 +143,15 @@ export const CreateFlowDialog: React.FC = () => {
         }
       }
     } catch (e) {
-      console.error(e)
+      let errorMessage = `Failed to create flow : ${newFlow.name}`
+
+      if (axios.isAxiosError(e)) {
+        const response:PutFlowResponse = e.response?.data
+        errorMessage += ` : ${response.error}`
+        console.error(e.response)
+      }
       dispatch(setAlert({
-        persist: null, message: `Failed to create flow : ${newFlow.name}`,
+        persist: null, message: errorMessage,
         opened: true, severity: "error"
       }))
     } finally {
@@ -245,7 +255,7 @@ export const CreateFlowDialog: React.FC = () => {
                   Upload
                   <input data-testid="upload-button" hidden accept=".json,.yaml" multiple={false} type="file" onChange={onSelectLocalFile} />
                 </Button>
-                <Typography>{localFile}</Typography>
+                <Typography color={localFile.startsWith("Failed to") ? "red" : "black"}>{localFile}</Typography>
               </Stack>
             </Stack>
           }
@@ -334,6 +344,9 @@ export const EditFlowDialog: React.FC = () => {
       const httpUrl = `https://${AmplifyConfig.aws_user_files_s3_bucket}.s3.${AmplifyConfig.aws_user_files_s3_bucket_region}.amazonaws.com/${accessLevel}/${result.key}`
       setNewFlow({ ...newFlow, httpUrl: httpUrl })
     } catch (e) {
+      if (axios.isAxiosError(e)) {
+        setLocalFile(`Failed to upload file : ${e.message}`)
+      }
       console.error(e)
     }
   }
@@ -376,9 +389,14 @@ export const EditFlowDialog: React.FC = () => {
         }
 
       } catch (e) {
-        console.error(e)
+        let errorMessage = `Failed to update flow : ${newFlow.name}`
+        if (axios.isAxiosError(e)) {
+          const response:PutFlowResponse = e.response?.data
+          errorMessage += ` : ${response.error}`
+          console.error(e.response)
+        }
         dispatch(setAlert({
-          persist: null, message: `Failed to update flow : ${newFlow.name}`,
+          persist: null, message: errorMessage,
           opened: true, severity: "error"
         }))
       } finally {
@@ -473,7 +491,7 @@ export const EditFlowDialog: React.FC = () => {
                   Upload
                   <input hidden accept=".json,.yaml" multiple={false} type="file" onChange={onSelectLocalFile} />
                 </Button>
-                <Typography>{localFile}</Typography>
+                <Typography color={localFile.startsWith("Failed to") ? "red" : "black"}>{localFile}</Typography>
               </Stack>
             </Stack>
           }
@@ -539,8 +557,14 @@ export const DeleteFlowDialog: React.FC = () => {
 
       } catch (e) {
         console.error(e)
+        let errorMessage = `Failed to delete flow : ${flowName}`
+        if (axios.isAxiosError(e)) {
+          const response:DeleteFlowResponse = e.response?.data
+          errorMessage += ` : ${response.error}`
+          console.error(e.response)
+        }
         dispatch(setAlert({
-          persist: null, message: `Failed to delete flow : ${flowName}`,
+          persist: null, message: errorMessage,
           opened: true, severity: "error"
         }))
       } finally {

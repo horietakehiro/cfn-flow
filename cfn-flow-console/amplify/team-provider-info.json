@@ -14,6 +14,9 @@
     "categories": {
       "auth": {
         "cfnflowconsole693b1f51": {}
+      },
+      "storage": {
+        "artifactsbucket": {}
       }
     }
   }

@@ -12,7 +12,7 @@ import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import ListItem from '@mui/material/ListItem';
 import ListItemButton from '@mui/material/ListItemButton';
 import ListItemText from '@mui/material/ListItemText';
-import { Container, ListItemIcon, Stack } from '@mui/material';
+import { Container, ListItemIcon, Stack, TextField } from '@mui/material';
 import { Routes, Route, NavLink, useLocation, Link as RouterLink, BrowserRouter } from 'react-router-dom';
 import { Breadcrumbs, Link, LinkProps } from '@mui/material'
 import NavigateNextIcon from '@mui/icons-material/NavigateNext';
@@ -23,6 +23,11 @@ import FlowCanvas from './flow';
 import ReactFlow, { Background, BackgroundVariant } from 'reactflow';
 
 import 'reactflow/dist/style.css';
+import { useAppDispatch, useAppSelector } from '../../hooks';
+import { createTemplates, selectTemplates } from '../../stores/templates/main';
+import { API } from "aws-amplify"
+import { getApiAuth } from './common';
+import axios from 'axios';
 
 const initialNodes = [
   { id: '1', position: { x: 0, y: 0 }, data: { label: '1' } },
@@ -102,7 +107,39 @@ const Drawer = styled(MuiDrawer, { shouldForwardProp: (prop) => prop !== 'open' 
 
 export default function FlowDetail() {
 
+  const dispatch = useAppDispatch()
+  const templates = useAppSelector(selectTemplates)
+
   const [open, setOpen] = React.useState(true)
+  const getTemplates = async () => {
+    const apiName = 'TemplatesApi';
+    const path = '/templates';
+    const init = {
+      headers: {
+        Authorization: await getApiAuth()
+      }
+    }
+    return await API.get(apiName, path, init);
+  };
+
+  React.useEffect(() => {
+    (async () => {
+      // list templates
+      try {
+        const response: GetTemplatesResponse = await getTemplates()
+        if (response.templates !== null) {
+          dispatch(createTemplates(response.templates))
+        }
+      } catch (e) {
+        let errorMessage = "Failed to get templates"
+        if (axios.isAxiosError(e)) {
+          const response: GetTemplatesResponse = e.response?.data
+          errorMessage += ` : ${response.error}`
+        }
+      }
+    })()
+
+  })
 
   return (
     <Stack spacing={2} direction={"column"}>
@@ -134,7 +171,7 @@ export default function FlowDetail() {
         </Grid>
       </Stack>
       <Divider />
-      <CssBaseline/>
+      <CssBaseline />
       <Grid container spacing={2}>
         <Grid item xs={false}>
           <Drawer
@@ -144,10 +181,10 @@ export default function FlowDetail() {
             sx={{
               overflow: "hidden",
               '& .MuiDrawer-root': {
-                  position: 'relative'
+                position: 'relative'
               },
               '& .MuiDrawer-paper': {
-                  position: 'relative',
+                position: 'relative',
               },
             }}
           >
@@ -162,46 +199,39 @@ export default function FlowDetail() {
             </DrawerHeader>
             <Divider />
             <List>
-              <ListItem key={"Templates"} disablePadding sx={{ display: 'block' }}>
-                <ListItemButton
-                  sx={{
-                    minHeight: 48,
-                    justifyContent: open ? 'initial' : 'center',
-                    px: 2.5,
-                  }}
-                >
-                  <ListItemText primary={<NavLink to={"flows"}><ListItemText primary={"hoge"} /></NavLink>} sx={{ opacity: open ? 1 : 0 }} />
-                </ListItemButton>
-              </ListItem>
-              <ListItem key={"Templates"} disablePadding sx={{ display: 'block' }}>
-                <ListItemButton
-                  sx={{
-                    minHeight: 48,
-                    justifyContent: open ? 'initial' : 'center',
-                    px: 2.5,
-                  }}
-                >
-                  <ListItemText primary={<NavLink to={"flows"}><ListItemText primary={"hoge"} /></NavLink>} sx={{ opacity: open ? 1 : 0 }} />
-                </ListItemButton>
-              </ListItem>
-              <ListItem key={"Templates"} disablePadding sx={{ display: 'block' }}>
-                <ListItemButton
-                  sx={{
-                    minHeight: 48,
-                    justifyContent: open ? 'initial' : 'center',
-                    px: 2.5,
-                  }}
-                >
-                  <ListItemText primary={<NavLink to={"flows"}><ListItemText primary={"hoge"} /></NavLink>} sx={{ opacity: open ? 1 : 0 }} />
-                </ListItemButton>
-              </ListItem>
+              {templates.map((t, i) => {
+                return (
+                  <ListItem key={`template-${i}`} disablePadding sx={{ display: 'block' }}>
+                  <ListItemButton
+                    sx={{
+                      minHeight: 48,
+                      justifyContent: open ? 'initial' : 'center',
+                      px: 2.5,
+                    }}
+                  >
+                    <ListItemText primary={<NavLink to={`/templates/${t.name}`}><ListItemText primary={t.name} /></NavLink>} sx={{ opacity: open ? 1 : 0 }} />
+                    {/* <TextField
+                      id="name" label="Template" variant="outlined"
+                      value={t.name}
+                      sx={{
+                        "& .MuiInputBase-input.Mui-disabled": {
+                          WebkitTextFillColor: "black",
+                        },
+                      }}
+                      size="small"
+                      disabled
+                    /> */}
+                  </ListItemButton>
+                </ListItem>  
+                )
+              })}
             </List>
           </Drawer>
         </Grid>
-        <Grid item sx={{height: "80vh"}} xs={true}>
-        <ReactFlow nodes={initialNodes} edges={initialEdges} fitView>
-          <Background variant={BackgroundVariant.Cross}/>
-        </ReactFlow>
+        <Grid item sx={{ height: "80vh" }} xs={true}>
+          <ReactFlow nodes={initialNodes} edges={initialEdges} fitView>
+            <Background variant={BackgroundVariant.Cross} />
+          </ReactFlow>
         </Grid>
       </Grid>
 
