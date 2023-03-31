@@ -1,5 +1,5 @@
 import FileUploadIcon from '@mui/icons-material/FileUpload';
-import { Box, CircularProgress, Typography } from '@mui/material';
+import { Box, CircularProgress, Grid, InputLabel, MenuItem, Select, SelectChangeEvent, Typography } from '@mui/material';
 import Button from "@mui/material/Button";
 import Dialog from '@mui/material/Dialog';
 import DialogActions from '@mui/material/DialogActions';
@@ -29,7 +29,8 @@ import {
 
 import axios from 'axios';
 import { useParams } from 'react-router-dom';
-import { uploadObj } from '../../apis/common';
+import { getRegions, uploadObj } from '../../apis/common';
+import { getStacks } from '../../apis/stacks/apis';
 import { deleteTemplate, putTemplate } from '../../apis/templates/api';
 
 type ValidationErrors = {
@@ -62,7 +63,8 @@ export const CreateTemplateDialog: React.FC = () => {
 
   enum TemplateSourceType {
     S3 = 1,
-    Local = 2
+    Local = 2,
+    Import = 3,
   }
   const [templateSourceType, setTemplateSourceType] = React.useState(TemplateSourceType.S3)
   const [localFile, setLocalFile] = React.useState("")
@@ -74,6 +76,9 @@ export const CreateTemplateDialog: React.FC = () => {
   const [newTemplate, setNewTemplate] = React.useState<PutTemplateRequest>({
     name: "", httpUrl: "", description: "",
   })
+  const [region, setRegion] = React.useState<string | null>(null)
+  const [stacks, setStacks] = React.useState<Stack[]>([])
+  const [stack, setStack] = React.useState<Stack | null>(null)
 
   const onTemplateSourceTypehange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setTemplateSourceType(Number(e.target.value))
@@ -89,7 +94,7 @@ export const CreateTemplateDialog: React.FC = () => {
     const s3Filename = `templates/${String(Date.now())}/${localFilename}`
     try {
       setLocalFile(localFilename)
-      const {httpUrl} = await uploadObj(s3Filename, fileObj, "public")
+      const { httpUrl } = await uploadObj(s3Filename, fileObj, "public")
       setNewTemplate({ ...newTemplate, httpUrl: httpUrl })
     } catch (e) {
       if (axios.isAxiosError(e)) {
@@ -98,6 +103,19 @@ export const CreateTemplateDialog: React.FC = () => {
       console.error(e)
     }
   }
+
+  const onRegionChange = async (event: SelectChangeEvent<string>) => {
+    const region = event.target.value
+    setRegion(region)
+    const response: GetStacksResponse = await getStacks(region)
+    if (response.stacks !== null) {
+      setStacks(response.stacks)
+    }
+  }
+
+  // React.useEffect(() => {
+  //   console.log("set region")
+  // }, [region])
 
   const onTemplatePropsChange = (e: React.ChangeEvent<HTMLInputElement>, fieldName: string) => {
     const prevTemplate = newTemplate
@@ -119,15 +137,15 @@ export const CreateTemplateDialog: React.FC = () => {
           console.log(response.template)
           dispatch(pushTemplate(response.template))
           dispatch(setAlert({
-              persist: 5000, message: `Successfully create template : ${response.template.name}`,
-              opened: true, severity: "success"
+            persist: 5000, message: `Successfully create template : ${response.template.name}`,
+            opened: true, severity: "success"
           }))
         }
       }
     } catch (e) {
       let errorMessage = `Failed to create template : ${newTemplate.name}`
       if (axios.isAxiosError(e)) {
-        const response:PutTemplateResponse = e.response?.data
+        const response: PutTemplateResponse = e.response?.data
         errorMessage += ` : ${response.error}`
         console.error(e.response)
       }
@@ -144,10 +162,11 @@ export const CreateTemplateDialog: React.FC = () => {
     dispatch(createDialogClose())
   }
 
+
   return (
     <div>
-      <AlertSnackbar/>
-      <Dialog open={open} onClose={() => onSubmit(false)}>
+      <AlertSnackbar />
+      <Dialog open={open} onClose={() => onSubmit(false)} fullWidth maxWidth={"md"}>
         <DialogTitle>New Template</DialogTitle>
         <DialogContent sx={{ margin: "100" }}>
           <TextField
@@ -201,10 +220,16 @@ export const CreateTemplateDialog: React.FC = () => {
                 label="Upload local file"
                 checked={templateSourceType === TemplateSourceType.Local}
               />
+              <FormControlLabel
+                data-testid="import-stack-template"
+                value={TemplateSourceType.Import}
+                control={<Radio />}
+                label="Import existing stack template"
+                checked={templateSourceType === TemplateSourceType.Import}
+              />
             </RadioGroup>
           </FormControl>
-          {templateSourceType === TemplateSourceType.S3
-            ?
+          {templateSourceType === TemplateSourceType.S3 &&
             <Stack direction={"row"} spacing={2}>
               <TextField
                 inputProps={{ "data-testid": "template-url" }}
@@ -222,7 +247,8 @@ export const CreateTemplateDialog: React.FC = () => {
                 required
               />
             </Stack>
-            :
+          }
+          {templateSourceType === TemplateSourceType.Local &&
             <Stack direction={"row"} spacing={2}>
               <Stack direction={"row"} spacing={2}>
                 <Button variant="outlined" component="label" startIcon={<FileUploadIcon />}>
@@ -232,6 +258,53 @@ export const CreateTemplateDialog: React.FC = () => {
                 <Typography color={localFile.startsWith("Failed to") ? "red" : "black"}>{localFile}</Typography>
               </Stack>
             </Stack>
+          }
+          {templateSourceType === TemplateSourceType.Import &&
+            <Stack direction={"row"} spacing={2}>
+              <Grid container spacing={2}>
+                <Grid item xs={3}>
+                  <FormControl fullWidth>
+                    <InputLabel id="region-name-input">Region</InputLabel>
+                    <Select
+                      labelId="region-name"
+                      id="region-name"
+                      value={region !== null ? region : ""}
+                      label="Region"
+                      onChange={(event) => { onRegionChange(event) }}
+                    >
+                      {getRegions().map((r, i) => {
+                        return <MenuItem key={r} value={r}>{r}</MenuItem>
+                      })}
+                    </Select>
+                  </FormControl>
+                </Grid>
+                <Grid item xs={6}>
+                  <FormControl fullWidth>
+                    <InputLabel id="stack-name-input">Stack</InputLabel>
+                    <Select
+                      labelId="stack-name"
+                      id="stack-name"
+                      // value={region !== null ? region : getRegions()[0]}
+                      value={stack !== null ? stack.stackName : ""}
+                      label="Stack"
+                      onChange={(event) => {
+                        setStack({
+                          stackName: event.target.value, regionName: region !== null ? region : ""
+                        })
+                      }}
+                    >
+                      {stacks.map((s, i) => {
+                        return <MenuItem key={`${s.stackName}-${i}`} value={s.stackName}>{s.stackName}</MenuItem>
+                      })}
+                    </Select>
+                  </FormControl>
+                </Grid>
+                <Grid item xs={3}>
+                  IMPORT BUTTON
+                </Grid>
+              </Grid>
+            </Stack>
+
           }
         </DialogContent>
         <DialogActions>
@@ -310,7 +383,7 @@ export const EditTemplateDialog: React.FC = () => {
     const s3Filename = `templates/${String(Date.now())}/${localFilename}`
     try {
       setLocalFile(localFilename)
-      const {httpUrl} = await uploadObj(s3Filename, fileObj, "public")
+      const { httpUrl } = await uploadObj(s3Filename, fileObj, "public")
       setNewTemplate({ ...newTemplate, httpUrl: httpUrl })
     } catch (e) {
       if (axios.isAxiosError(e)) {
@@ -346,13 +419,13 @@ export const EditTemplateDialog: React.FC = () => {
           dispatch(setAlert({
             persist: 5000, message: `Successfully update template : ${response.template.name}`,
             opened: true, severity: "success"
-        }))
+          }))
         }
 
       } catch (e) {
         let errorMessage = `Failed to update template : ${newTemplate.name}`
         if (axios.isAxiosError(e)) {
-          const response:PutTemplateResponse = e.response?.data
+          const response: PutTemplateResponse = e.response?.data
           errorMessage += ` : ${response.error}`
           console.error(e.response)
         }
@@ -372,7 +445,7 @@ export const EditTemplateDialog: React.FC = () => {
 
   return (
     <div>
-      <AlertSnackbar/>
+      <AlertSnackbar />
       <Dialog open={open} onClose={() => onSubmit(false)}>
         <DialogTitle>Edit {selectedTemplate?.name}</DialogTitle>
         <DialogContent sx={{ margin: "100" }}>
@@ -507,13 +580,13 @@ export const DeleteTemplateDialog: React.FC = () => {
           dispatch(setAlert({
             persist: 5000, message: `Successfully delete template : ${response.templateName}`,
             opened: true, severity: "success"
-        }))
+          }))
         }
 
       } catch (e) {
         let errorMessage = `Failed to delete template : ${templateName}`
         if (axios.isAxiosError(e)) {
-          const response:DeleteTemplateResponse = e.response?.data
+          const response: DeleteTemplateResponse = e.response?.data
           errorMessage += ` : ${response.error}`
           console.error(e.response)
         }
@@ -536,7 +609,7 @@ export const DeleteTemplateDialog: React.FC = () => {
 
   return (
     <div>
-      <AlertSnackbar/>
+      <AlertSnackbar />
       <Dialog open={open} onClose={() => onSubmit(false)}>
         <DialogTitle>Delete {selectedTemplate?.name}?</DialogTitle>
         <DialogContent sx={{ margin: "100" }}>

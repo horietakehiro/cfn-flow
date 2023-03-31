@@ -1,8 +1,11 @@
+import datetime as dt
 import json
 import logging
-from typing import Callable, Union, Dict, List
-import datetime as dt
+from typing import Callable, Dict, List, Union
 from urllib.parse import urlparse
+
+import boto3
+
 
 def jdumps(j:Union[Dict, List], indent=2, default=str) -> str:
     if not isinstance(j, dict):
@@ -26,6 +29,23 @@ def convert_http_to_s3(url:str) -> str:
     key = u.path
 
     return f"s3://{bucket}{key}"
+
+def convert_s3_to_http(url:str) -> str:
+    """
+    convert s3 url to http url
+    e.g.:
+        s3://bucket-name/path/to/object
+        -> https://bucket-name.s3.ap-northeast-1.amazonaws.com/path/to/object
+    """
+
+    bucket, key = url.replace("s3://", "").split("/", maxsplit=1)
+    # get region of the bucket
+    client = boto3.client("s3")
+    res = client.get_bucket_location(Bucket=bucket)
+    region:str = res["LocationConstraint"]
+
+    http_url = f"https://{bucket}.s3.{region}.amazonaws.com/{key}"
+    return http_url
 
 
 def strftime(datetime:dt.datetime, fmt="%Y-%m-%dT%H:%M:%S%z") -> str:

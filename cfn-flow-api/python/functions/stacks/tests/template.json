@@ -1,0 +1,37 @@
+{
+    "AWSTemplateFormatVersion": "2010-09-09",
+    "Description": "---",
+    "Parameters": {
+        "SYSTEM": {
+            "Description": "system name",
+            "Type": "String",
+            "Default": "cfn-flow-test"
+        },
+        "ENV": {
+            "Description": "env type",
+            "Type": "String",
+            "Default": "dev",
+            "AllowedValues": [
+                "dev",
+                "prod"
+            ]
+        }
+    },
+    "Resources": {
+        "ResourceGroup": {
+            "Type": "AWS::ResourceGroups::Group",
+            "Properties": {
+                "Name": {
+                    "Fn::Sub": "${SYSTEM}-${ENV}-test-json-resource-group"
+                },
+                "ResourceQuery": {
+                    "Query": {
+                        "ResourceTypeFilters": [
+                            "AWS::EC2::Instance"
+                        ]
+                    }
+                }
+            }
+        }
+    }
+}

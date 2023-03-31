@@ -100,6 +100,7 @@ Resources:
         - arn:aws:iam::aws:policy/AmazonS3FullAccess
         - arn:aws:iam::aws:policy/AmazonDynamoDBFullAccess
         - arn:aws:iam::aws:policy/AWSXRayDaemonWriteAccess
+        - arn:aws:iam::aws:policy/AWSCloudFormationFullAccess
       # Policies:
 
 
@@ -231,8 +232,6 @@ Resources:
             RestApiId:  !Ref BackendApi
       FunctionName: !Sub ${SolutionName}-${EnvName}-flows-put-function
       Handler: put_flow.lambda_handler
-      Layers:
-        - !Ref CfnUtilLayer
       PackageType: Zip
       Role: !GetAtt FunctionsRole.Arn
 
@@ -249,6 +248,40 @@ Resources:
             RestApiId:  !Ref BackendApi
       FunctionName: !Sub ${SolutionName}-${EnvName}-flow-get-function
       Handler: get_flow.lambda_handler
+      PackageType: Zip
+      Role: !GetAtt FunctionsRole.Arn
+
+
+
+  ListStacks:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ./functions/stacks/
+      Events:
+        GetApi:
+          Type: Api
+          Properties:
+            Method: get
+            Path: /stacks/{regionName}
+            RestApiId:  !Ref BackendApi
+      FunctionName: !Sub ${SolutionName}-${EnvName}-stacks-list-function
+      Handler: list_stacks.lambda_handler
+      PackageType: Zip
+      Role: !GetAtt FunctionsRole.Arn
+
+  PostStackTemplate:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ./functions/stacks/
+      Events:
+        PutApi:
+          Type: Api
+          Properties:
+            Method: put
+            Path: /stacks/{regionName}/{stackName}
+            RestApiId:  !Ref BackendApi
+      FunctionName: !Sub ${SolutionName}-${EnvName}-stacks-post-template-function
+      Handler: post_stack_template.lambda_handler
       PackageType: Zip
       Role: !GetAtt FunctionsRole.Arn
 

@@ -13,3 +13,6 @@ test-templates:
 
 test-flows:
 	pytest --cov=functions/ --cov-report=html -v  ./functions/flows/
+
+test-stacks:
+	pytest --cov=functions/ --cov-report=html -v  ./functions/stacks/

@@ -106,3 +106,16 @@ type GetFlowResponse = {
     error: string | null
     flow: Flow | null
 }
+
+type Stack = {
+    stackName: string
+    regionName: string
+}
+type GetStacksResponse = {
+    error: string | null
+    stacks: Stack[] | null
+}
+type PostStackTemplateResponse = {
+    error: string | null
+    httpUrl: string | null
+}

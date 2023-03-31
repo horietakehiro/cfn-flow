@@ -7,10 +7,13 @@ const AmplifyConfig = {
         {
           name: "TemplatesApi",
           endpoint: "https://api.cfn-flow.ht-burdock.com/dev"
-          // endpoint: "https://l698x4atw0.execute-api.ap-northeast-1.amazonaws.com/dev"
         },
         {
           name: "FlowsApi",
+          endpoint: "https://api.cfn-flow.ht-burdock.com/dev",
+        },
+        {
+          name: "StacksApi",
           endpoint: "https://api.cfn-flow.ht-burdock.com/dev",
         }
       ]
