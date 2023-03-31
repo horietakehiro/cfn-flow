@@ -36,10 +36,8 @@ import {
 import AmplifyConfig from '../../AmplifyConfig';
 import { useParams } from 'react-router-dom';
 import axios, { Axios } from 'axios';
-
-export const getApiAuth = async () => {
-  return `Bearer ${(await Auth.currentSession()).getIdToken().getJwtToken()}`
-}
+import { deleteTemplate, putTemplate } from '../../apis/templates/api';
+import { uploadObj } from '../../apis/common';
 
 type ValidationErrors = {
   [key in "name" | "httpUrl"]: string | null
@@ -97,12 +95,8 @@ export const CreateTemplateDialog: React.FC = () => {
     const localFilename = fileObj.name
     const s3Filename = `templates/${String(Date.now())}/${localFilename}`
     try {
-      // upload file
-      const accessLevel = "public"
-      const result = await Storage.put(s3Filename, fileObj, { level: accessLevel })
       setLocalFile(localFilename)
-      // set http url
-      const httpUrl = `https://${AmplifyConfig.aws_user_files_s3_bucket}.s3.${AmplifyConfig.aws_user_files_s3_bucket_region}.amazonaws.com/${accessLevel}/${result.key}`
+      const {httpUrl} = await uploadObj(s3Filename, fileObj, "public")
       setNewTemplate({ ...newTemplate, httpUrl: httpUrl })
     } catch (e) {
       if (axios.isAxiosError(e)) {
@@ -127,15 +121,7 @@ export const CreateTemplateDialog: React.FC = () => {
         }
 
         setInProgress(true)
-        const apiName = 'TemplatesApi';
-        const path = `/templates/${newTemplate.name}`
-        const myInit = {
-          body: newTemplate,
-          headers: {
-            Authorization: await getApiAuth()
-          }
-        };
-        const response: PutTemplateResponse = await API.put(apiName, path, myInit)
+        const response = await putTemplate(newTemplate)
         if (response.template !== null) {
           console.log(response.template)
           dispatch(pushTemplate(response.template))
@@ -330,12 +316,8 @@ export const EditTemplateDialog: React.FC = () => {
     const localFilename = fileObj.name
     const s3Filename = `templates/${String(Date.now())}/${localFilename}`
     try {
-      // upload file
-      const accessLevel = "public"
-      const result = await Storage.put(s3Filename, fileObj, { level: accessLevel })
       setLocalFile(localFilename)
-      // set http url
-      const httpUrl = `https://${AmplifyConfig.aws_user_files_s3_bucket}.s3.${AmplifyConfig.aws_user_files_s3_bucket_region}.amazonaws.com/${accessLevel}/${result.key}`
+      const {httpUrl} = await uploadObj(s3Filename, fileObj, "public")
       setNewTemplate({ ...newTemplate, httpUrl: httpUrl })
     } catch (e) {
       if (axios.isAxiosError(e)) {
@@ -360,15 +342,7 @@ export const EditTemplateDialog: React.FC = () => {
         }
 
         setInProgress(true)
-        const apiName = 'TemplatesApi';
-        const path = `/templates/${newTemplate.name}`
-        const myInit = {
-          body: newTemplate,
-          headers: {
-            Authorization: await getApiAuth()
-          }
-        };
-        const response: PutTemplateResponse = await API.put(apiName, path, myInit)
+        const response = await putTemplate(newTemplate)
         if (response.template !== null) {
           dispatch(updateTemplate(response.template))
           if (templateName !== undefined) {
@@ -534,15 +508,8 @@ export const DeleteTemplateDialog: React.FC = () => {
     if (submit) {
       try {
         setInProgress(true)
-        const apiName = 'TemplatesApi';
-        const path = `/templates/${selectedTemplate?.name}`
-        const myInit = {
-          headers: {
-            Authorization: await getApiAuth()
-          }
-        };
-        const response: DeleteTemplateResponse = await API.del(apiName, path, myInit)
         if (selectedTemplate !== null) {
+          const response = await deleteTemplate(selectedTemplate?.name)
           dispatch(removeTemplate(selectedTemplate))
           dispatch(setAlert({
             persist: 5000, message: `Successfully delete template : ${response.templateName}`,

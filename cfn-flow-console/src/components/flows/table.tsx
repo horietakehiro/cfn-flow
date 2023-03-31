@@ -21,9 +21,11 @@ import {
   deleteDialogOpen,
 } from '../../stores/flows/common';
 
-import { CreateFlowDialog, EditFlowDialog, DeleteFlowDialog, getApiAuth } from './common';
+import { CreateFlowDialog, EditFlowDialog, DeleteFlowDialog } from './common';
+
 
 import { API, Auth } from "aws-amplify"
+import { getFlows } from '../../apis/flows/apis';
 
 
 const flowColumns: GridColDef[] = [
@@ -50,23 +52,11 @@ export const FlowsTable: React.FC = () => {
   const flows = useAppSelector(selectFlows)
   console.log(flows)
 
-  const getFlows = async () => {
-    const apiName = 'FlowsApi';
-    const path = '/flows';
-    const init = {
-      headers: {
-        Authorization: await getApiAuth()
-      }
-    }
-    return await API.get(apiName, path, init);
-  };
-
   React.useEffect(() => {
     (async () => {
-      console.log("hoge")
       dispatch(selectFlow(null))
       try {
-        const response:GetFlowsResponse = await getFlows()
+        const response = await getFlows()
         if (response.flows !== null) {
           console.log(response)
           dispatch(createFlows(response.flows))
@@ -84,7 +74,7 @@ export const FlowsTable: React.FC = () => {
   const onRefresh = async () => {
     dispatch(selectFlow(null))
     try {
-      const response: GetFlowsResponse = await getFlows()
+      const response = await getFlows()
       if (response.flows !== null) {
         dispatch(createFlows(response.flows))
       }

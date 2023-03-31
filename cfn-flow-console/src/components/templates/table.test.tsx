@@ -15,7 +15,7 @@ import { store } from "../../store"
 import {
   TemplatesTable
 } from "./table"
-import * as common from "./common"
+import * as apiCommon from "./../../apis/common"
 import {
   createTemplates,selectTemplate
 } from "../../stores/templates/main"
@@ -40,7 +40,7 @@ describe("templates table", () => {
   )
   it("render templates table on page loaded", async () => {
 
-    jest.spyOn(common, "getApiAuth").mockReturnValue(
+    jest.spyOn(apiCommon, "getApiAuth").mockReturnValue(
       Promise.resolve("dummytoken")
     )
     jest.spyOn(API, "get").mockReturnValue(
@@ -79,7 +79,7 @@ describe("templates table", () => {
 
   it("allow to push create template button", async () => {
 
-    jest.spyOn(common, "getApiAuth").mockReturnValue(
+    jest.spyOn(apiCommon, "getApiAuth").mockReturnValue(
       Promise.resolve("dummytoken")
     )
     jest.spyOn(API, "get").mockReturnValue(
@@ -112,7 +112,7 @@ describe("templates table", () => {
 
   it("allow to push edit template button if a template selected", async () => {
 
-    jest.spyOn(common, "getApiAuth").mockReturnValue(
+    jest.spyOn(apiCommon, "getApiAuth").mockReturnValue(
       Promise.resolve("dummytoken")
     )
     jest.spyOn(API, "get").mockReturnValue(
@@ -164,7 +164,7 @@ describe("templates table", () => {
 
   it("allow to push delete template button if a template selected", async () => {
 
-    jest.spyOn(common, "getApiAuth").mockReturnValue(
+    jest.spyOn(apiCommon, "getApiAuth").mockReturnValue(
       Promise.resolve("dummytoken")
     )
     jest.spyOn(API, "get").mockReturnValue(
@@ -216,7 +216,7 @@ describe("templates table", () => {
 
   it("allow to push refresh button and refresh templates", async () => {
 
-    jest.spyOn(common, "getApiAuth").mockReturnValue(
+    jest.spyOn(apiCommon, "getApiAuth").mockReturnValue(
       Promise.resolve("dummytoken")
     )
     jest.spyOn(API, "get").mockReturnValueOnce(

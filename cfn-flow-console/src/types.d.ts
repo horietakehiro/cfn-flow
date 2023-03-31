@@ -1,3 +1,8 @@
+type UploadObjResponse = {
+    httpUrl: string
+    key: string
+}
+type TemplateSummarySection = "Parameters"|"Resources"|"Outputs"
 type Template = {
     name: string,
     description: string | null,

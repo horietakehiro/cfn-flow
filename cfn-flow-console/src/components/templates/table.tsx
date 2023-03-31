@@ -21,9 +21,10 @@ import {
   deleteDialogOpen,
 } from '../../stores/templates/common';
 
-import { CreateTemplateDialog, EditTemplateDialog, DeleteTemplateDialog, getApiAuth } from './common';
+import { CreateTemplateDialog, EditTemplateDialog, DeleteTemplateDialog } from './common';
 
 import { API, Auth } from "aws-amplify"
+import { getTemplates } from '../../apis/templates/api';
 
 
 const templateColumns: GridColDef[] = [
@@ -56,16 +57,6 @@ export const TemplatesTable: React.FC = () => {
   // const [templates, setTemplates] = React.useState<Template[]>([])
   const templates = useAppSelector(selectTemplates)
 
-  const getTemplates = async () => {
-    const apiName = 'TemplatesApi';
-    const path = '/templates';
-    const init = {
-      headers: {
-        Authorization: await getApiAuth()
-      }
-    }
-    return await API.get(apiName, path, init);
-  };
 
   React.useEffect(() => {
     (async () => {

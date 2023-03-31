@@ -13,7 +13,7 @@ import {
   DataGrid, GridColDef, GridEventListener, GridRowParams,
   GridRowSelectionModel
  } from '@mui/x-data-grid';
-import { EditTemplateDialog, DeleteTemplateDialog, getApiAuth } from './common';
+import { EditTemplateDialog, DeleteTemplateDialog } from './common';
 
 import { useAppDispatch, useAppSelector } from '../../hooks';
 import { selectTemplate, selectSelectedTemplate } from "../../stores/templates/main"
@@ -22,6 +22,7 @@ import {
   deleteDialogOpen,
 } from '../../stores/templates/common';
 import { API } from 'aws-amplify';
+import { getTemplate, getTemplateSummary } from '../../apis/templates/api';
 
 
 const parametersCols: GridColDef[] = [
@@ -81,27 +82,8 @@ export const TemplateDetail: React.FC<TemplateDetailProps> = ({ templateName }) 
     }
   }
 
-  const getTemplate = async (name: string) => {
-    const apiName = 'TemplatesApi';
-    const path = `/templates/${name}`;
-    const init = {
-      headers: {
-        Authorization: await getApiAuth()
-      }
-    }
-    return await API.get(apiName, path, init);
-  }
 
-  const getTemplateSummary = async (name: string, section:string) => {
-    const apiName = 'TemplatesApi';
-    const path = `/templates/${name}/${section}`;
-    const init = {
-      headers: {
-        Authorization: await getApiAuth()
-      }
-    }
-    return await API.get(apiName, path, init);
-  }
+
 
   React.useEffect(() => {
     (async () => {
@@ -117,7 +99,7 @@ export const TemplateDetail: React.FC<TemplateDetailProps> = ({ templateName }) 
       }
       
       try {
-        const sections = ["Parameters", "Resources", "Outputs"]
+        const sections:TemplateSummarySection[] = ["Parameters", "Resources", "Outputs"]
         for (let i = 0; i < sections.length; i++) {
           const section = sections[i]
           const response:GetTemplateSummaryResponse = await getTemplateSummary(
@@ -335,3 +317,5 @@ export const TemplateDetail: React.FC<TemplateDetailProps> = ({ templateName }) 
     </Stack>
   );
 }
+
+

@@ -35,10 +35,13 @@ import {
 import AmplifyConfig from '../../AmplifyConfig';
 import { useParams } from 'react-router-dom';
 import axios from 'axios';
+import { uploadObj } from '../../apis/common';
+import { getApiAuth } from '../../apis/common';
+import { deleteFlow, putFlow } from '../../apis/flows/apis';
 
-export const getApiAuth = async () => {
-  return `Bearer ${(await Auth.currentSession()).getIdToken().getJwtToken()}`
-}
+// export const getApiAuth = async () => {
+//   return `Bearer ${(await Auth.currentSession()).getIdToken().getJwtToken()}`
+// }
 
 type ValidationErrors = {
   [key in "name" | "httpUrl"]: string | null
@@ -94,13 +97,8 @@ export const CreateFlowDialog: React.FC = () => {
     const localFilename = fileObj.name
     const s3Filename = `flows/${String(Date.now())}/${localFilename}`
     try {
-      // upload file
-      const accessLevel = "public"
-      const result = await Storage.put(s3Filename, fileObj, { level: accessLevel })
       setLocalFile(localFilename)
-
-      // set http url
-      const httpUrl = `https://${AmplifyConfig.aws_user_files_s3_bucket}.s3.${AmplifyConfig.aws_user_files_s3_bucket_region}.amazonaws.com/${accessLevel}/${result.key}`
+      const {httpUrl} = await uploadObj(s3Filename, fileObj, "public")
       setNewFlow({ ...newFlow, httpUrl: httpUrl })
     } catch (e) {
       if (axios.isAxiosError(e)) {
@@ -125,15 +123,8 @@ export const CreateFlowDialog: React.FC = () => {
         }
 
         setInProgress(true)
-        const apiName = 'FlowsApi';
-        const path = `/flows/${newFlow.name}`
-        const myInit = {
-          body: newFlow,
-          headers: {
-            Authorization: await getApiAuth()
-          }
-        };
-        const response: PutFlowResponse = await API.put(apiName, path, myInit)
+
+        const response = await putFlow(newFlow)
         if (response.flow !== null) {
           dispatch(pushFlow(response.flow))
           dispatch(setAlert({
@@ -336,12 +327,8 @@ export const EditFlowDialog: React.FC = () => {
     const s3Filename = `flows/${String(Date.now())}/${localFilename}`
     try {
       // upload file
-      const accessLevel = "public"
-      const result = await Storage.put(s3Filename, fileObj, { level: accessLevel })
       setLocalFile(localFilename)
-
-      // set http url
-      const httpUrl = `https://${AmplifyConfig.aws_user_files_s3_bucket}.s3.${AmplifyConfig.aws_user_files_s3_bucket_region}.amazonaws.com/${accessLevel}/${result.key}`
+      const {httpUrl} = await uploadObj(s3Filename, fileObj, "public")
       setNewFlow({ ...newFlow, httpUrl: httpUrl })
     } catch (e) {
       if (axios.isAxiosError(e)) {
@@ -364,17 +351,8 @@ export const EditFlowDialog: React.FC = () => {
           setValidationErrors({ ...errors })
           return
         }
-
         setInProgress(true)
-        const apiName = 'FlowsApi';
-        const path = `/flows/${newFlow.name}`
-        const myInit = {
-          body: newFlow,
-          headers: {
-            Authorization: await getApiAuth()
-          }
-        };
-        const response: PutFlowResponse = await API.put(apiName, path, myInit)
+        const response: PutFlowResponse = await putFlow(newFlow)
         if (response.flow !== null) {
           dispatch(updateFlow(response.flow))
           if (flowName !== undefined) {
@@ -539,15 +517,8 @@ export const DeleteFlowDialog: React.FC = () => {
     if (submit) {
       try {
         setInProgress(true)
-        const apiName = 'FlowsApi';
-        const path = `/flows/${selectedFlow?.name}`
-        const myInit = {
-          headers: {
-            Authorization: await getApiAuth()
-          }
-        };
-        const response: DeleteFlowResponse = await API.del(apiName, path, myInit)
         if (selectedFlow !== null) {
+          const response = await deleteFlow(selectedFlow.name)
           dispatch(removeFlow(selectedFlow))
           dispatch(setAlert({
             persist: 5000, message: `Successfully delete flow : ${response.flowName}`,
@@ -620,3 +591,5 @@ export const DeleteFlowDialog: React.FC = () => {
     </div>
   );
 }
+export { getApiAuth };
+

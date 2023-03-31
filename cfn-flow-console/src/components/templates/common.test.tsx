@@ -13,6 +13,7 @@ import { persistStore } from 'redux-persist';
 import { PersistGate } from 'redux-persist/integration/react';
 import { store } from "../../store"
 import { CreateTemplateDialog, EditTemplateDialog, DeleteTemplateDialog } from "./common"
+import * as apiCommon from "./../../apis/common"
 import * as common from "./common"
 
 import {
@@ -42,7 +43,7 @@ describe("create template dialog", () => {
     </Provider>
   )
   it("create new template on create dialog", async () => {
-    jest.spyOn(common, "getApiAuth").mockReturnValue(
+    jest.spyOn(apiCommon, "getApiAuth").mockReturnValue(
       Promise.resolve("dummytoken")
     )
     jest.spyOn(API, "put").mockReturnValue(
@@ -89,7 +90,7 @@ describe("create template dialog", () => {
 
   it("allows upload local file and create new template with it", async () => {
 
-    jest.spyOn(common, "getApiAuth").mockReturnValue(
+    jest.spyOn(apiCommon, "getApiAuth").mockReturnValue(
       Promise.resolve("dummytoken")
     )
     jest.spyOn(API, "put").mockReturnValue(
@@ -182,7 +183,7 @@ describe("edit template dialog", () => {
   )
   it("update existing template", async () => {
 
-    jest.spyOn(common, "getApiAuth").mockReturnValue(
+    jest.spyOn(apiCommon, "getApiAuth").mockReturnValue(
       Promise.resolve("dummytoken")
     )
     jest.spyOn(API, "put").mockReturnValue(
@@ -274,7 +275,7 @@ describe("delete template dialog", () => {
   )
   it("delete existing template", async () => {
 
-    jest.spyOn(common, "getApiAuth").mockReturnValue(
+    jest.spyOn(apiCommon, "getApiAuth").mockReturnValue(
       Promise.resolve("dummytoken")
     )
     jest.spyOn(API, "del").mockReturnValue(
