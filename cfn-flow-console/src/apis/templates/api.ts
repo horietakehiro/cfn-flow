@@ -1,5 +1,4 @@
-import { API, Storage } from "aws-amplify";
-import AmplifyConfig from "../../AmplifyConfig";
+import { API } from "aws-amplify";
 import { getApiAuth } from "../common";
 
 

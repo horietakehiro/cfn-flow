@@ -1,9 +1,9 @@
-import * as React from 'react';
 import Box from '@mui/material/Box';
+import * as React from 'react';
 import { useParams } from 'react-router-dom';
 
-import { TemplatesTable } from './table';
 import { TemplateDetail } from './detail';
+import { TemplatesTable } from './table';
 
 export const TemplatesMainMenu: React.FC = () => {
 

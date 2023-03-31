@@ -2,21 +2,20 @@
  * @jest-environment jsdom
 */
 
-import React from "react";
-import '@testing-library/jest-dom'
-import { cleanup, fireEvent, render, screen } from '@testing-library/react'
+import '@testing-library/jest-dom';
+import { cleanup, render, screen } from '@testing-library/react';
 // import { render, unmountComponentAtNode, } from "react-dom";
 
 import { BrowserRouter } from "react-router-dom";
 
-import MainOutline from "./main";
 import userEvent from "@testing-library/user-event";
 import { act } from "react-dom/test-utils";
+import MainOutline from "./main";
 
-import { Provider } from "react-redux"
+import { Provider } from "react-redux";
 import { persistStore } from 'redux-persist';
 import { PersistGate } from 'redux-persist/integration/react';
-import { store } from "./../store"
+import { store } from "./../store";
 
 let persistor = persistStore(store)
 

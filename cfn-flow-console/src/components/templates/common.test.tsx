@@ -2,29 +2,28 @@
  * @jest-environment jsdom
 */
 
-import React from "react";
-import '@testing-library/jest-dom'
-import { render, screen, waitFor } from '@testing-library/react'
-import { BrowserRouter } from "react-router-dom";
+import '@testing-library/jest-dom';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from "@testing-library/user-event";
 import { act } from "react-dom/test-utils";
-import { Provider } from "react-redux"
+import { Provider } from "react-redux";
+import { BrowserRouter } from "react-router-dom";
 import { persistStore } from 'redux-persist';
 import { PersistGate } from 'redux-persist/integration/react';
-import { store } from "../../store"
-import { CreateTemplateDialog, EditTemplateDialog, DeleteTemplateDialog } from "./common"
-import * as apiCommon from "./../../apis/common"
-import * as common from "./common"
+import { store } from "../../store";
+import * as apiCommon from "./../../apis/common";
+import * as common from "./common";
+import { CreateTemplateDialog, DeleteTemplateDialog, EditTemplateDialog } from "./common";
 
 import {
-  createDialogOpen, deleteDialogOpen, editDialogOpen,
+  createDialogOpen, deleteDialogOpen, editDialogOpen
 } from '../../stores/templates/common';
 import {
   pushTemplate,
   selectTemplate
-} from "../../stores/templates/main"
+} from "../../stores/templates/main";
 
-import { Amplify, API, Auth, Storage } from "aws-amplify";
+import { Amplify, API, Storage } from "aws-amplify";
 import AmplifyConfig from './../../AmplifyConfig';
 
 Amplify.configure(AmplifyConfig);

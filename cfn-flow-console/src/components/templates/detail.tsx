@@ -1,28 +1,24 @@
-import * as React from 'react';
+import ContentCopyIcon from '@mui/icons-material/ContentCopy';
+import { Divider, IconButton, Typography } from '@mui/material';
 import Box from '@mui/material/Box';
+import Button from "@mui/material/Button";
+import Card from "@mui/material/Card";
+import CardContent from "@mui/material/CardContent";
 import Grid from '@mui/material/Grid';
 import Stack from '@mui/material/Stack';
-import Button from "@mui/material/Button"
-import RefreshIcon from '@mui/icons-material/Refresh';
-import { Divider, IconButton, Typography } from '@mui/material';
 import TextField from '@mui/material/TextField';
-import ContentCopyIcon from '@mui/icons-material/ContentCopy';
-import CardContent from "@mui/material/CardContent"
-import Card from "@mui/material/Card"
-import { 
-  DataGrid, GridColDef, GridEventListener, GridRowParams,
-  GridRowSelectionModel
- } from '@mui/x-data-grid';
-import { EditTemplateDialog, DeleteTemplateDialog } from './common';
-
-import { useAppDispatch, useAppSelector } from '../../hooks';
-import { selectTemplate, selectSelectedTemplate } from "../../stores/templates/main"
 import {
-  editDialogOpen,
-  deleteDialogOpen,
-} from '../../stores/templates/common';
-import { API } from 'aws-amplify';
+  DataGrid, GridColDef
+} from '@mui/x-data-grid';
+import * as React from 'react';
+import { DeleteTemplateDialog, EditTemplateDialog } from './common';
+
 import { getTemplate, getTemplateSummary } from '../../apis/templates/api';
+import { useAppDispatch, useAppSelector } from '../../hooks';
+import {
+  deleteDialogOpen, editDialogOpen
+} from '../../stores/templates/common';
+import { selectSelectedTemplate, selectTemplate } from "../../stores/templates/main";
 
 
 const parametersCols: GridColDef[] = [

@@ -1,8 +1,8 @@
-import { Amplify, Auth, API } from 'aws-amplify';
 import {
-  withAuthenticator, WithAuthenticatorOptions, WithAuthenticatorProps,
+  withAuthenticator, WithAuthenticatorOptions, WithAuthenticatorProps
 } from '@aws-amplify/ui-react';
 import '@aws-amplify/ui-react/styles.css';
+import { Amplify } from 'aws-amplify';
 
 import MainOutline from './components/main';
 

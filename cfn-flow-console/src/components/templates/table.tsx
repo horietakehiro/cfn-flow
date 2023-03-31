@@ -1,29 +1,24 @@
-import * as React from 'react';
-import Box from '@mui/material/Box';
-import Grid from '@mui/material/Grid';
-import Stack from '@mui/material/Stack';
-import Button from "@mui/material/Button"
 import RefreshIcon from '@mui/icons-material/Refresh';
 import { Divider, Typography } from '@mui/material';
-import { 
-  DataGrid, GridColDef, GridEventListener, GridRowParams,
-  GridRowSelectionModel
- } from '@mui/x-data-grid';
+import Box from '@mui/material/Box';
+import Button from "@mui/material/Button";
+import Grid from '@mui/material/Grid';
+import Stack from '@mui/material/Stack';
+import {
+  DataGrid, GridColDef, GridEventListener, GridRowParams
+} from '@mui/x-data-grid';
+import * as React from 'react';
 import { Link } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '../../hooks';
 import {
-  selectTemplate, selectSelectedTemplate,
-  createTemplates, selectTemplates,
-} from "../../stores/templates/main"
-import {
-  createDialogOpen,
-  editDialogOpen,
-  deleteDialogOpen,
+  createDialogOpen, deleteDialogOpen, editDialogOpen
 } from '../../stores/templates/common';
+import {
+  createTemplates, selectSelectedTemplate, selectTemplate, selectTemplates
+} from "../../stores/templates/main";
 
-import { CreateTemplateDialog, EditTemplateDialog, DeleteTemplateDialog } from './common';
+import { CreateTemplateDialog, DeleteTemplateDialog, EditTemplateDialog } from './common';
 
-import { API, Auth } from "aws-amplify"
 import { getTemplates } from '../../apis/templates/api';
 
 

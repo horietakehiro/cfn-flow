@@ -1,31 +1,29 @@
-import * as React from 'react';
-import { styled, Theme, CSSObject } from '@mui/material/styles';
-import Box from '@mui/material/Box';
-import MuiDrawer from '@mui/material/Drawer';
-import CssBaseline from '@mui/material/CssBaseline';
-import List from '@mui/material/List';
-import Typography from '@mui/material/Typography';
-import Divider from '@mui/material/Divider';
-import IconButton from '@mui/material/IconButton';
-import MenuIcon from '@mui/icons-material/Menu';
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
+import LogoutIcon from '@mui/icons-material/Logout';
+import MenuIcon from '@mui/icons-material/Menu';
+import NavigateNextIcon from '@mui/icons-material/NavigateNext';
+import { Breadcrumbs, Link, LinkProps, ListItemIcon, Stack } from '@mui/material';
+import Box from '@mui/material/Box';
+import CssBaseline from '@mui/material/CssBaseline';
+import Divider from '@mui/material/Divider';
+import MuiDrawer from '@mui/material/Drawer';
+import IconButton from '@mui/material/IconButton';
+import List from '@mui/material/List';
 import ListItem from '@mui/material/ListItem';
 import ListItemButton from '@mui/material/ListItemButton';
 import ListItemText from '@mui/material/ListItemText';
-import { ListItemIcon, Stack } from '@mui/material';
-import { Routes, Route, NavLink, useLocation, Link as RouterLink, BrowserRouter } from 'react-router-dom';
-import { Breadcrumbs, Link, LinkProps } from '@mui/material'
-import NavigateNextIcon from '@mui/icons-material/NavigateNext';
-import LogoutIcon from '@mui/icons-material/Logout';
+import { CSSObject, styled, Theme } from '@mui/material/styles';
+import Typography from '@mui/material/Typography';
+import { Link as RouterLink, NavLink, Route, Routes, useLocation } from 'react-router-dom';
 
 import {
-  WithAuthenticatorProps,
+  WithAuthenticatorProps
 } from '@aws-amplify/ui-react';
 
 import { TemplatesMainMenu } from './templates/main';
 
 import { useAppDispatch, useAppSelector } from '../hooks';
-import { invert, selectLeftDrawer } from "../stores/main"
+import { invert, selectLeftDrawer } from "../stores/main";
 import { FlowsMainMenu } from './flows/main';
 const drawerWidth = 240;
 

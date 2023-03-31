@@ -1,9 +1,9 @@
-import * as React from 'react';
 import Box from '@mui/material/Box';
+import * as React from 'react';
 import { useParams } from 'react-router-dom';
 
-import { FlowsTable } from './table';
 import FlowDetail from './detail';
+import { FlowsTable } from './table';
 // import { FlowDetail } from './detail';
 
 export const FlowsMainMenu: React.FC = () => {

@@ -8,5 +8,8 @@
     "python.analysis.autoImportCompletions": true,
     "python.analysis.extraPaths": [
         "${workspaceFolder}/cfn-flow-api/python/layers/utils"
-    ]
+    ],
+    "editor.codeActionsOnSave": {
+        "source.organizeImports": true,
+    }
 }

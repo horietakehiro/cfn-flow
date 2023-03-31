@@ -1,43 +1,36 @@
-import * as React from 'react';
-import Stack from '@mui/material/Stack';
-import Button from "@mui/material/Button"
+import FileUploadIcon from '@mui/icons-material/FileUpload';
 import { Box, CircularProgress, Typography } from '@mui/material';
-import TextField from '@mui/material/TextField';
+import Button from "@mui/material/Button";
 import Dialog from '@mui/material/Dialog';
 import DialogActions from '@mui/material/DialogActions';
 import DialogContent from '@mui/material/DialogContent';
-import DialogContentText from "@mui/material/DialogContentText"
+import DialogContentText from "@mui/material/DialogContentText";
 import DialogTitle from '@mui/material/DialogTitle';
+import FormControl from '@mui/material/FormControl';
+import FormControlLabel from '@mui/material/FormControlLabel';
+import FormLabel from '@mui/material/FormLabel';
 import Radio from '@mui/material/Radio';
 import RadioGroup from '@mui/material/RadioGroup';
-import FormControlLabel from '@mui/material/FormControlLabel';
-import FormControl from '@mui/material/FormControl';
-import FormLabel from '@mui/material/FormLabel';
-import FileUploadIcon from '@mui/icons-material/FileUpload';
+import Stack from '@mui/material/Stack';
+import TextField from '@mui/material/TextField';
+import * as React from 'react';
 
 import { useAppDispatch, useAppSelector } from '../../hooks';
-import { selectTemplate, selectSelectedTemplate, updateTemplate } from "../../stores/templates/main"
 import {
-  setAlert,
-} from "./../../stores/common"
-import {
-  createDialogClose, selectCreateDialog,
-  editDialogClose, selectEditDialog,
-  deleteDialogClose, selectDeleteDialog,
+  createDialogClose, deleteDialogClose, editDialogClose, selectCreateDialog, selectDeleteDialog, selectEditDialog
 } from '../../stores/templates/common';
-import {
-  pushTemplate, removeTemplate, selectTemplates,
-} from "../../stores/templates/main"
-import { Storage, API, Auth } from "aws-amplify"
+import { pushTemplate, removeTemplate, selectSelectedTemplate, selectTemplate, selectTemplates, updateTemplate } from "../../stores/templates/main";
 import {
   AlertSnackbar
-} from "../common"
+} from "../common";
+import {
+  setAlert
+} from "./../../stores/common";
 
-import AmplifyConfig from '../../AmplifyConfig';
+import axios from 'axios';
 import { useParams } from 'react-router-dom';
-import axios, { Axios } from 'axios';
-import { deleteTemplate, putTemplate } from '../../apis/templates/api';
 import { uploadObj } from '../../apis/common';
+import { deleteTemplate, putTemplate } from '../../apis/templates/api';
 
 type ValidationErrors = {
   [key in "name" | "httpUrl"]: string | null

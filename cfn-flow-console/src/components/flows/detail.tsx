@@ -1,52 +1,31 @@
-import * as React from 'react';
-import { styled, Theme, CSSObject, alpha } from '@mui/material/styles';
-import Box from '@mui/material/Box';
-import MuiDrawer from '@mui/material/Drawer';
-import CssBaseline from '@mui/material/CssBaseline';
-import List from '@mui/material/List';
-import Typography from '@mui/material/Typography';
-import Divider from '@mui/material/Divider';
-import IconButton from '@mui/material/IconButton';
-import MenuIcon from '@mui/icons-material/Menu';
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
+import MenuIcon from '@mui/icons-material/Menu';
+import { ListItemIcon, Stack, TextField } from '@mui/material';
+import Button from "@mui/material/Button";
+import CssBaseline from '@mui/material/CssBaseline';
+import Divider from '@mui/material/Divider';
+import MuiDrawer from '@mui/material/Drawer';
+import Grid from '@mui/material/Grid';
+import IconButton from '@mui/material/IconButton';
+import List from '@mui/material/List';
 import ListItem from '@mui/material/ListItem';
 import ListItemButton from '@mui/material/ListItemButton';
-import ListItemText from '@mui/material/ListItemText';
-import { Container, ListItemIcon, Stack, TextField } from '@mui/material';
-import { Routes, Route, NavLink, useLocation, Link as RouterLink, BrowserRouter } from 'react-router-dom';
-import { Breadcrumbs, Link, LinkProps } from '@mui/material'
-import NavigateNextIcon from '@mui/icons-material/NavigateNext';
-import LogoutIcon from '@mui/icons-material/Logout';
-import Grid from '@mui/material/Grid';
-import Button from "@mui/material/Button"
+import { alpha, CSSObject, styled, Theme } from '@mui/material/styles';
+import Typography from '@mui/material/Typography';
+import * as React from 'react';
 import FlowCanvas from './flow';
-import ReactFlow, { Background, BackgroundVariant, NodeTypes, ReactFlowInstance } from 'reactflow';
-import InputBase from '@mui/material/InputBase';
+// import ReactFlow, { Background, BackgroundVariant,  ReactFlowInstance } from 'reactflow';
 import SearchIcon from '@mui/icons-material/Search';
+import InputBase from '@mui/material/InputBase';
 
-import {ReactComponent as TemplateSVG} from "../../images/Res_AWS-CloudFormation_Template_48_Light.svg"
+import { ReactComponent as TemplateSVG } from "../../images/Res_AWS-CloudFormation_Template_48_Light.svg";
 
 // import 'reactflow/dist/style.css';
-import { useAppDispatch, useAppSelector } from '../../hooks';
-import { createTemplates, selectTemplates } from '../../stores/templates/main';
-import { API } from "aws-amplify"
-import { getApiAuth } from './common';
 import axios from 'axios';
-import {
-  ReactFlowProvider,
-  addEdge,
-  useNodesState,
-  useEdgesState,
-  Controls,
-} from 'reactflow';
-import 'reactflow/dist/style.css';
-import { selectSelectedFlow } from '../../stores/flows/main';
 import { getTemplates } from '../../apis/templates/api';
-const initialNodes = [
-  { id: '1', position: { x: 0, y: 0 }, data: { label: '1' } },
-  { id: '2', position: { x: 0, y: 100 }, data: { label: '2' } },
-];
-const initialEdges = [{ id: 'e1-2', source: '1', target: '2' }];
+import { useAppDispatch, useAppSelector } from '../../hooks';
+import { selectSelectedFlow } from '../../stores/flows/main';
+import { createTemplates, selectTemplates } from '../../stores/templates/main';
 const drawerWidth = 240;
 
 const openedMixin = (theme: Theme): CSSObject => ({
@@ -159,8 +138,7 @@ const StyledInputBase = styled(InputBase)(({ theme }) => ({
   },
 }));
 
-let id = 0;
-const getId = () => `dndnode_${id++}`;
+
 
 export default function FlowDetail() {
 
@@ -168,19 +146,6 @@ export default function FlowDetail() {
   const selectedFlow = useAppSelector(selectSelectedFlow)
   const templates = useAppSelector(selectTemplates)
   const [searchWord, setSearchWord] = React.useState<string>("")
-  const initialNodes = [
-    {
-      id: '1',
-      type: 'input',
-      data: { label: 'input node' },
-      position: { x: 250, y: 5 },
-    },
-  ];
-  const reactFlowWrapper = React.useRef<HTMLDivElement>(null);
-  const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
-  const [edges, setEdges, onEdgesChange] = useEdgesState([]);
-  const [reactFlowInstance, setReactFlowInstance] = React.useState<ReactFlowInstance | null>(null);
-
 
   const [open, setOpen] = React.useState(true)
 
@@ -210,43 +175,7 @@ export default function FlowDetail() {
       event.dataTransfer.effectAllowed = 'move';
     }
   };
-  const onDragOver = React.useCallback((event: React.DragEvent<HTMLDivElement>) => {
-    event.preventDefault();
-    event.dataTransfer.dropEffect = 'move';
-  }, []);
 
-  const onDrop = React.useCallback(
-    (event: React.DragEvent<HTMLDivElement>) => {
-      event.preventDefault();
-
-      if (reactFlowWrapper.current !== null) {
-        const reactFlowBounds = reactFlowWrapper.current.getBoundingClientRect();
-        const type = event.dataTransfer.getData('application/reactflow');
-
-        // check if the dropped element is valid
-        if (typeof type === 'undefined' || !type) {
-          return;
-        }
-
-        if (reactFlowInstance !== null) {
-          const position = reactFlowInstance.project({
-            x: event.clientX - reactFlowBounds.left,
-            y: event.clientY - reactFlowBounds.top,
-          });
-          const newNode = {
-            id: getId(),
-            type,
-            position,
-            data: { label: `${type} node` },
-          };
-
-          setNodes((nds) => nds.concat(newNode));
-        }
-      }
-
-    },
-    [reactFlowInstance]
-  );
   return (
     <Stack spacing={2} direction={"column"}>
       <Stack direction={"row"}>
@@ -357,23 +286,7 @@ export default function FlowDetail() {
           </Drawer>
         </Grid>
         <Grid item sx={{ height: "80vh" }} xs={true}>
-          <ReactFlowProvider>
-            <div className="reactflow-wrapper" ref={reactFlowWrapper} style={{ height: "80vh" }}>
-              <ReactFlow
-                fitView
-                nodes={nodes}
-                edges={edges}
-                onNodesChange={onNodesChange}
-                onEdgesChange={onEdgesChange}
-                // onConnect={onConnect}
-                onInit={setReactFlowInstance}
-                onDrop={onDrop}
-                onDragOver={onDragOver}
-              >
-                <Background variant={BackgroundVariant.Cross} />
-              </ReactFlow>
-            </div>
-          </ReactFlowProvider>
+          <FlowCanvas/>
         </Grid>
       </Grid>
 
