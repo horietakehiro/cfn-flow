@@ -1,0 +1,119 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: ---
+
+Parameters: 
+  SYSTEM:
+    Description: system name
+    Type: String
+    Default: cfn-flow-test
+
+  ENV:
+    Description:  env type
+    Type: String
+    Default: dev
+    AllowedValues:
+      - dev
+      - prod
+  VpcId:
+    Type: AWS::EC2::VPC::Id
+
+  PublicSubnetIds:
+    Type: List<AWS::EC2::Subnet::Id>
+
+  AmiId:
+    Type: AWS::EC2::Image::Id
+
+Resources: 
+
+  AlbSg:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: !Sub ${SYSTEM}-${ENV}-alb-sg
+      GroupDescription: sg for alb
+      VpcId: !Ref VpcId
+      SecurityGroupIngress:
+        - 
+          CidrIp: 0.0.0.0/0
+          Description: allow https from all
+          FromPort: 443
+          IpProtocol: tcp
+          ToPort: 443
+      SecurityGroupEgress:
+        - 
+          CidrIp: 0.0.0.0/0
+          Description: allow all
+          IpProtocol: -1
+
+
+  InstanceSg:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: !Sub ${SYSTEM}-${ENV}-instance-sg
+      GroupDescription: sg for ec2 instances
+      VpcId: !Ref VpcId
+      SecurityGroupIngress:
+        - 
+          Description: allow http from alb
+          FromPort: 80
+          IpProtocol: tcp
+          SourceSecurityGroupId: !Ref AlbSg
+          ToPort: 80
+      SecurityGroupEgress:
+        - 
+          CidrIp: 0.0.0.0/0
+          Description: allow all
+          IpProtocol: -1
+
+  InstanceRole:
+    Type: AWS::IAM::Role
+    Properties: 
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - ec2.amazonaws.com
+            Action:
+              - 'sts:AssumeRole'
+      ManagedPolicyArns: 
+        - arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
+      Path: /
+      RoleName: !Sub ${SYSTEM}-${ENV}-instance-role
+  
+  InstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Path: /
+      Roles:
+        - !Ref InstanceRole
+
+  LaunchTemplate:
+    Type: AWS::EC2::LaunchTemplate
+    Properties: 
+      LaunchTemplateData: 
+        BlockDeviceMappings: 
+          - 
+            DeviceName: /dev/xvda
+            Ebs: 
+              VolumeSize: 20
+              VolumeType: gp2
+        IamInstanceProfile: 
+          Arn: !Ref InstanceProfile
+        ImageId: !Ref AmiId
+        InstanceType: t2.small
+        SecurityGroupIds: 
+          - !Ref InstanceSg
+        UserData:
+          Fn::Base64: |
+            #!/bin/bash
+            systemctl restart amazon-ssm-agent
+            systemctl enable amazon-ssm-agent
+            amazon-linux-extras install -y nginx1
+            systemctl restart nginx
+            systemctl enable nginx
+
+      LaunchTemplateName: !Sub ${SYSTEM}-${ENV}-instance-lt
+
+
+# Outputs:

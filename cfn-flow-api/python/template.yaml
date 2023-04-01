@@ -277,7 +277,7 @@ Resources:
         PutApi:
           Type: Api
           Properties:
-            Method: put
+            Method: post
             Path: /stacks/{regionName}/{stackName}
             RestApiId:  !Ref BackendApi
       FunctionName: !Sub ${SolutionName}-${EnvName}-stacks-post-template-function

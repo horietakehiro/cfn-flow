@@ -3,7 +3,7 @@
 */
 
 import '@testing-library/jest-dom';
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from "@testing-library/user-event";
 import { act } from "react-dom/test-utils";
 import { Provider } from "react-redux";
@@ -15,6 +15,7 @@ import * as apiCommon from "./../../apis/common";
 import * as common from "./common";
 import { CreateTemplateDialog, DeleteTemplateDialog, EditTemplateDialog } from "./common";
 
+import * as stacksApi from "../../apis/stacks/apis";
 import {
   createDialogOpen, deleteDialogOpen, editDialogOpen
 } from '../../stores/templates/common';
@@ -137,6 +138,81 @@ describe("create template dialog", () => {
     expect(
       store.getState().templates.templates.filter((t) => {
         return t.name === "local-template"
+      }).length
+    ).toBe(1)
+
+  })
+
+
+  it("allows import template from existing stack and create new template with it", async () => {
+
+    jest.spyOn(apiCommon, "getApiAuth").mockReturnValue(
+      Promise.resolve("dummytoken")
+    )
+    jest.spyOn(stacksApi, "getStacks").mockReturnValue(
+      Promise.resolve(
+        {
+          error: null, stacks: [{stackName: "test-stack", regionName: "ap-northeast-1"}]
+        }
+      )
+    )
+    jest.spyOn(API, "put").mockReturnValue(
+      Promise.resolve(
+        {
+          error: null,
+          template: {
+            name: "import-template",
+            description: "test description",
+            httpUrl: `https://${AmplifyConfig.aws_user_files_s3_bucket}.s3.${AmplifyConfig.aws_user_files_s3_bucket_region}.amazonaws.com/public/local-template.json`,
+            s3Url: `s3://${AmplifyConfig.aws_user_files_s3_bucket}/test-template.json`,
+            createAt: "2023-10-10T00:00:00+0900",
+            updateAt: "-"
+          }
+        }
+      )
+    )
+    jest.spyOn(API, "post").mockReturnValue(
+      Promise.resolve({
+        error: null, httpUrl: `https://${AmplifyConfig.aws_user_files_s3_bucket}.s3.${AmplifyConfig.aws_user_files_s3_bucket_region}.amazonaws.com/public/local-template.json`
+      })
+    )
+
+    act(() => {
+      store.dispatch(createDialogOpen())
+      render(WrappedCreateDialog)
+    })
+    expect(screen.getByRole("dialog")).toHaveTextContent("New")
+
+    await act(async () => {
+      userEvent.type(screen.getByTestId("template-name"), "import-template")
+      userEvent.type(screen.getByTestId("description"), "test description")
+      userEvent.click(screen.getByTestId("import-stack-template"))
+    })
+    await waitFor(() => expect(screen.getByText(/IMPORT/).closest("button")).toBeDisabled())
+    await act(async () => {
+      fireEvent.change(screen.getByTestId("region-name-selection", ), {target: {value: "ap-northeast-1"}})
+    })
+    await waitFor(() => expect(screen.getByText(/IMPORT/).closest("button")).toBeDisabled(), {
+      interval: 1000
+    })
+    await act(async () => {
+      fireEvent.change(screen.getByTestId("stack-name-selection", ), {target: {value: "test-stack"}})
+    })
+
+    // await waitFor(() => expect(screen.getByRole("listbox")).toHaveTextContent("ap-northeast-1"))
+    await waitFor(() => expect(screen.getByText(/IMPORT/).closest("button")).not.toBeDisabled())
+    await act(async () => {
+      userEvent.click(screen.getByTestId("import-button"))
+    })
+    await waitFor(() => expect(screen.getByTestId("template-name")).not.toBe(""))
+    await act(async () => {
+      userEvent.click(screen.getByTestId("create-button"))
+    })
+
+    expect(store.getState().createTemplateDialog.opened).toBe(false)
+    expect(
+      store.getState().templates.templates.filter((t) => {
+        return t.name === "import-template"
       }).length
     ).toBe(1)
 

@@ -30,7 +30,7 @@ import {
 import axios from 'axios';
 import { useParams } from 'react-router-dom';
 import { getRegions, uploadObj } from '../../apis/common';
-import { getStacks } from '../../apis/stacks/apis';
+import { getStacks, postStackTemplate } from '../../apis/stacks/apis';
 import { deleteTemplate, putTemplate } from '../../apis/templates/api';
 
 type ValidationErrors = {
@@ -108,9 +108,16 @@ export const CreateTemplateDialog: React.FC = () => {
     const region = event.target.value
     setRegion(region)
     const response: GetStacksResponse = await getStacks(region)
+    console.log(response)
     if (response.stacks !== null) {
       setStacks(response.stacks)
     }
+  }
+
+  const onStackChange = async (event: SelectChangeEvent<string>) => {
+    const stackName = event.target.value
+    console.log(stackName)
+    setStack({stackName: stackName, regionName: region !== null ? region : ""})
   }
 
   // React.useEffect(() => {
@@ -134,7 +141,7 @@ export const CreateTemplateDialog: React.FC = () => {
         setInProgress(true)
         const response = await putTemplate(newTemplate)
         if (response.template !== null) {
-          console.log(response.template)
+          // console.log(response.template)
           dispatch(pushTemplate(response.template))
           dispatch(setAlert({
             persist: 5000, message: `Successfully create template : ${response.template.name}`,
@@ -160,6 +167,28 @@ export const CreateTemplateDialog: React.FC = () => {
     setValidationErrors({ name: null, httpUrl: null })
     setNewTemplate({ name: "", description: "", httpUrl: "" })
     dispatch(createDialogClose())
+  }
+
+  const onImport = async () => {
+    if (region !== null && stack !== null) {
+      try {
+        setInProgress(true)
+        const response = await postStackTemplate(stack)
+        console.log(response)
+        setNewTemplate({...newTemplate, httpUrl: response.httpUrl})
+        setValidationErrors({...validationErrors, httpUrl: null})
+      } catch (e) {
+        if (axios.isAxiosError(e)) {
+          const response:PostStackTemplateResponse = e.response?.data
+          console.log(response)
+          setValidationErrors({...validationErrors, httpUrl: response.error})
+        }
+      } finally {
+        setInProgress(false)
+        setTemplateSourceType(TemplateSourceType.S3)
+      }
+      
+    }
   }
 
 
@@ -266,41 +295,57 @@ export const CreateTemplateDialog: React.FC = () => {
                   <FormControl fullWidth>
                     <InputLabel id="region-name-input">Region</InputLabel>
                     <Select
+                      inputProps={{
+                        "data-testid": "region-name-selection"
+                      }}
+                      // data-testid="region-name-selections"
                       labelId="region-name"
                       id="region-name"
                       value={region !== null ? region : ""}
                       label="Region"
-                      onChange={(event) => { onRegionChange(event) }}
+                      onChange={(event) => {
+                        // console.log(event)
+                        onRegionChange(event)
+                      }}
                     >
                       {getRegions().map((r, i) => {
-                        return <MenuItem key={r} value={r}>{r}</MenuItem>
+                        return <MenuItem data-testid={`${r}`} key={r} value={r}>{r}</MenuItem>
                       })}
                     </Select>
                   </FormControl>
                 </Grid>
-                <Grid item xs={6}>
+                <Grid item xs={7}>
                   <FormControl fullWidth>
                     <InputLabel id="stack-name-input">Stack</InputLabel>
                     <Select
+                      inputProps={{
+                        "data-testid": "stack-name-selection"
+                      }}
+                      // data-testid="stack-name-selection"
                       labelId="stack-name"
                       id="stack-name"
                       // value={region !== null ? region : getRegions()[0]}
                       value={stack !== null ? stack.stackName : ""}
                       label="Stack"
-                      onChange={(event) => {
-                        setStack({
-                          stackName: event.target.value, regionName: region !== null ? region : ""
-                        })
-                      }}
+                      onChange={(event) => {onStackChange(event)}}
                     >
+                      {/* <MenuItem key={`test-stack-999`} value={"test-stack"}>{"test-stack"}</MenuItem> */}
                       {stacks.map((s, i) => {
+                        console.log(s)
                         return <MenuItem key={`${s.stackName}-${i}`} value={s.stackName}>{s.stackName}</MenuItem>
                       })}
                     </Select>
                   </FormControl>
                 </Grid>
-                <Grid item xs={3}>
-                  IMPORT BUTTON
+                <Grid item xs={2}>
+                  <Button
+                    data-testid="import-button"
+                    onClick={() => onImport()}
+                    variant={"contained"}
+                    disabled={region === null || stack === null}
+                  >
+                    IMPORT
+                  </Button>
                 </Grid>
               </Grid>
             </Stack>
@@ -355,11 +400,25 @@ export const EditTemplateDialog: React.FC = () => {
 
   enum TemplateSourceType {
     S3 = 1,
-    Local = 2
+    Local = 2,
+    Import = 3,
   }
   const [templateSourceType, setTemplateSourceType] = React.useState(TemplateSourceType.S3)
   const [localFile, setLocalFile] = React.useState("")
+  const [region, setRegion] = React.useState<string | null>(null)
+  const [stacks, setStacks] = React.useState<Stack[]>([])
+  const [stack, setStack] = React.useState<Stack | null>(null)
 
+  const onRegionChange = async (event: SelectChangeEvent<string>) => {
+    const region = event.target.value
+    setRegion(region)
+    const response: GetStacksResponse = await getStacks(region)
+    if (response.stacks !== null) {
+      setStacks(response.stacks)
+    }
+  }
+
+  
   React.useEffect(() => {
     if (selectedTemplate !== null) {
       setNewTemplate({
@@ -443,10 +502,32 @@ export const EditTemplateDialog: React.FC = () => {
     dispatch(editDialogClose())
   }
 
+  
+  const onImport = async () => {
+    if (region !== null && stack !== null) {
+      try {
+        setInProgress(true)
+        const response = await postStackTemplate(stack)
+        console.log(response)
+        setNewTemplate({...newTemplate, httpUrl: response.httpUrl})
+        setValidationErrors({...validationErrors, httpUrl: null})
+      } catch (e) {
+        if (axios.isAxiosError(e)) {
+          const response:PostStackTemplateResponse = e.response?.data
+          console.log(response)
+          setValidationErrors({...validationErrors, httpUrl: response.error})
+        }
+      } finally {
+        setInProgress(false)
+        setTemplateSourceType(TemplateSourceType.S3)
+      }
+      
+    }
+  }
   return (
     <div>
       <AlertSnackbar />
-      <Dialog open={open} onClose={() => onSubmit(false)}>
+      <Dialog open={open} onClose={() => onSubmit(false)} fullWidth maxWidth={"md"}>
         <DialogTitle>Edit {selectedTemplate?.name}</DialogTitle>
         <DialogContent sx={{ margin: "100" }}>
           <TextField
@@ -497,10 +578,18 @@ export const EditTemplateDialog: React.FC = () => {
                 label="Upload local file"
                 checked={templateSourceType === TemplateSourceType.Local}
               />
+            <FormControlLabel
+                data-testid="import-stack-template"
+                value={TemplateSourceType.Import}
+                control={<Radio />}
+                label="Import existing stack template"
+                checked={templateSourceType === TemplateSourceType.Import}
+              />
+
             </RadioGroup>
           </FormControl>
-          {templateSourceType === TemplateSourceType.S3
-            ?
+
+          {templateSourceType === TemplateSourceType.S3 &&
             <Stack direction={"row"} spacing={2}>
               <TextField
                 autoFocus
@@ -518,7 +607,8 @@ export const EditTemplateDialog: React.FC = () => {
                 inputProps={{ "data-testid": "template-url" }}
               />
             </Stack>
-            :
+            }
+            {templateSourceType === TemplateSourceType.Local &&
             <Stack direction={"row"} spacing={2}>
               <Stack direction={"row"} spacing={2}>
                 <Button variant="outlined" component="label" startIcon={<FileUploadIcon />}>
@@ -528,6 +618,61 @@ export const EditTemplateDialog: React.FC = () => {
                 <Typography color={localFile.startsWith("Failed to") ? "red" : "black"}>{localFile}</Typography>
               </Stack>
             </Stack>
+          }
+          {templateSourceType === TemplateSourceType.Import &&
+            <Stack direction={"row"} spacing={2}>
+              <Grid container spacing={2}>
+                <Grid item xs={3}>
+                  <FormControl fullWidth>
+                    <InputLabel id="region-name-input">Region</InputLabel>
+                    <Select
+                      labelId="region-name"
+                      id="region-name"
+                      value={region !== null ? region : ""}
+                      label="Region"
+                      onChange={(event) => { onRegionChange(event) }}
+                    >
+                      {getRegions().map((r, i) => {
+                        return <MenuItem key={r} value={r}>{r}</MenuItem>
+                      })}
+                    </Select>
+                  </FormControl>
+                </Grid>
+                <Grid item xs={7}>
+                  <FormControl fullWidth>
+                    <InputLabel id="stack-name-input">Stack</InputLabel>
+                    <Select
+                      labelId="stack-name"
+                      id="stack-name"
+                      // value={region !== null ? region : getRegions()[0]}
+                      value={stack !== null ? stack.stackName : ""}
+                      label="Stack"
+                      onChange={(event) => {
+                        setStack({
+                          stackName: event.target.value, regionName: region !== null ? region : ""
+                        })
+                      }}
+                    >
+                      {stacks.map((s, i) => {
+                        return <MenuItem key={`${s.stackName}-${i}`} value={s.stackName}>{s.stackName}</MenuItem>
+                      })}
+                    </Select>
+                  </FormControl>
+                </Grid>
+                <Grid item xs={2}>
+                  <Button
+                    data-testid="import-button"
+                    onClick={() => onImport()}
+                    variant={"contained"}
+                    disabled={region === null || stack === null}
+                  >
+                    IMPORT
+                  </Button>
+
+                </Grid>
+              </Grid>
+            </Stack>
+
           }
         </DialogContent>
         <DialogActions>
