@@ -109,12 +109,12 @@ Resources:
     Properties:
       CodeUri: ./functions/templates/
       Events:
-        CatchAll:
-          Type: Api
-          Properties:
-            Path: "/{proxy+}"
-            Method: ANY      
-            RestApiId:  !Ref BackendApi
+        # CatchAll:
+        #   Type: Api
+        #   Properties:
+        #     Path: "/{proxy+}"
+        #     Method: ANY      
+        #     RestApiId:  !Ref BackendApi
         GetApi:
           Type: Api
           Properties:

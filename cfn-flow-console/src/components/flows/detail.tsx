@@ -10,8 +10,8 @@ import IconButton from '@mui/material/IconButton';
 import List from '@mui/material/List';
 import ListItem from '@mui/material/ListItem';
 import ListItemButton from '@mui/material/ListItemButton';
-import { alpha, CSSObject, styled, Theme } from '@mui/material/styles';
 import Typography from '@mui/material/Typography';
+import { CSSObject, Theme, alpha, styled } from '@mui/material/styles';
 import * as React from 'react';
 import FlowCanvas from './flow';
 // import ReactFlow, { Background, BackgroundVariant,  ReactFlowInstance } from 'reactflow';
@@ -166,7 +166,7 @@ export default function FlowDetail() {
       }
     })()
 
-  })
+  }, [])
 
 
   const onDragStart = (event: React.DragEvent<HTMLLIElement>, nodeType: string) => {
