@@ -1,8 +1,9 @@
+
 type UploadObjResponse = {
     httpUrl: string
     key: string
 }
-type TemplateSummarySection = "Parameters"|"Resources"|"Outputs"
+type TemplateSummarySection = "Parameters" | "Resources" | "Outputs"
 type Template = {
     name: string,
     description: string | null,
@@ -31,7 +32,7 @@ type DeleteTemplateResponse = {
 }
 type GetTemplateResponse = {
     error: string | null
-    template: Template | null    
+    template: Template | null
 }
 
 type ParameterSummary = {
@@ -119,3 +120,21 @@ type PostStackTemplateResponse = {
     error: string | null
     httpUrl: string | null
 }
+
+type NodeType = "stackNode" | "StackSetNode"
+// type Node = import("reactflow").Node
+type BaseCUstomNodeData = {
+    nodeName: string
+    toolbarVisible: boolean
+    nodeDeletable: boolean
+}
+
+type StartNodeData = BaseCUstomNodeData & {}
+type StartNode = import("reactflow").Node<StartNodeData>
+type StackNodeData = BaseCUstomNodeData & {
+    regionName: string
+    templateName: string
+    parameters: (ParameterSummary&{ visible: boolean })[] 
+    outputs: OutputSummary[] & { visible: boolean }[]
+}
+type StackNode = import("reactflow").Node<StackNodeData>

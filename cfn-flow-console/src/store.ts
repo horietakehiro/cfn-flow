@@ -3,7 +3,7 @@ import { persistReducer } from "redux-persist";
 import storage from "redux-persist/lib/storage";
 
 import { AlertReducer } from "./stores/common";
-import { FlowsReducer, SelectFlowReducer } from "./stores/flows/main";
+import { FlowsReducer, NodeEditDrawerReducer, SelectFlowReducer, SelectNodeReducer } from "./stores/flows/main";
 import leftDrawerReducer from "./stores/main";
 import { CreateTemplateDialogReducer, DeleteTemplateDialogReducer, EditTemplateDialogReducer } from "./stores/templates/common";
 import { SelectTemplateReducer, TemplatesReducer } from "./stores/templates/main";
@@ -18,6 +18,8 @@ const reducers = combineReducers({
     selectedFlow: SelectFlowReducer,
     flows: FlowsReducer,
     alert: AlertReducer,
+    nodeEditDrawer: NodeEditDrawerReducer,
+    selectedNode: SelectNodeReducer,
 })
 
 const persistConfig = {
@@ -29,7 +31,9 @@ const persistConfig = {
         "createTemplateDialog",
         "editTemplateDialog",
         "deleteTemplateDialog",
-        "alert"
+        "alert",
+        "nodeEditDrawer",
+        "selectedNode",
     ]
     // black
 }

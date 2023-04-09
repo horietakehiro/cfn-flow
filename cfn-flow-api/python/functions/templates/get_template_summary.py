@@ -1,16 +1,13 @@
-from logging import INFO
 import os
 import typing
-import utils
-import boto3
-from boto3.dynamodb.conditions import Key
-from typing import TypedDict, Optional, Dict, Any
+from logging import INFO
+from typing import Any, Dict, Optional, TypedDict
 
-from templates_common import (
-    TEMPLATE_SUMMARY_TABLE_NAME,
-    Response, TemplateSummary,
-    GET_CORS_HEADERS,
-)
+import boto3
+import utils
+from boto3.dynamodb.conditions import Key
+from templates_common import (GET_CORS_HEADERS, TEMPLATE_SUMMARY_TABLE_NAME,
+                              Response, TemplateSummary)
 
 dynamo = boto3.resource("dynamodb")
 

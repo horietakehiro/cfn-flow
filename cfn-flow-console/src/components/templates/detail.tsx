@@ -101,6 +101,7 @@ export const TemplateDetail: React.FC<TemplateDetailProps> = ({ templateName }) 
           const response:GetTemplateSummaryResponse = await getTemplateSummary(
             templateName, section,
           )
+          console.log(response)
           if (response.templateSummary !== null) {
             switch (section) {
               case "Parameters":

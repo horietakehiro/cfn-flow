@@ -8,7 +8,7 @@ import boto3
 
 
 def jdumps(j:Union[Dict, List], indent=2, default=str) -> str:
-    if not isinstance(j, dict):
+    if not isinstance(j, dict) and not isinstance(j, list):
         raise TypeError
 
     return json.dumps(j, indent=indent, default=default)
