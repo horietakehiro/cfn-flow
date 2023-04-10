@@ -8,13 +8,24 @@ import ReactFlow, {
   NodeTypes,
   Position,
   ReactFlowInstance,
-  ReactFlowProvider, useEdgesState, useNodesState
+  ReactFlowProvider
 } from 'reactflow';
 import 'reactflow/dist/base.css';
 import 'reactflow/dist/style.css';
+import { shallow } from 'zustand/shallow';
 import { useAppDispatch, useAppSelector } from '../../hooks';
 import { ReactComponent as StackSVG } from "../../images/Res_AWS-CloudFormation_Stack_48_Dark.svg";
-import { openNodeEditDrawe as openNodeEditDrawer, selectNode, selectSelectedNode } from '../../stores/flows/main';
+import { RFState, openNodeEditDrawe as openNodeEditDrawer, selectNode, selectSelectedNode } from '../../stores/flows/main';
+import { useStore } from './../../stores/flows/main';
+
+const selector = (state:RFState) => ({
+  nodes: state.nodes,
+  edges: state.edges,
+  onNodesChange: state.onNodesChange,
+  onEdgesChange: state.onEdgesChange,
+  onConnect: state.onConnect,
+  setNodes: state.setNodes,
+});
 
 let id = 0;
 const getId = () => `node_${id++}`;
@@ -51,6 +62,11 @@ export const StackNode = ({ data }: NodeProps<StackNodeData>) => {
           </IconButton>
         </Stack>
       </NodeToolbar> */}
+      {data.parameters.filter((p) => p.visible).map((p, i) => {
+        return (
+          <Handle type='source' position={Position.Top} key={`${p.name}`} style={{left: 20*(i+1)}}/>
+        )
+      })}
       <Stack direction={"row"} spacing={1}>
         <StackSVG />
         <Stack direction={"column"}>
@@ -58,9 +74,9 @@ export const StackNode = ({ data }: NodeProps<StackNodeData>) => {
           <Typography variant={"body1"}>{data.nodeName}</Typography>
         </Stack>
       </Stack>
-      {data.parameters.map((p, i) => {
+      {data.outputs.filter((o) => o.visible).map((o, i) => {
         return (
-          <Handle type='target' position={Position.Bottom} key={`${p.name}`} style={{left: 20*(i+1)}}/>
+          <Handle type='target' position={Position.Bottom} key={`${o.name}`} style={{left: 20*(i+1)}}/>
         )
       })}
     </>
@@ -74,13 +90,17 @@ const nodeTypes: NodeTypes = {
 
 export default function FlowCanvas() {
 
+  const dispatch = useAppDispatch()
+  // const nodes = useAppSelector(selectNodes)
+  const selectedNode = useAppSelector(selectSelectedNode)
+
   const reactFlowWrapper = React.useRef<HTMLDivElement>(null);
-  const [nodes, setNodes, onNodesChange] = useNodesState([]);
-  const [edges, setEdges, onEdgesChange] = useEdgesState([]);
+  // const [nodes, setNodes, onNodesChange] = useNodesState([]);
+  // const [edges, setEdges, onEdgesChange] = useEdgesState([]);
+  const { nodes, edges, onNodesChange, onEdgesChange, onConnect, setNodes, } = useStore(selector, shallow);
+
   const [reactFlowInstance, setReactFlowInstance] = React.useState<ReactFlowInstance | null>(null);
 
-  const dispatch = useAppDispatch()
-  const selectedNode = useAppSelector(selectSelectedNode)
 
 
   useEffect(() => {
@@ -95,19 +115,27 @@ export default function FlowCanvas() {
           style: { border: '1px solid #777', padding: 10, background: "yellow" },
         },
       ];
+      // dispatch(createNodes(initialNodes))
       setNodes(initialNodes)
     }
   }, [])
 
   useEffect(() => {
-    setNodes((nds) => 
-      nds.map((n) => {
-        if (selectedNode !== null && n.id === selectedNode.id) {
-          return {...selectedNode}
-        }
-        return n
-      })
-    )
+    if (selectedNode === null) return
+    // dispatch(updateNode({...selectedNode}))
+    setNodes(nodes.map((n) => {
+      if (selectedNode !== null && n.id === selectedNode.id) return selectedNode
+      return n
+    }))
+    //  (nds) => 
+    //   nds.map((n) => {
+    //     if (selectedNode !== null && n.id === selectedNode.id) {
+    //       return {...selectedNode}
+    //     }
+    //     return n
+    //   })
+    // ))
+
     console.log("update node")
   }, [selectedNode])
 
@@ -151,7 +179,9 @@ export default function FlowCanvas() {
             style: { border: '1px solid #777', padding: 10, background: "white" },
           };
 
-          setNodes((nds) => nds.concat(newNode));
+          setNodes([...nodes, newNode]);
+          // dispatch(createNodes([...nodes, newNode]))
+
 
         }
       }
@@ -164,12 +194,20 @@ export default function FlowCanvas() {
   const onNodeClick = (event: React.MouseEvent, node: Node) => {
     console.log(event)
     console.log(node)
-    setNodes((nds) => 
-      nds.map((n) => {
-        n.selected = n.id === node.id
-        return n
-      })
-    )
+    // setNodes((nds) => 
+    //   nds.map((n) => {
+    //     n.selected = n.id === node.id
+    //     return n
+    //   })
+    // )
+    // const newNode = nodes.filter((n) => n.id === node.id)
+    // if (newNode.length !== 0) {
+      // dispatch(updateNode({...newNode[0], selected: true}))
+    // }
+    setNodes(nodes.map((n) => {
+      if (node.id === n.id) return {...node, selected: true}
+      return n
+    }))
     dispatch(selectNode(node))
     dispatch(openNodeEditDrawer())
   }
