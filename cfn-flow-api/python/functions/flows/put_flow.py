@@ -1,22 +1,20 @@
+import datetime as dt
 import json
 import os
 import tempfile
-from typing import Any, Dict, Optional, TypedDict, List
 import typing
-import boto3
-from boto3.dynamodb.conditions import Key
-import utils
 from logging import INFO
-import datetime as dt
-from cfn_flip import to_json
+from typing import Any, Dict, List, Optional, TypedDict
 
-from flows_common import (
-    FLOW_TABLE_NAME, BUCKET_NAME, PUT_CORS_HEADERS, Flow, Response
-)
-
+import boto3
+import utils
+from boto3.dynamodb.conditions import Key
+from flows_common import (BUCKET_NAME, FLOW_TABLE_NAME, PUT_CORS_HEADERS, Flow,
+                          Response)
 
 dynamo = boto3.resource("dynamodb")
 s3 = boto3.client("s3")
+
 
 get_logger = utils.logger_manager()
 logger = get_logger(__name__, INFO)
@@ -116,21 +114,21 @@ def lambda_handler(event:dict, context) -> Response:
         }
     
 
-    # get and validate flow body if given
-    if req_body["httpUrl"] is not None:
-        try:
-            validate_flow_body(req_body["httpUrl"])
-        except Exception as ex:
-            logger.error("flow validation failed", exc_info=True)
-            res:ResponseBody = {
-                "error": "flow validation failed",
-                "flow": None,
-            }
-            return {
-                "statusCode": 500,
-                "headers": PUT_CORS_HEADERS,
-                "body": utils.jdumps(dict(res))
-            }
+    # # get and validate flow body if given
+    # if req_body["httpUrl"] is not None:
+    #     try:
+    #         validate_flow_body(req_body["httpUrl"])
+    #     except Exception as ex:
+    #         logger.error("flow validation failed", exc_info=True)
+    #         res:ResponseBody = {
+    #             "error": "flow validation failed",
+    #             "flow": None,
+    #         }
+    #         return {
+    #             "statusCode": 500,
+    #             "headers": PUT_CORS_HEADERS,
+    #             "body": utils.jdumps(dict(res))
+    #         }
 
 
     # upsert flow item in dynamodb table

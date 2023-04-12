@@ -17,6 +17,37 @@ export const uploadObj = async (
     }
 }
 
+export const downloadObj = async (
+    s3Filename: string,
+    accessLevel: "public" | "private" | "protected",
+    contentType = "*/*"
+) => {
+    const result = await Storage.get(s3Filename, {
+        level: accessLevel, download: true, contentType,
+    })
+
+    console.log(await (result.Body as Blob).text())
+
+    return (result.Body as Blob).text()
+}
+
+export const parseS3HttpUrl = (httpUrl:string) => {
+    const url = new URL(httpUrl)
+    const s3BucketName = url.hostname.split(".s3.")[0]
+    const s3FullKey = url.pathname
+    const accessLevelRegex = s3FullKey.match(/^\/[^/]*\//)
+    const accessLevelKey = accessLevelRegex ? accessLevelRegex[0] : "/public/"
+    const accessLevel = accessLevelKey.replace("/", "")
+    const s3PartialKey = s3FullKey.replace(accessLevelKey, "")
+    const baseObjname = s3FullKey.split("/")[s3FullKey.split("/").length-1]
+
+    return {
+        s3BucketName, s3FullKey, s3PartialKey, accessLevel, baseObjname,
+    }
+
+  }
+
+
 export const getRegions = () => {
     return [
         "ap-south-1",

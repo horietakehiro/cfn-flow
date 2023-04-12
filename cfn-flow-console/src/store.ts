@@ -3,7 +3,12 @@ import { persistReducer } from "redux-persist";
 import storage from "redux-persist/lib/storage";
 
 import { AlertReducer } from "./stores/common";
-import { EditIODialogReducer, FlowsReducer, NodeEditDrawerReducer, SelectFlowReducer, SelectNodeReducer } from "./stores/flows/main";
+import {
+    EditIODialogReducer, FlowsReducer, NodeEditDrawerReducer,
+    ParameterRowSelectionModelReducer,
+    ReactFlowInstanceReducer,
+    SelectFlowReducer, SelectNodeReducer
+} from "./stores/flows/main";
 import leftDrawerReducer from "./stores/main";
 import { CreateTemplateDialogReducer, DeleteTemplateDialogReducer, EditTemplateDialogReducer } from "./stores/templates/common";
 import { SelectTemplateReducer, TemplatesReducer } from "./stores/templates/main";
@@ -21,6 +26,8 @@ const reducers = combineReducers({
     nodeEditDrawer: NodeEditDrawerReducer,
     selectedNode: SelectNodeReducer,
     editIODialog: EditIODialogReducer,
+    parametersRowSelectionModel: ParameterRowSelectionModelReducer,
+    reactFlowInstance: ReactFlowInstanceReducer,
     // nodes: NodesReducer,
 })
 
@@ -37,6 +44,8 @@ const persistConfig = {
         "nodeEditDrawer",
         "selectedNode",
         "editIODialog",
+        "parametersRowSelectionModel",
+        "reactFlowInstance"
     ]
     // black
 }

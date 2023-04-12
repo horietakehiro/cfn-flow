@@ -1,5 +1,6 @@
+import { GridRowId } from "@mui/x-data-grid";
 import { createSlice, PayloadAction } from "@reduxjs/toolkit";
-import { addEdge, applyEdgeChanges, applyNodeChanges, Connection, Edge, EdgeChange, Node, NodeChange, OnConnect, OnEdgesChange, OnNodesChange } from 'reactflow';
+import { addEdge, applyEdgeChanges, applyNodeChanges, Connection, Edge, EdgeChange, Node, NodeChange, OnConnect, OnEdgesChange, OnNodesChange, ReactFlowInstance } from 'reactflow';
 import { create } from 'zustand';
 import { RootState } from "../../store";
 
@@ -22,6 +23,15 @@ export interface NodesState {
     nodes: Node[]
     onNodesChange: OnNodesChange
 }
+export interface ParameterRowSelectionModelState {
+    rowIds: GridRowId[]
+}
+export interface ReactFlowInstanceState {
+    reactFlowInstance: ReactFlowInstance | null
+}
+// export interface FlowState = {
+
+// }
 
 const FlowsInitialState: FlowsState = {
     flows: []
@@ -38,6 +48,12 @@ const SelectedNodeInitialState: SelectedNodeState = {
 const EditIODialogInitialState: EditIODialogState = {
     opened: false
 }
+const ParameterRowSelectionModelInitialState: ParameterRowSelectionModelState = {
+    rowIds: []
+}
+const ReactFlowInstanceInitialState: ReactFlowInstanceState = {
+    reactFlowInstance: null
+}
 export type RFState = {
     nodes: Node[];
     edges: Edge[];
@@ -45,6 +61,7 @@ export type RFState = {
     onEdgesChange: OnEdgesChange;
     onConnect: OnConnect;
     setNodes: (nodes:Node[]) => void,
+    updateNode: (node:Node) => void,
   };
 
 // this is our useStore hook that we can use in our components to get parts of the store and call actions
@@ -67,7 +84,19 @@ export const useStore = create<RFState>((set, get) => ({
       });
     },
     setNodes: (nodes) => {
-        set({nodes: nodes})
+        console.log(nodes)
+        set({
+            nodes: [...get().nodes, ...nodes]
+        })
+    },
+    updateNode: (node) => {
+        console.log(node)
+        set({
+            nodes: get().nodes.map((n) => {
+                if (n.id === node.id) return node
+                return n
+            })
+        })
     }
     
   }));
@@ -142,6 +171,24 @@ export const EditIODialogSlice = createSlice({
         }
     }
 })
+export const ParameterRowSelectionModelSlice = createSlice({
+    name: "ParameterRowSelectionModel",
+    initialState: ParameterRowSelectionModelInitialState,
+    reducers: {
+        set: (state, action: PayloadAction<GridRowId[]>) => {
+            state.rowIds = action.payload
+        }
+    }
+})
+export const ReactFlowInstanceSlice = createSlice({
+    name: "ReactFlowInstance",
+    initialState: ReactFlowInstanceInitialState,
+    reducers: {
+        set: (state, action: PayloadAction<ReactFlowInstance | null>) => {
+            state.reactFlowInstance = action.payload
+        }
+    }
+})
 // export const NodesSlice = createSlice({
 //     name: "Nodes",
 //     initialState: NodesInitialState,
@@ -179,12 +226,18 @@ export const {
 export const {open: openNodeEditDrawe, close: closeNodeEditDrawe} = NodeEditDrawerSlice.actions
 export const {select: selectNode} = SelectedNodeSlice.actions
 export const {open: openEditIODialog, close: closeEditIODialog} = EditIODialogSlice.actions
+export const {set: setParameterRowSelectionModel} = ParameterRowSelectionModelSlice.actions
+export const {set: setReactFlowInstance} = ReactFlowInstanceSlice.actions
+
 // export const {create: createNodes, update: updateNode} = NodesSlice.actions
 export const SelectFlowReducer = SelectedFlowSlice.reducer
 export const FlowsReducer = FlowsSlice.reducer
 export const NodeEditDrawerReducer = NodeEditDrawerSlice.reducer
 export const SelectNodeReducer = SelectedNodeSlice.reducer
 export const EditIODialogReducer = EditIODialogSlice.reducer
+export const ParameterRowSelectionModelReducer = ParameterRowSelectionModelSlice.reducer
+export const ReactFlowInstanceReducer = ReactFlowInstanceSlice.reducer
+
 // export const NodesReducer = NodesSlice.reducer
 
 export const selectSelectedFlow = (state: RootState) => state.selectedFlow.flow
@@ -192,4 +245,6 @@ export const selectFlows = (state: RootState) => state.flows.flows
 export const selectNodeEditDrawer = (state:RootState) => state.nodeEditDrawer.opened
 export const selectSelectedNode = (state: RootState) => state.selectedNode.node
 export const selectEditIODialog = (state: RootState) => state.editIODialog.opened
+export const selectParameterRowSelectionModel = (state: RootState) => state.parametersRowSelectionModel.rowIds
+export const selectReactFlowInstance = (state: RootState) => state.reactFlowInstance.reactFlowInstance
 // export const selectNodes = (state: RootState) => state.nodes.nodes

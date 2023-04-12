@@ -1,5 +1,5 @@
 import { Stack, Typography } from '@mui/material';
-import React, { useEffect } from 'react';
+import React, { useCallback, useEffect } from 'react';
 import ReactFlow, {
   Background, BackgroundVariant, Controls,
   Handle,
@@ -7,24 +7,25 @@ import ReactFlow, {
   NodeProps,
   NodeTypes,
   Position,
-  ReactFlowInstance,
   ReactFlowProvider
 } from 'reactflow';
 import 'reactflow/dist/base.css';
 import 'reactflow/dist/style.css';
 import { shallow } from 'zustand/shallow';
+import { downloadObj, parseS3HttpUrl, uploadObj } from '../../apis/common';
 import { useAppDispatch, useAppSelector } from '../../hooks';
 import { ReactComponent as StackSVG } from "../../images/Res_AWS-CloudFormation_Stack_48_Dark.svg";
-import { RFState, openNodeEditDrawe as openNodeEditDrawer, selectNode, selectSelectedNode } from '../../stores/flows/main';
+import { RFState, openNodeEditDrawe as openNodeEditDrawer, selectNode, selectReactFlowInstance, selectSelectedFlow, selectSelectedNode, setParameterRowSelectionModel, setReactFlowInstance } from '../../stores/flows/main';
 import { useStore } from './../../stores/flows/main';
 
-const selector = (state:RFState) => ({
+const selector = (state: RFState) => ({
   nodes: state.nodes,
   edges: state.edges,
   onNodesChange: state.onNodesChange,
   onEdgesChange: state.onEdgesChange,
   onConnect: state.onConnect,
   setNodes: state.setNodes,
+  updateNode: state.updateNode,
 });
 
 let id = 0;
@@ -35,11 +36,6 @@ const getId = () => `node_${id++}`;
 export const StartNode = ({ data }: NodeProps<StartNodeData>) => {
   return (
     <>
-      {/* <NodeToolbar isVisible={data.toolbarVisible} position={Position.Bottom}>
-        <Stack direction={"row"} spacing={2}>
-          <Button variant='outlined' size='small' sx={{ backgroundColor: "white" }}>edit</Button>
-        </Stack>
-      </NodeToolbar> */}
       <Stack direction={"row"} spacing={1}>
         <Typography variant={"body1"}>START</Typography>
       </Stack>
@@ -52,19 +48,9 @@ export const StackNode = ({ data }: NodeProps<StackNodeData>) => {
 
   return (
     <>
-      {/* <NodeToolbar isVisible={data.toolbarVisible} position={Position.Right}>
-        <Stack direction={"column"} spacing={0} justifyContent={"left"}>
-          <IconButton color="primary" size="small" onClick={() => onEditButtonClick()}>
-            <EditIcon />
-          </IconButton>
-          <IconButton color="primary" size="small">
-            <DeleteIcon />
-          </IconButton>
-        </Stack>
-      </NodeToolbar> */}
       {data.parameters.filter((p) => p.visible).map((p, i) => {
         return (
-          <Handle type='source' position={Position.Top} key={`${p.name}`} style={{left: 20*(i+1)}}/>
+          <Handle type='source' position={Position.Top} key={`${p.name}`} style={{ left: 20 * (i + 1) }} />
         )
       })}
       <Stack direction={"row"} spacing={1}>
@@ -76,7 +62,7 @@ export const StackNode = ({ data }: NodeProps<StackNodeData>) => {
       </Stack>
       {data.outputs.filter((o) => o.visible).map((o, i) => {
         return (
-          <Handle type='target' position={Position.Bottom} key={`${o.name}`} style={{left: 20*(i+1)}}/>
+          <Handle type='target' position={Position.Bottom} key={`${o.name}`} style={{ left: 20 * (i + 1) }} />
         )
       })}
     </>
@@ -91,53 +77,68 @@ const nodeTypes: NodeTypes = {
 export default function FlowCanvas() {
 
   const dispatch = useAppDispatch()
+  const selectedFlow = useAppSelector(selectSelectedFlow)
   // const nodes = useAppSelector(selectNodes)
   const selectedNode = useAppSelector(selectSelectedNode)
 
   const reactFlowWrapper = React.useRef<HTMLDivElement>(null);
   // const [nodes, setNodes, onNodesChange] = useNodesState([]);
   // const [edges, setEdges, onEdgesChange] = useEdgesState([]);
-  const { nodes, edges, onNodesChange, onEdgesChange, onConnect, setNodes, } = useStore(selector, shallow);
+  const { nodes, edges, onNodesChange, onEdgesChange, onConnect, setNodes, updateNode} = useStore(selector, shallow);
 
-  const [reactFlowInstance, setReactFlowInstance] = React.useState<ReactFlowInstance | null>(null);
-
+  // const [reactFlowInstance, setReactFlowInstance] = React.useState<ReactFlowInstance | null>(null);
+  const reactFlowInstance = useAppSelector(selectReactFlowInstance)
 
 
   useEffect(() => {
-    if (reactFlowWrapper.current !== null) {
-      const reactFlowBounds = reactFlowWrapper.current.getBoundingClientRect();
-      const initialNodes = [
-        {
-          id: '1',
-          type: 'startNode',
-          data: { label: 'Start', },
-          position: { x: reactFlowBounds.width / 2, y: 50 },
-          style: { border: '1px solid #777', padding: 10, background: "yellow" },
-        },
-      ];
-      // dispatch(createNodes(initialNodes))
-      setNodes(initialNodes)
-    }
+    (async () => {
+      if (reactFlowWrapper.current === null || selectedFlow === null) return
+      let initialNodes:Node[] = []
+
+      const {accessLevel, baseObjname, s3PartialKey} = parseS3HttpUrl(selectedFlow.httpUrl)
+      const flowBody = await downloadObj(s3PartialKey, accessLevel as "public"|"private"|"protected", "application/json")
+      const flow = await JSON.parse(flowBody)
+      if (flow) {
+        const {x = 0, y = 0, zoom = 1} = flow.viewport
+        initialNodes = flow.nodes
+      } else {
+        console.log("init")
+        const reactFlowBounds = reactFlowWrapper.current.getBoundingClientRect();
+        initialNodes = [
+          {
+            id: '1',
+            type: 'startNode',
+            data: { label: 'Start', },
+            position: { x: reactFlowBounds.width / 2, y: 50 },
+            style: { border: '1px solid #777', padding: 10, background: "yellow" },
+          },
+        ];
+      }
+        // dispatch(createNodes(initialNodes))
+        setNodes(initialNodes)
+    })()
+
   }, [])
 
   useEffect(() => {
     if (selectedNode === null) return
-    // dispatch(updateNode({...selectedNode}))
-    setNodes(nodes.map((n) => {
-      if (selectedNode !== null && n.id === selectedNode.id) return selectedNode
-      return n
-    }))
-    //  (nds) => 
-    //   nds.map((n) => {
-    //     if (selectedNode !== null && n.id === selectedNode.id) {
-    //       return {...selectedNode}
-    //     }
-    //     return n
-    //   })
-    // ))
-
-    console.log("update node")
+    updateNode({...selectedNode})
+    
+    console.log(selectedNode)
   }, [selectedNode])
+
+  const onSave = useCallback(() => {
+    (async () => {
+      if (reactFlowInstance && selectedFlow) {
+        const flow = JSON.stringify(reactFlowInstance.toObject(), null, 2)
+        const {accessLevel, baseObjname, s3PartialKey} = parseS3HttpUrl(selectedFlow.httpUrl)
+        const fileObj = new File([flow], baseObjname, {"type": "application/json"})
+        const response = await uploadObj(s3PartialKey, fileObj, accessLevel as "public" | "private" | "protected")
+        console.log(response)
+      }
+    })()
+  }, [reactFlowInstance])
+
 
   const onDragOver = React.useCallback((event: React.DragEvent<HTMLDivElement>) => {
     event.preventDefault();
@@ -152,12 +153,11 @@ export default function FlowCanvas() {
         const reactFlowBounds = reactFlowWrapper.current.getBoundingClientRect();
         const type = event.dataTransfer.getData('application/reactflow');
 
-        console.log(type)
-
         // check if the dropped element is valid
         if (typeof type === 'undefined' || !type) {
           return;
         }
+
 
         if (reactFlowInstance !== null) {
           const position = reactFlowInstance.project({
@@ -165,24 +165,25 @@ export default function FlowCanvas() {
             y: event.clientY - reactFlowBounds.top,
           });
           const id = getId()
-          const data:StackNodeData = {
+          const data: StackNodeData = {
             nodeName: `stackNode-${id}`, toolbarVisible: true, nodeDeletable: true,
             regionName: "-", templateName: "",
             parameters: [],
             outputs: [],
           }
-          const newNode:Node = {
+          const newNode: Node = {
             id: id,
             type: type,
             position,
             data,
+            selected: false,
+            selectable: true,
             style: { border: '1px solid #777', padding: 10, background: "white" },
           };
 
-          setNodes([...nodes, newNode]);
+          setNodes([{...newNode}]);
           // dispatch(createNodes([...nodes, newNode]))
-
-
+          console.log(nodes)
         }
       }
 
@@ -192,22 +193,8 @@ export default function FlowCanvas() {
   )
 
   const onNodeClick = (event: React.MouseEvent, node: Node) => {
-    console.log(event)
-    console.log(node)
-    // setNodes((nds) => 
-    //   nds.map((n) => {
-    //     n.selected = n.id === node.id
-    //     return n
-    //   })
-    // )
-    // const newNode = nodes.filter((n) => n.id === node.id)
-    // if (newNode.length !== 0) {
-      // dispatch(updateNode({...newNode[0], selected: true}))
-    // }
-    setNodes(nodes.map((n) => {
-      if (node.id === n.id) return {...node, selected: true}
-      return n
-    }))
+    dispatch(setParameterRowSelectionModel([]))
+    updateNode({ ...node, selected: true })
     dispatch(selectNode(node))
     dispatch(openNodeEditDrawer())
   }
@@ -222,7 +209,7 @@ export default function FlowCanvas() {
           onNodesChange={onNodesChange}
           onEdgesChange={onEdgesChange}
           // onConnect={onConnect}
-          onInit={setReactFlowInstance}
+          onInit={(r) => {dispatch(setReactFlowInstance(r))}}
           onDrop={onDrop}
           onDragOver={onDragOver}
           nodeTypes={nodeTypes}
@@ -233,6 +220,9 @@ export default function FlowCanvas() {
           <Controls />
           <Background variant={BackgroundVariant.Cross} />
         </ReactFlow>
+        <div className="save__controls">
+          <button onClick={onSave}>save</button>
+        </div>
       </div>
     </ReactFlowProvider>
   );

@@ -88,12 +88,11 @@ export const CreateFlowDialog: React.FC = () => {
     }
 
     const fileObj = e.target.files[0]
-
     const localFilename = fileObj.name
     const s3Filename = `flows/${String(Date.now())}/${localFilename}`
     try {
       setLocalFile(localFilename)
-      const {httpUrl} = await uploadObj(s3Filename, fileObj, "public")
+      const { httpUrl } = await uploadObj(s3Filename, fileObj, "public")
       setNewFlow({ ...newFlow, httpUrl: httpUrl })
     } catch (e) {
       if (axios.isAxiosError(e)) {
@@ -119,12 +118,30 @@ export const CreateFlowDialog: React.FC = () => {
 
         setInProgress(true)
 
-        const response = await putFlow(newFlow)
+        let requestFlow = {...newFlow}
+
+        if (flowSourceType === FlowSourceType.New && requestFlow.name !== null) {
+          const fileObj = new File([], `${requestFlow.name}.json`)
+          const localFilename = fileObj.name
+          const s3Filename = `flows/${String(Date.now())}/${localFilename}`
+          try {
+            setLocalFile(localFilename)
+            const { httpUrl } = await uploadObj(s3Filename, fileObj, "public")
+            requestFlow.httpUrl = httpUrl
+          } catch (e) {
+            if (axios.isAxiosError(e)) {
+              setLocalFile(`Failed to create new file : ${e.message}`)
+            }
+            console.error(e)
+          }
+        }
+
+        const response = await putFlow(requestFlow)
         if (response.flow !== null) {
           dispatch(pushFlow(response.flow))
           dispatch(setAlert({
-              persist: 5000, message: `Successfully create flow : ${response.flow.name}`,
-              opened: true, severity: "success"
+            persist: 5000, message: `Successfully create flow : ${response.flow.name}`,
+            opened: true, severity: "success"
           }))
         }
       }
@@ -132,7 +149,7 @@ export const CreateFlowDialog: React.FC = () => {
       let errorMessage = `Failed to create flow : ${newFlow.name}`
 
       if (axios.isAxiosError(e)) {
-        const response:PutFlowResponse = e.response?.data
+        const response: PutFlowResponse = e.response?.data
         errorMessage += ` : ${response.error}`
         console.error(e.response)
       }
@@ -141,6 +158,7 @@ export const CreateFlowDialog: React.FC = () => {
         opened: true, severity: "error"
       }))
     } finally {
+      
       setInProgress(false)
     }
 
@@ -151,7 +169,7 @@ export const CreateFlowDialog: React.FC = () => {
 
   return (
     <div>
-      <AlertSnackbar/>
+      <AlertSnackbar />
       <Dialog open={open} onClose={() => onSubmit(false)}>
         <DialogTitle>New Flow</DialogTitle>
         <DialogContent sx={{ margin: "100" }}>
@@ -199,13 +217,13 @@ export const CreateFlowDialog: React.FC = () => {
                 label="Create New File"
                 checked={flowSourceType === FlowSourceType.New}
               />
-              <FormControlLabel
+              {/* <FormControlLabel
                 data-testid="amazon-s3-url"
                 value={FlowSourceType.S3}
                 control={<Radio />}
                 label="Amazon S3 URL"
                 checked={flowSourceType === FlowSourceType.S3}
-              />
+              /> */}
               <FormControlLabel
                 data-testid="upload-local-file"
                 value={FlowSourceType.Local}
@@ -233,7 +251,7 @@ export const CreateFlowDialog: React.FC = () => {
                 required
               />
             </Stack>
-            }
+          }
           {flowSourceType === FlowSourceType.Local &&
             <Stack direction={"row"} spacing={2}>
               <Stack direction={"row"} spacing={2}>
@@ -323,7 +341,7 @@ export const EditFlowDialog: React.FC = () => {
     try {
       // upload file
       setLocalFile(localFilename)
-      const {httpUrl} = await uploadObj(s3Filename, fileObj, "public")
+      const { httpUrl } = await uploadObj(s3Filename, fileObj, "public")
       setNewFlow({ ...newFlow, httpUrl: httpUrl })
     } catch (e) {
       if (axios.isAxiosError(e)) {
@@ -358,13 +376,13 @@ export const EditFlowDialog: React.FC = () => {
           dispatch(setAlert({
             persist: 5000, message: `Successfully update flow : ${response.flow.name}`,
             opened: true, severity: "success"
-        }))
+          }))
         }
 
       } catch (e) {
         let errorMessage = `Failed to update flow : ${newFlow.name}`
         if (axios.isAxiosError(e)) {
-          const response:PutFlowResponse = e.response?.data
+          const response: PutFlowResponse = e.response?.data
           errorMessage += ` : ${response.error}`
           console.error(e.response)
         }
@@ -384,7 +402,7 @@ export const EditFlowDialog: React.FC = () => {
 
   return (
     <div>
-      <AlertSnackbar/>
+      <AlertSnackbar />
       <Dialog open={open} onClose={() => onSubmit(false)}>
         <DialogTitle>Edit {selectedFlow?.name}</DialogTitle>
         <DialogContent sx={{ margin: "100" }}>
@@ -518,14 +536,14 @@ export const DeleteFlowDialog: React.FC = () => {
           dispatch(setAlert({
             persist: 5000, message: `Successfully delete flow : ${response.flowName}`,
             opened: true, severity: "success"
-        }))
+          }))
         }
 
       } catch (e) {
         console.error(e)
         let errorMessage = `Failed to delete flow : ${flowName}`
         if (axios.isAxiosError(e)) {
-          const response:DeleteFlowResponse = e.response?.data
+          const response: DeleteFlowResponse = e.response?.data
           errorMessage += ` : ${response.error}`
           console.error(e.response)
         }
@@ -548,7 +566,7 @@ export const DeleteFlowDialog: React.FC = () => {
 
   return (
     <div>
-      <AlertSnackbar/>
+      <AlertSnackbar />
       <Dialog open={open} onClose={() => onSubmit(false)}>
         <DialogTitle>Delete {selectFlow?.name}?</DialogTitle>
         <DialogContent sx={{ margin: "100" }}>

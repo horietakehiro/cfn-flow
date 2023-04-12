@@ -131,14 +131,14 @@ type BaseCUstomNodeData = {
 
 type StartNodeData = BaseCUstomNodeData & {}
 type StartNode = import("reactflow").Node<StartNodeData>
+type StackNodeParameterSource = {
+    node: StackNode,
+    output: OutputSummary
+}
 type StackNodeParameter = ParameterSummary & {
     visible: boolean
-    src: {
-        node: StackNode,
-        output: OutputSummary
-    }[]
+    source: StackNodeParameterSource[]
     selected: boolean
-
 }
 type StackNodeData = BaseCUstomNodeData & {
     regionName: string

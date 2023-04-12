@@ -17,6 +17,7 @@ export const getFlows = async ():Promise<GetFlowsResponse> => {
 export const putFlow = async (newFlow:PutFlowRequest):Promise<PutFlowResponse> => {
     const path = `/flows/${newFlow.name}`
     const init = {
+      body: newFlow,
       headers: {
         Authorization: await getApiAuth()
       }
@@ -35,3 +36,4 @@ export const deleteFlow = async (flowName:string):Promise<DeleteFlowResponse> =>
     const response:DeleteFlowResponse = await API.del(apiName, path, init)
     return response
 } 
+
