@@ -1,22 +1,20 @@
-from logging import INFO
 import os
 import typing
-import utils
-import boto3
-from boto3.dynamodb.conditions import Key
-from typing import TypedDict, Optional, Dict, Any
+from logging import INFO
+from typing import Any, Dict, Optional, TypedDict
 
-from flows_common import (
-    FLOW_TABLE_NAME,
-    Response, Flow,
-    GET_CORS_HEADERS,
-)
+import boto3
+import utils
+from aws_xray_sdk.core import patch_all, xray_recorder
+from boto3.dynamodb.conditions import Key
+from flows_common import FLOW_TABLE_NAME, GET_CORS_HEADERS, Flow, Response
 
 dynamo = boto3.resource("dynamodb")
 
 get_logger = utils.logger_manager()
 logger = get_logger(__name__, INFO)
 
+patch_all()
 
 ResponseBody = TypedDict("ResponseBody", {
     "error": Optional[str], "flow": Optional[Flow]

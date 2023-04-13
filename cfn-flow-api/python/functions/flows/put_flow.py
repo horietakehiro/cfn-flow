@@ -8,6 +8,7 @@ from typing import Any, Dict, List, Optional, TypedDict
 
 import boto3
 import utils
+from aws_xray_sdk.core import patch_all, xray_recorder
 from boto3.dynamodb.conditions import Key
 from flows_common import (BUCKET_NAME, FLOW_TABLE_NAME, PUT_CORS_HEADERS, Flow,
                           Response)
@@ -15,6 +16,7 @@ from flows_common import (BUCKET_NAME, FLOW_TABLE_NAME, PUT_CORS_HEADERS, Flow,
 dynamo = boto3.resource("dynamodb")
 s3 = boto3.client("s3")
 
+patch_all()
 
 get_logger = utils.logger_manager()
 logger = get_logger(__name__, INFO)

@@ -5,6 +5,7 @@ from typing import Optional, OrderedDict, TypedDict, Union
 
 import boto3
 import utils
+from aws_xray_sdk.core import patch_all, xray_recorder
 from stacks_common import BUCKET_NAME, POST_CORS_HEADERS, Response
 
 RequestPathParams = TypedDict("RequestPathParams", {
@@ -16,6 +17,8 @@ ResponseBody = TypedDict("ResponseBody", {
 
 get_logger = utils.logger_manager()
 logger = get_logger(__name__, INFO)
+
+patch_all()
 
 def get_template_body(stack_name:str, region_name:str) -> str:
     """

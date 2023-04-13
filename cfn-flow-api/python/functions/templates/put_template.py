@@ -1,21 +1,19 @@
 import json
 import os
 import tempfile
-from typing import Any, Dict, Optional, TypedDict, List
 import typing
-import boto3
-from boto3.dynamodb.conditions import Key
-import utils
 from logging import INFO
+from typing import Any, Dict, List, Optional, TypedDict
 
+import boto3
+import utils
+from aws_xray_sdk.core import patch_all, xray_recorder
+from boto3.dynamodb.conditions import Key
 from cfn_flip import to_json
-
-from templates_common import (
-    TEMPLATE_TABLE_NAME, TEMPLATE_SUMMARY_TABLE_NAME, BUCKET_NAME, Output, Parameter, Resource,
-    Template, Response, TemplateSummaries, TemplateSummary,
-    PUT_CORS_HEADERS,
-)
-
+from templates_common import (BUCKET_NAME, PUT_CORS_HEADERS,
+                              TEMPLATE_SUMMARY_TABLE_NAME, TEMPLATE_TABLE_NAME,
+                              Output, Parameter, Resource, Response, Template,
+                              TemplateSummaries, TemplateSummary)
 
 dynamo = boto3.resource("dynamodb")
 s3 = boto3.client("s3")
@@ -23,6 +21,7 @@ s3 = boto3.client("s3")
 get_logger = utils.logger_manager()
 logger = get_logger(__name__, INFO)
 
+patch_all()
 
 RequestBody = TypedDict("RequestBody",{
     "name": str, "description": Optional[str], "httpUrl": str,

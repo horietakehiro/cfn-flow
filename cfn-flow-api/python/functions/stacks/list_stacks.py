@@ -5,6 +5,7 @@ from typing import List, Optional, TypedDict
 
 import boto3
 import utils
+from aws_xray_sdk.core import patch_all, xray_recorder
 from stacks_common import GET_CORS_HEADERS, Response
 
 Stack = TypedDict("Stack", {
@@ -19,6 +20,8 @@ RequestPathParams = TypedDict("RequestPathParams", {
 
 get_logger = utils.logger_manager()
 logger = get_logger(__name__, INFO)
+
+patch_all()
 
 def list_stacks(region_name:str) -> List[Stack]:
     """

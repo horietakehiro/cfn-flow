@@ -1,20 +1,20 @@
-from logging import INFO
 import os
-from typing import Any, Dict, List, Optional, Tuple, TypedDict
 import typing
+from logging import INFO
+from typing import Any, Dict, List, Optional, Tuple, TypedDict
 
 import boto3
-from templates_common import (
-    GET_CORS_HEADERS, TEMPLATE_TABLE_NAME,
-    Response, Template,
-)
 import utils
+from aws_xray_sdk.core import patch_all, xray_recorder
+from templates_common import (GET_CORS_HEADERS, TEMPLATE_TABLE_NAME, Response,
+                              Template)
 
 dynamo = boto3.resource("dynamodb")
 
 get_logger = utils.logger_manager()
 logger = get_logger(__name__, INFO)
 
+patch_all()
 
 RequestQueryParams = TypedDict("RequestQueryParams", {
     "next-token": Optional[str], "limit": Optional[int]

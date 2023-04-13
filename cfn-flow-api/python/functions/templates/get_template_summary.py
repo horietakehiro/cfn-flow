@@ -5,6 +5,7 @@ from typing import Any, Dict, Optional, TypedDict
 
 import boto3
 import utils
+from aws_xray_sdk.core import patch_all, xray_recorder
 from boto3.dynamodb.conditions import Key
 from templates_common import (GET_CORS_HEADERS, TEMPLATE_SUMMARY_TABLE_NAME,
                               Response, TemplateSummary)
@@ -14,6 +15,7 @@ dynamo = boto3.resource("dynamodb")
 get_logger = utils.logger_manager()
 logger = get_logger(__name__, INFO)
 
+patch_all()
 
 ResponseBody = TypedDict("ResponseBody", {
     "error": Optional[str], "templateSummary": Optional[TemplateSummary]
