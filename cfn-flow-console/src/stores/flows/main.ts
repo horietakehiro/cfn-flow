@@ -16,14 +16,16 @@ export interface NodeEditDrawerState {
 export interface SelectedNodeState {
     node: StackNode | null
 }
-export interface EditIODialogState {
+export interface EditParameterSourceDialogState {
     opened: boolean
 }
-export interface NodesState {
-    nodes: Node[]
-    onNodesChange: OnNodesChange
+export interface EditOutputTargetDialogState {
+    opened: boolean
 }
 export interface ParameterRowSelectionModelState {
+    rowIds: GridRowId[]
+}
+export interface OutputRowSelectionModelState {
     rowIds: GridRowId[]
 }
 export interface ReactFlowInstanceState {
@@ -45,45 +47,57 @@ const NodeEditDrawerInitialState: NodeEditDrawerState = {
 const SelectedNodeInitialState: SelectedNodeState = {
     node: null
 }
-const EditIODialogInitialState: EditIODialogState = {
+const EditParameterSourceDialogInitialState: EditParameterSourceDialogState = {
+    opened: false
+}
+const EditOutputTargetDialogInitialState: EditOutputTargetDialogState = {
     opened: false
 }
 const ParameterRowSelectionModelInitialState: ParameterRowSelectionModelState = {
+    rowIds: []
+}
+const OutputRowSelectionModelInitialState: OutputRowSelectionModelState = {
     rowIds: []
 }
 const ReactFlowInstanceInitialState: ReactFlowInstanceState = {
     reactFlowInstance: null
 }
 export type RFState = {
-    nodes: Node[];
-    edges: Edge[];
-    onNodesChange: OnNodesChange;
-    onEdgesChange: OnEdgesChange;
-    onConnect: OnConnect;
-    setNodes: (nodes:Node[]) => void,
-    updateNode: (node:Node) => void,
-  };
+    nodes: Node[]
+    edges: Edge[]
+    onNodesChange: OnNodesChange
+    onEdgesChange: OnEdgesChange
+    onConnect: OnConnect
+
+    mergeNodes: (nodes: Node[]) => void
+    updateNode: (node: Node) => void
+    initNodes: (nodes: Node[]) => void
+    deleteNode: (node: Node) => void
+
+    addEdge: (edge: Edge) => void
+    initEdges: (edges: Edge[]) => void
+};
 
 // this is our useStore hook that we can use in our components to get parts of the store and call actions
 export const useStore = create<RFState>((set, get) => ({
     nodes: [],
     edges: [],
     onNodesChange: (changes: NodeChange[]) => {
-      set({
-        nodes: applyNodeChanges(changes, get().nodes),
-      });
+        set({
+            nodes: applyNodeChanges(changes, get().nodes),
+        });
     },
     onEdgesChange: (changes: EdgeChange[]) => {
-      set({
-        edges: applyEdgeChanges(changes, get().edges),
-      });
+        set({
+            edges: applyEdgeChanges(changes, get().edges),
+        });
     },
     onConnect: (connection: Connection) => {
-      set({
-        edges: addEdge(connection, get().edges),
-      });
+        set({
+            edges: addEdge(connection, get().edges),
+        });
     },
-    setNodes: (nodes) => {
+    mergeNodes: (nodes) => {
         console.log(nodes)
         set({
             nodes: [...get().nodes, ...nodes]
@@ -97,20 +111,43 @@ export const useStore = create<RFState>((set, get) => ({
                 return n
             })
         })
-    }
-    
-  }));
+    },
+    initNodes: (nodes) => {
+        console.log(nodes)
+        set({
+            nodes: [...nodes]
+        })
+    },
+    deleteNode: (node) => {
+        console.log(node)
+        set({
+            nodes: get().nodes.filter((n) => n.id !== node.id)
+        })
+    },
+    initEdges: (edges: Edge[]) => {
+        set({
+            edges: [...edges],
+        })
+    },
+    addEdge: (edge: Edge) => {
+        console.log(edge)
+        set({
+            edges: addEdge({...edge}, get().edges),
+        });
+    },
+
+}));
 export const FlowsSlice = createSlice({
     name: "Flows",
     initialState: FlowsInitialState,
     reducers: {
-        create: (state, action: PayloadAction<Flow[]>)  => {
+        create: (state, action: PayloadAction<Flow[]>) => {
             state.flows = action.payload
         },
-        push: (state, action: PayloadAction<Flow>)  => {
+        push: (state, action: PayloadAction<Flow>) => {
             state.flows.push(action.payload)
         },
-        remove: (state, action: PayloadAction<Flow>)  => {
+        remove: (state, action: PayloadAction<Flow>) => {
             state.flows = state.flows.filter((t) => {
                 return t.name !== action.payload.name
             })
@@ -159,9 +196,21 @@ export const SelectedNodeSlice = createSlice({
         },
     }
 })
-export const EditIODialogSlice = createSlice({
-    name: "EditIODialog",
-    initialState: EditIODialogInitialState,
+export const EditParameterSourceDialogSlice = createSlice({
+    name: "EditParameterSourceDialog",
+    initialState: EditParameterSourceDialogInitialState,
+    reducers: {
+        open: (state) => {
+            state.opened = true
+        },
+        close: (state) => {
+            state.opened = false
+        }
+    }
+})
+export const EditOutputTargetDialogSlice = createSlice({
+    name: "EditOutputTargetDialog",
+    initialState: EditOutputTargetDialogInitialState,
     reducers: {
         open: (state) => {
             state.opened = true
@@ -180,6 +229,15 @@ export const ParameterRowSelectionModelSlice = createSlice({
         }
     }
 })
+export const OutputRowSelectionModelSlice = createSlice({
+    name: "OutputRowSelectionModel",
+    initialState: OutputRowSelectionModelInitialState,
+    reducers: {
+        set: (state, action: PayloadAction<GridRowId[]>) => {
+            state.rowIds = action.payload
+        }
+    }
+})
 export const ReactFlowInstanceSlice = createSlice({
     name: "ReactFlowInstance",
     initialState: ReactFlowInstanceInitialState,
@@ -189,62 +247,54 @@ export const ReactFlowInstanceSlice = createSlice({
         }
     }
 })
-// export const NodesSlice = createSlice({
-//     name: "Nodes",
-//     initialState: NodesInitialState,
-//     reducers: {
-//         create: (state, action: PayloadAction<Node[]>) => {
-//             state.nodes = action.payload
-//         },
-//         // push: (state, action: PayloadAction<Node>)  => {
-//         //     state.flows.push(action.payload)
-//         // },
-//         // remove: (state, action: PayloadAction<Flow>)  => {
-//         //     state.flows = state.flows.filter((t) => {
-//         //         return t.name !== action.payload.name
-//         //     })
-//         // },
-//         update: (state, action: PayloadAction<Node>) => {
-//             state.nodes = state.nodes.map((n) => {
-//                 if (n.id === action.payload.id) {
-//                     return action.payload
-//                 } else {
-//                     return n
-//                 }
-//             })
-//         },
-//         clear: (state) => {
-//             state.nodes = []
-//         }
-//     }
-// })
-export const {select: selectFlow} = SelectedFlowSlice.actions
+export const { select: selectFlow } = SelectedFlowSlice.actions
 export const {
     create: createFlows, push: pushFlow, remove: removeFlow,
     update: updateFlow, clear: clearFlows,
 } = FlowsSlice.actions
-export const {open: openNodeEditDrawe, close: closeNodeEditDrawe} = NodeEditDrawerSlice.actions
-export const {select: selectNode} = SelectedNodeSlice.actions
-export const {open: openEditIODialog, close: closeEditIODialog} = EditIODialogSlice.actions
-export const {set: setParameterRowSelectionModel} = ParameterRowSelectionModelSlice.actions
-export const {set: setReactFlowInstance} = ReactFlowInstanceSlice.actions
+export const { open: openNodeEditDrawe, close: closeNodeEditDrawe } = NodeEditDrawerSlice.actions
+export const { select: selectNode } = SelectedNodeSlice.actions
+export const { open: openEditParameterSourceDialog, close: closeEditParameterSourceDialog } = EditParameterSourceDialogSlice.actions
+export const { open: openEditOutputTargetDialog, close: closeEditOutputTargetDialog } = EditOutputTargetDialogSlice.actions
+export const { set: setParameterRowSelectionModel } = ParameterRowSelectionModelSlice.actions
+export const { set: setOutputRowSelectionModel } = OutputRowSelectionModelSlice.actions
+export const { set: setReactFlowInstance } = ReactFlowInstanceSlice.actions
 
 // export const {create: createNodes, update: updateNode} = NodesSlice.actions
 export const SelectFlowReducer = SelectedFlowSlice.reducer
 export const FlowsReducer = FlowsSlice.reducer
 export const NodeEditDrawerReducer = NodeEditDrawerSlice.reducer
 export const SelectNodeReducer = SelectedNodeSlice.reducer
-export const EditIODialogReducer = EditIODialogSlice.reducer
+export const EditParameterSourceDialogReducer = EditParameterSourceDialogSlice.reducer
+export const EditOutputTargetDialogReducer = EditOutputTargetDialogSlice.reducer
 export const ParameterRowSelectionModelReducer = ParameterRowSelectionModelSlice.reducer
+export const OutputRowSelectionModelReducer = OutputRowSelectionModelSlice.reducer
 export const ReactFlowInstanceReducer = ReactFlowInstanceSlice.reducer
 
 // export const NodesReducer = NodesSlice.reducer
 
 export const selectSelectedFlow = (state: RootState) => state.selectedFlow.flow
 export const selectFlows = (state: RootState) => state.flows.flows
-export const selectNodeEditDrawer = (state:RootState) => state.nodeEditDrawer.opened
+export const selectNodeEditDrawer = (state: RootState) => state.nodeEditDrawer.opened
 export const selectSelectedNode = (state: RootState) => state.selectedNode.node
-export const selectEditIODialog = (state: RootState) => state.editIODialog.opened
+export const selectEditParameterSourceDialog = (state: RootState) => state.editParameterSourceDialog.opened
+export const selectEditOutputTargetDialog = (state: RootState) => state.editOutputTargetDialog.opened
 export const selectParameterRowSelectionModel = (state: RootState) => state.parametersRowSelectionModel.rowIds
+export const selectOutputRowSelectionModel = (state: RootState) => state.outputRowSelectionModel.rowIds
 export const selectReactFlowInstance = (state: RootState) => state.reactFlowInstance.reactFlowInstance
 // export const selectNodes = (state: RootState) => state.nodes.nodes
+
+export const selector = (state: RFState) => ({
+    nodes: state.nodes,
+    edges: state.edges,
+    onNodesChange: state.onNodesChange,
+    onEdgesChange: state.onEdgesChange,
+    onConnect: state.onConnect,
+    mergeNodes: state.mergeNodes,
+    updateNode: state.updateNode,
+    deleteNode: state.deleteNode,
+    initNodes: state.initNodes,
+    addEdge: state.addEdge,
+    initEdges: state.initEdges,
+
+});

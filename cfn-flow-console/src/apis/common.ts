@@ -24,6 +24,7 @@ export const downloadObj = async (
 ) => {
     const result = await Storage.get(s3Filename, {
         level: accessLevel, download: true, contentType,
+        cacheControl: "no-cache",
     })
 
     console.log(await (result.Body as Blob).text())

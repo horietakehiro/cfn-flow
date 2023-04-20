@@ -1,7 +1,8 @@
 import { Stack, Typography } from '@mui/material';
-import React, { useCallback, useEffect } from 'react';
+import React, { useEffect } from 'react';
 import ReactFlow, {
   Background, BackgroundVariant, Controls,
+  Edge,
   Handle,
   Node,
   NodeProps,
@@ -12,24 +13,17 @@ import ReactFlow, {
 import 'reactflow/dist/base.css';
 import 'reactflow/dist/style.css';
 import { shallow } from 'zustand/shallow';
-import { downloadObj, parseS3HttpUrl, uploadObj } from '../../apis/common';
+import { downloadObj, parseS3HttpUrl } from '../../apis/common';
 import { useAppDispatch, useAppSelector } from '../../hooks';
 import { ReactComponent as StackSVG } from "../../images/Res_AWS-CloudFormation_Stack_48_Dark.svg";
-import { RFState, openNodeEditDrawe as openNodeEditDrawer, selectNode, selectReactFlowInstance, selectSelectedFlow, selectSelectedNode, setParameterRowSelectionModel, setReactFlowInstance } from '../../stores/flows/main';
+import { openNodeEditDrawe as openNodeEditDrawer, selectNode, selectReactFlowInstance, selectSelectedFlow, selectSelectedNode, selector, setOutputRowSelectionModel, setParameterRowSelectionModel, setReactFlowInstance } from '../../stores/flows/main';
 import { useStore } from './../../stores/flows/main';
 
-const selector = (state: RFState) => ({
-  nodes: state.nodes,
-  edges: state.edges,
-  onNodesChange: state.onNodesChange,
-  onEdgesChange: state.onEdgesChange,
-  onConnect: state.onConnect,
-  setNodes: state.setNodes,
-  updateNode: state.updateNode,
-});
 
-let id = 0;
-const getId = () => `node_${id++}`;
+const getId = () => {
+  const currentTImestanmp = Date.now()
+  return `node_${currentTImestanmp}`
+}
 
 
 
@@ -50,7 +44,7 @@ export const StackNode = ({ data }: NodeProps<StackNodeData>) => {
     <>
       {data.parameters.filter((p) => p.visible).map((p, i) => {
         return (
-          <Handle type='source' position={Position.Top} key={`${p.name}`} style={{ left: 20 * (i + 1) }} />
+          <Handle isConnectable type='source' position={Position.Top} id={`${data.nodeName}/${p.name}`} key={`${data.nodeName}/${p.name}`} style={{ left: 20 * (i + 1) }} />
         )
       })}
       <Stack direction={"row"} spacing={1}>
@@ -62,7 +56,7 @@ export const StackNode = ({ data }: NodeProps<StackNodeData>) => {
       </Stack>
       {data.outputs.filter((o) => o.visible).map((o, i) => {
         return (
-          <Handle type='target' position={Position.Bottom} key={`${o.name}`} style={{ left: 20 * (i + 1) }} />
+          <Handle isConnectable type='target' position={Position.Bottom} id={`${data.nodeName}/${o.name}`} key={`${data.nodeName}/${o.name}`} style={{ left: 20 * (i + 1) }} />
         )
       })}
     </>
@@ -82,9 +76,9 @@ export default function FlowCanvas() {
   const selectedNode = useAppSelector(selectSelectedNode)
 
   const reactFlowWrapper = React.useRef<HTMLDivElement>(null);
-  // const [nodes, setNodes, onNodesChange] = useNodesState([]);
+  // const [nodes, mergeNodes, onNodesChange] = useNodesState([]);
   // const [edges, setEdges, onEdgesChange] = useEdgesState([]);
-  const { nodes, edges, onNodesChange, onEdgesChange, onConnect, setNodes, updateNode} = useStore(selector, shallow);
+  const { nodes, edges, onNodesChange, onEdgesChange, onConnect, mergeNodes, updateNode, initNodes, initEdges } = useStore(selector, shallow);
 
   // const [reactFlowInstance, setReactFlowInstance] = React.useState<ReactFlowInstance | null>(null);
   const reactFlowInstance = useAppSelector(selectReactFlowInstance)
@@ -93,14 +87,16 @@ export default function FlowCanvas() {
   useEffect(() => {
     (async () => {
       if (reactFlowWrapper.current === null || selectedFlow === null) return
-      let initialNodes:Node[] = []
+      let initialNodes: Node[] = []
+      let initialEdges: Edge[] = []
 
-      const {accessLevel, baseObjname, s3PartialKey} = parseS3HttpUrl(selectedFlow.httpUrl)
-      const flowBody = await downloadObj(s3PartialKey, accessLevel as "public"|"private"|"protected", "application/json")
+      const { accessLevel, baseObjname, s3PartialKey } = parseS3HttpUrl(selectedFlow.httpUrl)
+      const flowBody = await downloadObj(s3PartialKey, accessLevel as "public" | "private" | "protected", "application/json")
       const flow = await JSON.parse(flowBody)
       if (flow) {
-        const {x = 0, y = 0, zoom = 1} = flow.viewport
+        const { x = 0, y = 0, zoom = 1 } = flow.viewport
         initialNodes = flow.nodes
+        initialEdges = flow.edges
       } else {
         console.log("init")
         const reactFlowBounds = reactFlowWrapper.current.getBoundingClientRect();
@@ -114,31 +110,21 @@ export default function FlowCanvas() {
           },
         ];
       }
-        // dispatch(createNodes(initialNodes))
-        setNodes(initialNodes)
+
+
+      initNodes(initialNodes)
+      // initEdges([])
+      initEdges(initialEdges)
     })()
 
   }, [])
 
   useEffect(() => {
     if (selectedNode === null) return
-    updateNode({...selectedNode})
-    
+    updateNode({ ...selectedNode })
+
     console.log(selectedNode)
   }, [selectedNode])
-
-  const onSave = useCallback(() => {
-    (async () => {
-      if (reactFlowInstance && selectedFlow) {
-        const flow = JSON.stringify(reactFlowInstance.toObject(), null, 2)
-        const {accessLevel, baseObjname, s3PartialKey} = parseS3HttpUrl(selectedFlow.httpUrl)
-        const fileObj = new File([flow], baseObjname, {"type": "application/json"})
-        const response = await uploadObj(s3PartialKey, fileObj, accessLevel as "public" | "private" | "protected")
-        console.log(response)
-      }
-    })()
-  }, [reactFlowInstance])
-
 
   const onDragOver = React.useCallback((event: React.DragEvent<HTMLDivElement>) => {
     event.preventDefault();
@@ -181,7 +167,7 @@ export default function FlowCanvas() {
             style: { border: '1px solid #777', padding: 10, background: "white" },
           };
 
-          setNodes([{...newNode}]);
+          mergeNodes([{ ...newNode }]);
           // dispatch(createNodes([...nodes, newNode]))
           console.log(nodes)
         }
@@ -194,9 +180,12 @@ export default function FlowCanvas() {
 
   const onNodeClick = (event: React.MouseEvent, node: Node) => {
     dispatch(setParameterRowSelectionModel([]))
+    dispatch(setOutputRowSelectionModel([]))
     updateNode({ ...node, selected: true })
     dispatch(selectNode(node))
     dispatch(openNodeEditDrawer())
+
+    console.log(edges)
   }
 
   return (
@@ -207,9 +196,11 @@ export default function FlowCanvas() {
           nodes={nodes}
           edges={edges}
           onNodesChange={onNodesChange}
+          onConnectStart={console.log}
+          onConnectEnd={console.log}
           onEdgesChange={onEdgesChange}
-          // onConnect={onConnect}
-          onInit={(r) => {dispatch(setReactFlowInstance(r))}}
+          onConnect={onConnect}
+          onInit={(r) => { dispatch(setReactFlowInstance(r)) }}
           onDrop={onDrop}
           onDragOver={onDragOver}
           nodeTypes={nodeTypes}
@@ -220,9 +211,6 @@ export default function FlowCanvas() {
           <Controls />
           <Background variant={BackgroundVariant.Cross} />
         </ReactFlow>
-        <div className="save__controls">
-          <button onClick={onSave}>save</button>
-        </div>
       </div>
     </ReactFlowProvider>
   );

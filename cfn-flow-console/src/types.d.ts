@@ -135,15 +135,24 @@ type StackNodeParameterSource = {
     node: StackNode,
     output: OutputSummary
 }
+type StackNodeOutputTarget = {
+    node: StackNode,
+    parameter: ParameterSummary
+}
 type StackNodeParameter = ParameterSummary & {
     visible: boolean
     source: StackNodeParameterSource[]
+    selected: boolean
+}
+type StackNodeOutput = OutputSummary & {
+    visible: boolean
+    target: StackNodeOutputTarget[]
     selected: boolean
 }
 type StackNodeData = BaseCUstomNodeData & {
     regionName: string
     templateName: string
     parameters: StackNodeParameter[] 
-    outputs: (OutputSummary&{ visible: boolean })[]
+    outputs: StackNodeOutput[]
 }
 type StackNode = import("reactflow").Node<StackNodeData>

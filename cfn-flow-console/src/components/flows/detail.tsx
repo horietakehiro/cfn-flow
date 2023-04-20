@@ -30,7 +30,8 @@ import { shallow } from 'zustand/shallow';
 import { getRegions, parseS3HttpUrl, uploadObj } from '../../apis/common';
 import { getTemplateSummary, getTemplates } from '../../apis/templates/api';
 import { useAppDispatch, useAppSelector } from '../../hooks';
-import { RFState, closeEditIODialog, closeNodeEditDrawe as closeNodeEditDrawer, openEditIODialog, selectEditIODialog, selectNode, selectNodeEditDrawer, selectParameterRowSelectionModel, selectReactFlowInstance, selectSelectedFlow, selectSelectedNode, setParameterRowSelectionModel } from '../../stores/flows/main';
+import { editDialogClose } from '../../stores/flows/common';
+import { closeEditOutputTargetDialog, closeEditParameterSourceDialog, closeNodeEditDrawe as closeNodeEditDrawer, openEditOutputTargetDialog, openEditParameterSourceDialog, selectEditOutputTargetDialog, selectEditParameterSourceDialog, selectNode, selectNodeEditDrawer, selectOutputRowSelectionModel, selectParameterRowSelectionModel, selectReactFlowInstance, selectSelectedFlow, selectSelectedNode, selector, setOutputRowSelectionModel, setParameterRowSelectionModel } from '../../stores/flows/main';
 import { createTemplates, selectTemplates } from '../../stores/templates/main';
 import { useStore } from './../../stores/flows/main';
 
@@ -176,31 +177,42 @@ const StyledInputBase = styled(InputBase)(({ theme }) => ({
   },
 }));
 
-const selector = (state: RFState) => ({
-  nodes: state.nodes,
-  edges: state.edges,
-  onNodesChange: state.onNodesChange,
-  onEdgesChange: state.onEdgesChange,
-  onConnect: state.onConnect,
-  setNodes: state.setNodes,
-});
 
-export const EditIODialog: React.FC = () => {
-  const { nodes, edges, onNodesChange, onEdgesChange, onConnect, setNodes, } = useStore(selector, shallow);
+
+export const EditParameterSourceDialog: React.FC = () => {
+  const { nodes, edges, onNodesChange, onEdgesChange, onConnect, mergeNodes, updateNode, deleteNode, initNodes, addEdge } = useStore(selector, shallow);
   const dispatch = useAppDispatch()
-  const open = useAppSelector(selectEditIODialog)
+  const open = useAppSelector(selectEditParameterSourceDialog)
   const selectedNode = useAppSelector(selectSelectedNode)
   // const [personName, setPersonName] = React.useState<string[]>([]);
   const [selectableOutputs, setSelectableOutputs] = React.useState<StackNodeParameterSource[]>([])
   const [parameterSources, setParameterSources] = React.useState<StackNodeParameterSource[]>([])
 
+
+  React.useEffect(() => {
+    console.log("init output targets")
+    if (selectedNode === null) return
+    if ((selectedNode.data.parameters.filter(p => p.selected)).length == 0) return
+    const parameter = selectedNode.data.parameters.filter(p => p.selected)[0]
+
+    const sourceOutputs = nodes.filter((n) => n.type === "stackNode").map((n: StackNode) => {
+      return n.data.outputs.filter(o => o.target.filter(t => t.parameter.name === parameter.name).length > 0).map((o) => {
+        return { node: n, output: o as OutputSummary }
+      })
+    }).flat()
+    console.log(sourceOutputs)
+    setParameterSources(sourceOutputs)
+  }, [])
+
   React.useEffect(() => {
     console.log("get selectable outputs")
-    setSelectableOutputs(nodes.filter((n) => n.type === "stackNode").map((n: StackNode) => {
+    const outputs = nodes.filter((n) => n.type === "stackNode").map((n: StackNode) => {
       return n.data.outputs.filter((o) => o.visible && n.data.nodeName !== selectedNode?.data.nodeName).map((o) => {
         return { node: n, output: o }
       })
-    }).flat())
+    }).flat()
+    console.log(nodes)
+    setSelectableOutputs(outputs)
   }, [selectedNode])
 
   const getStackNodeParameterSource = (value: string): StackNodeParameterSource | null => {
@@ -237,6 +249,7 @@ export const EditIODialog: React.FC = () => {
   const onClose = (submit: boolean) => {
     setSelectableOutputs([])
     setParameterSources([])
+
     if (submit === true) {
       if (selectedNode !== null) {
         dispatch(selectNode({
@@ -247,13 +260,42 @@ export const EditIODialog: React.FC = () => {
             })
           }
         }))
-        setNodes(nodes.map((n) => {
-          if (n.id === selectedNode.id) return selectedNode
-          return n
+        updateNode(selectedNode)
+        initNodes(nodes.map((n) => {
+          if (n.type !== "stackNode" || (selectedNode.data.parameters.filter(p => p.selected)).length == 0) return n
+          const parameter = selectedNode.data.parameters.filter(p => p.selected)[0]
+
+          let newNode: StackNode = {
+            ...n, data: {
+              ...n.data, outputs: (n as StackNode).data.outputs.map((o) => {
+                return {
+                  ...o, target: o.target.map(t => {
+                    if (t.node.id === selectedNode.id) return { ...t, parameter: parameter }
+                    return t
+                  })
+                }
+              })
+            }
+          }
+          return newNode
         }))
+
+        const parameter = selectedNode.data.parameters.filter(p => p.selected)[0]
+        parameterSources.forEach((p) => {
+          addEdge({
+            id: `${p.node.id}/${p.output.name}-${selectedNode.id}/${parameter.name}`,
+            source: selectedNode.id,
+            sourceHandle: `${selectedNode.data.nodeName}/${parameter.name}`,
+            target: p.node.id,
+            targetHandle: `${p.node.data.nodeName}/${p.output.name}`,
+            updatable: true,
+            label: `${p.node.data.nodeName}/${p.output.name}-${selectedNode.data.nodeName}/${parameter.name}`,
+          })
+        })
+
       }
     }
-    dispatch(closeEditIODialog())
+    dispatch(closeEditParameterSourceDialog())
   }
 
   return (
@@ -271,6 +313,7 @@ export const EditIODialog: React.FC = () => {
                       margin="normal"
                       id="name"
                       label="Name"
+                      key="Name"
                       type={"tex"}
                       fullWidth
                       variant="outlined"
@@ -287,6 +330,7 @@ export const EditIODialog: React.FC = () => {
                       margin="normal"
                       id="description"
                       label="Description"
+                      key={"Description"}
                       type={"tex"}
                       fullWidth
                       variant="outlined"
@@ -304,6 +348,7 @@ export const EditIODialog: React.FC = () => {
                       id="type"
                       label="Type"
                       type={"tex"}
+                      key={"Type"}
                       fullWidth
                       variant="outlined"
                       value={p.type}
@@ -320,19 +365,20 @@ export const EditIODialog: React.FC = () => {
                         labelId="source-selection"
                         id="source-selection"
                         multiple
+                        key={"Source"}
                         value={parameterSources.map(p => `${p.node.data.nodeName}/${p.output.name}`)}
                         // value={parameterSources}
                         onChange={handleChange}
                         input={<OutlinedInput id="select-multiple-chip" label="Chip" />}
+                        fullWidth
                         renderValue={(selected) => (
-                          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, width: "auto" }}>
                             {selected.map((value) => (
-                              // <Chip key={`${value.node.data.nodeName}/${value.output.name}`} label={`${value.node.data.nodeName}/${value.output.name}`} />
                               <Chip key={value} label={value} />
                             ))}
                           </Box>
                         )}
-                        MenuProps={{ PaperProps: { style: { maxHeight: 48 * 4.5 + 8, width: 250 } } }}
+                        MenuProps={{ PaperProps: { style: { maxHeight: 48 * 4.5 + 8, width: "auto" } } }}
                       >
                         {selectableOutputs.map((o) => (
                           <MenuItem
@@ -368,17 +414,233 @@ export const EditIODialog: React.FC = () => {
 }
 
 
+export const EditOutputTargetDialog: React.FC = () => {
+  const { nodes, edges, onNodesChange, onEdgesChange, onConnect, mergeNodes, updateNode, deleteNode, initNodes, addEdge } = useStore(selector, shallow);
+  const dispatch = useAppDispatch()
+  const open = useAppSelector(selectEditOutputTargetDialog)
+  const selectedNode = useAppSelector(selectSelectedNode)
+  const [selectableParameters, setSelectableParameters] = React.useState<StackNodeOutputTarget[]>([])
+  const [outputTargets, setOutputTargets] = React.useState<StackNodeOutputTarget[]>([])
+
+  React.useEffect(() => {
+    console.log("init parameter sources")
+    if (selectedNode === null) return
+    if ((selectedNode.data.outputs.filter(o => o.selected)).length == 0) return
+    const output = selectedNode.data.outputs.filter(o => o.selected)[0]
+
+    const targetParameters = nodes.filter((n) => n.type === "stackNode").map((n: StackNode) => {
+      return n.data.parameters.filter(p => p.source.filter(s => s.output.name === output.name).length > 0).map((p) => {
+        return { node: n, parameter: p as ParameterSummary }
+      })
+    }).flat()
+    setOutputTargets(targetParameters)
+  }, [])
+
+  React.useEffect(() => {
+    console.log("get selectable parameters")
+    const parameters = nodes.filter((n) => n.type === "stackNode").map((n: StackNode) => {
+      return n.data.parameters.filter((p) => p.visible && n.data.nodeName !== selectedNode?.data.nodeName).map((p) => {
+        return { node: n, parameter: p }
+      })
+    }).flat()
+    console.log(nodes)
+    setSelectableParameters(parameters)
+  }, [selectedNode])
+
+  const getStackNodeOutputTarget = (value: string): StackNodeOutputTarget | null => {
+    const nodeName = value.split("/")[0]
+    const parameterName = value.split("/")[1]
+    const node: StackNode[] = nodes.filter((n) => n.type === "stackNode").filter((n: StackNode) => n.data.nodeName === nodeName)
+    if (node.length === 1) {
+      const parameter = node[0].data.parameters.filter((p) => p.name === parameterName)
+      if (parameter.length === 1) {
+        return { parameter: parameter[0], node: node[0] }
+      }
+    }
+    return null
+  }
+
+  const handleChange = (event: SelectChangeEvent<string | string[]>) => {
+    const { target: { value } } = event;
+    console.log(value)
+    if (typeof value === "string") {
+      const target = getStackNodeOutputTarget(value)
+      if (target === null) return
+      setOutputTargets([target])
+    }
+    if (Array.isArray(value)) {
+      setOutputTargets(value.map(
+        v => getStackNodeOutputTarget(v)
+      ).filter((v): v is StackNodeOutputTarget => v !== null)
+      )
+    }
+
+  };
+
+
+  const onClose = (submit: boolean) => {
+    setSelectableParameters([])
+    setOutputTargets([])
+    if (submit === true) {
+      if (selectedNode !== null) {
+        dispatch(selectNode({
+          ...selectedNode, data: {
+            ...selectedNode.data, outputs: selectedNode.data.outputs.map((o) => {
+              if (o.selected) return { ...o, selected: false, target: outputTargets }
+              return { ...o, selected: false }
+            })
+          }
+        }))
+        updateNode(selectedNode)
+        initNodes(nodes.map((n) => {
+          if (n.type !== "stackNode" || (selectedNode.data.outputs.filter(o => o.selected)).length == 0) return n
+          const output = selectedNode.data.outputs.filter(o => o.selected)[0]
+
+          let newNode: StackNode = {
+            ...n, data: {
+              ...n.data, parameters: (n as StackNode).data.parameters.map((p) => {
+                return {
+                  ...p, source: p.source.map(s => {
+                    if (s.node.id === selectedNode.id) return { ...s, output: output }
+                    return s
+                  })
+                }
+              })
+            }
+          }
+          return newNode
+        }))
+        const output = selectedNode.data.outputs.filter(o => o.selected)[0]
+        outputTargets.forEach((o) => {
+          addEdge({
+            id: `${o.node.id}/${o.parameter.name}-${selectedNode.id}/${output.name}`,
+            source: o.node.id,
+            sourceHandle: `${o.node.data.nodeName}/${o.parameter.name}`,
+            target: selectedNode.id,
+            targetHandle: `${selectedNode.data.nodeName}/${output.name}`,
+            updatable: true,
+            label: `${o.node.id}/${o.parameter.name}-${selectedNode.id}/${output.name}`,
+          })
+        })
+
+      }
+    }
+    dispatch(closeEditOutputTargetDialog())
+  }
+
+  return (
+    <div>
+      <Dialog open={open} onClose={() => onClose(false)}>
+        <DialogTitle>Edit Output's source</DialogTitle>
+        <DialogContent sx={{ margin: "100" }}>
+          {selectedNode !== null &&
+            selectedNode.data.outputs.map((o) => {
+              if (o.selected) {
+                return (
+                  <>
+                    <TextField
+                      autoFocus={false}
+                      margin="normal"
+                      id="name"
+                      label="Name"
+                      type={"tex"}
+                      fullWidth
+                      variant="outlined"
+                      value={o.name}
+                      disabled
+                      sx={{
+                        "& .MuiInputBase-input.Mui-disabled": {
+                          WebkitTextFillColor: "black",
+                        },
+                      }}
+                    />
+                    <TextField
+                      autoFocus={false}
+                      margin="normal"
+                      id="description"
+                      label="Description"
+                      type={"tex"}
+                      fullWidth
+                      variant="outlined"
+                      value={o.description}
+                      disabled
+                      sx={{
+                        "& .MuiInputBase-input.Mui-disabled": {
+                          WebkitTextFillColor: "black",
+                        },
+                      }}
+                    />
+                    <FormControl sx={{ m: 1, width: 300 }}>
+                      <InputLabel id="target">Target</InputLabel>
+                      <Select
+                        labelId="target-selection"
+                        id="target-selection"
+                        multiple
+                        value={outputTargets.map(o => `${o.node.data.nodeName}/${o.parameter.name}`)}
+                        // value={parameterSources}
+                        onChange={handleChange}
+                        input={<OutlinedInput id="select-multiple-chip" label="Chip" />}
+                        renderValue={(selected) => (
+                          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                            {selected.map((value) => (
+                              // <Chip key={`${value.node.data.nodeName}/${value.output.name}`} label={`${value.node.data.nodeName}/${value.output.name}`} />
+                              <Chip key={value} label={value} />
+                            ))}
+                          </Box>
+                        )}
+                        MenuProps={{ PaperProps: { style: { maxHeight: 48 * 4.5 + 8, width: 250 } } }}
+                      >
+                        {selectableParameters.map((p) => (
+                          <MenuItem
+                            key={`${p.node.data.nodeName}/${p.parameter.name}`}
+                            value={`${p.node.data.nodeName}/${p.parameter.name}`}
+                          // style={getStyles(name, parameters, theme)}
+                          >
+                            {`${p.node.data.nodeName}/${p.parameter.name}`}
+                          </MenuItem>
+                        ))}
+                      </Select>
+                    </FormControl>
+                  </>
+                )
+              }
+            })
+          }
+        </DialogContent>
+        <DialogActions>
+          <Box sx={{ m: 1, position: 'relative' }}>
+            <Button
+              data-testid="create-button"
+              onClick={() => onClose(true)}
+              variant={"contained"}
+            >
+              SAVE
+            </Button>
+          </Box>
+        </DialogActions>
+      </Dialog>
+    </div>
+  );
+}
+
+
 export default function FlowDetail() {
 
 
   const dispatch = useAppDispatch()
   const selectedFlow = useAppSelector(selectSelectedFlow)
   const selectedNode = useAppSelector(selectSelectedNode)
-  const EditIODialogOpened = useAppSelector(selectEditIODialog)
+  const EditParameterSourceDialogOpened = useAppSelector(selectEditParameterSourceDialog)
+  const EditOutputTargetDialogOpened = useAppSelector(selectEditOutputTargetDialog)
   const nodeEditDrawerOpened = useAppSelector(selectNodeEditDrawer)
   const parameterRowSelectionModel = useAppSelector(selectParameterRowSelectionModel)
+  const outputRowSelectionModel = useAppSelector(selectOutputRowSelectionModel)
+
+  const { nodes, edges, onNodesChange, onEdgesChange, onConnect, mergeNodes, updateNode, deleteNode } = useStore(selector, shallow);
 
   // const [parameterRowSelectionModel, setParameterRowSelectionModel] = React.useState<GridRowSelectionModel>([]);
+
+
 
 
   const templates = useAppSelector(selectTemplates)
@@ -404,7 +666,7 @@ export default function FlowDetail() {
           })
         }
       }))
-      dispatch(openEditIODialog())
+      dispatch(openEditParameterSourceDialog())
     },
     [selectedNode]
   )
@@ -422,7 +684,7 @@ export default function FlowDetail() {
           })
         }
       }))
-      dispatch(openEditIODialog())
+      dispatch(openEditOutputTargetDialog())
 
     },
     [selectedNode]
@@ -460,7 +722,7 @@ export default function FlowDetail() {
           disabled={!isVisible}
         />
       ]
-    }, [handleParametersDependencyClick])
+    }, [handleOutputsDependencyClick])
 
   const parametersCols: GridColDef[] = [
     {
@@ -559,8 +821,9 @@ export default function FlowDetail() {
       try {
         const response = await getTemplateSummary(event.target.value, "Outputs")
         newNode.data.outputs = (response.templateSummary.summary as OutputSummary[]).map((p) => {
-          return { ...p, visible: false }
+          return { ...p, visible: false, target: [], selected: false }
         })
+        dispatch(setOutputRowSelectionModel([]))
       } catch (e) {
         console.error(e)
       }
@@ -573,8 +836,8 @@ export default function FlowDetail() {
     (async () => {
       if (reactFlowInstance && selectedFlow) {
         const flow = JSON.stringify(reactFlowInstance.toObject(), null, 2)
-        const {accessLevel, baseObjname, s3PartialKey} = parseS3HttpUrl(selectedFlow.httpUrl)
-        const fileObj = new File([flow], baseObjname, {"type": "application/json"})
+        const { accessLevel, baseObjname, s3PartialKey } = parseS3HttpUrl(selectedFlow.httpUrl)
+        const fileObj = new File([flow], baseObjname, { "type": "application/json" })
         const response = await uploadObj(s3PartialKey, fileObj, accessLevel as "public" | "private" | "protected")
         console.log(response)
       }
@@ -583,8 +846,13 @@ export default function FlowDetail() {
 
   React.useEffect(() => {
     if (selectedNode === null) return
-    const visibleIds = selectedNode.data.parameters.filter(p => p.visible).map(p => p.name.toString())
-    dispatch(setParameterRowSelectionModel(visibleIds as GridRowId[]))
+    dispatch(setParameterRowSelectionModel(
+      selectedNode.data.parameters.filter(p => p.visible).map(p => p.name.toString()) as GridRowId[])
+    )
+    dispatch(setOutputRowSelectionModel(
+      selectedNode.data.outputs.filter(o => o.visible).map(o => o.name.toString()) as GridRowId[])
+    )
+
   }, [selectedNode])
 
   const onRowSelectionChange = (e: GridRowSelectionModel, sectionName: TemplateSummarySection) => {
@@ -594,7 +862,7 @@ export default function FlowDetail() {
     }
     if (sectionName === "Parameters") {
       const newParameters = selectedNode.data.parameters.map((p) => {
-        return { ...p, visible: e.includes(p.name as string) }
+        return { ...p, visible: e.includes(p.name as string) || p.source.length > 0 }
       })
       dispatch(selectNode({
         ...selectedNode, data: {
@@ -604,8 +872,8 @@ export default function FlowDetail() {
       // setParameterRowSelectionModel(e)
     }
     if (sectionName === "Outputs") {
-      const newOutputs = selectedNode.data.outputs.map((p) => {
-        return { ...p, visible: e.includes(p.name as string) }
+      const newOutputs = selectedNode.data.outputs.map((o) => {
+        return { ...o, visible: e.includes(o.name as string) || o.target.length > 0 }
       })
       dispatch(selectNode({
         ...selectedNode, data: {
@@ -614,6 +882,13 @@ export default function FlowDetail() {
       }))
 
     }
+  }
+
+  const onNodeDelete = () => {
+    if (selectedNode === null) return
+    deleteNode(selectedNode)
+    dispatch(editDialogClose())
+    dispatch(selectNode(null))
   }
 
   return (
@@ -644,7 +919,7 @@ export default function FlowDetail() {
               <Button
                 variant="contained"
                 style={{ textTransform: 'none' }}
-              onClick={onSave}
+                onClick={onSave}
               // disabled={selectedTemplate === null}
               >
                 SAVE
@@ -731,7 +1006,8 @@ export default function FlowDetail() {
             </List>
           </LeftDrawer>
         </Grid>
-        {EditIODialogOpened && <EditIODialog />}
+        {EditParameterSourceDialogOpened && <EditParameterSourceDialog />}
+        {EditOutputTargetDialogOpened && <EditOutputTargetDialog />}
         <Grid item sx={{ height: "80vh" }} xs={true}>
           <FlowCanvas />
         </Grid>
@@ -770,7 +1046,7 @@ export default function FlowDetail() {
               <Divider />
               <Stack direction={"column"} spacing={2}>
                 <Stack direction={"row"} justifyContent={"right"}>
-                  <Button variant={"contained"}>DELETE NODE</Button>
+                  <Button variant={"contained"} onClick={() => onNodeDelete()}>DELETE NODE</Button>
                 </Stack>
                 <TextField
                   autoFocus={false}
@@ -870,6 +1146,7 @@ export default function FlowDetail() {
                       checkboxSelection
                       disableRowSelectionOnClick
                       onRowSelectionModelChange={(e) => onRowSelectionChange(e, "Outputs")}
+                      rowSelectionModel={outputRowSelectionModel}
                     />
                   </Box>
                 </Stack>
