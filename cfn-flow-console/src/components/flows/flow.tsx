@@ -196,10 +196,10 @@ export default function FlowCanvas() {
           nodes={nodes}
           edges={edges}
           onNodesChange={onNodesChange}
-          onConnectStart={console.log}
-          onConnectEnd={console.log}
           onEdgesChange={onEdgesChange}
           onConnect={onConnect}
+          onConnectStart={console.log}
+          onConnectEnd={console.log}
           onInit={(r) => { dispatch(setReactFlowInstance(r)) }}
           onDrop={onDrop}
           onDragOver={onDragOver}
