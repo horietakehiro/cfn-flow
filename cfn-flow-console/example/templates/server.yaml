@@ -19,9 +19,16 @@ Parameters:
 
   PublicSubnetIds:
     Type: List<AWS::EC2::Subnet::Id>
-
   AmiId:
     Type: AWS::EC2::Image::Id
+  RootDomainName:
+    Type: String
+  RootDomainHostedZoneId:
+    Type: AWS::Route53::HostedZone::Id
+
+  InstanceCount:
+    Type: Number
+    Default: 1
 
 Resources: 
 
@@ -99,9 +106,9 @@ Resources:
               VolumeSize: 20
               VolumeType: gp2
         IamInstanceProfile: 
-          Arn: !Ref InstanceProfile
+          Arn: !GetAtt InstanceProfile.Arn
         ImageId: !Ref AmiId
-        InstanceType: t2.small
+        InstanceType: t2.micro
         SecurityGroupIds: 
           - !Ref InstanceSg
         UserData:
@@ -115,5 +122,110 @@ Resources:
 
       LaunchTemplateName: !Sub ${SYSTEM}-${ENV}-instance-lt
 
+  Asg:
+    Type: AWS::AutoScaling::AutoScalingGroup
+    Properties: 
+      AutoScalingGroupName: !Sub ${SYSTEM}-${ENV}-asg
+      DesiredCapacity: !Ref InstanceCount
+      DesiredCapacityType: units
+      HealthCheckGracePeriod: 120
+      HealthCheckType: ELB
+      LaunchTemplate: 
+        LaunchTemplateId: !Ref LaunchTemplate
+        Version: !GetAtt LaunchTemplate.LatestVersionNumber
+      # LoadBalancerNames: 
+      MaxSize: !Ref InstanceCount
+      MinSize: !Ref InstanceCount
+      TargetGroupARNs: 
+        - !Ref AlbTg
+      VPCZoneIdentifier: !Ref PublicSubnetIds
 
-# Outputs:
+
+  AlbCert:
+    Type: AWS::CertificateManager::Certificate
+    Properties: 
+      DomainName: !Sub alb.${SYSTEM}.${RootDomainName}
+      DomainValidationOptions: 
+        - 
+          DomainName: !Sub alb.${SYSTEM}.${RootDomainName}
+          HostedZoneId: !Ref RootDomainHostedZoneId
+
+      ValidationMethod: DNS
+
+
+  Alb:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties: 
+      IpAddressType: ipv4
+      # LoadBalancerAttributes: 
+      #   - LoadBalancerAttribute
+      Name: !Sub ${SYSTEM}-${ENV}-alb
+      Scheme: internet-facing
+      SecurityGroups: 
+        - !Ref AlbSg
+      # SubnetMappings: 
+      #   - SubnetMapping
+      Subnets: !Ref PublicSubnetIds
+      Type: application
+
+  AlbTg:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties: 
+      HealthCheckEnabled: true
+      HealthCheckIntervalSeconds: 5
+      HealthCheckPath: /
+      HealthCheckPort: 80
+      HealthCheckProtocol: HTTP
+      HealthCheckTimeoutSeconds: 3
+      HealthyThresholdCount: 3
+      IpAddressType: ipv4
+      Matcher: 
+        HttpCode: 200-399
+      Name: !Sub ${SYSTEM}-${ENV}-alb-tg
+      Port: 80
+      Protocol: HTTP
+      TargetGroupAttributes: 
+        - Key: deregistration_delay.timeout_seconds
+          Value: 30
+      # Targets: 
+      #   - TargetDescription
+      TargetType: instance
+      UnhealthyThresholdCount: 2
+      VpcId: !Ref VpcId
+
+
+  AlbListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties: 
+      Certificates: 
+        - CertificateArn: !Ref AlbCert
+      DefaultActions: 
+        - 
+          ForwardConfig: 
+            TargetGroups: 
+              - TargetGroupArn: !Ref AlbTg
+          TargetGroupArn: !Ref AlbTg
+          Type: forward
+
+      LoadBalancerArn: !Ref Alb
+      Port: 443
+      Protocol: HTTPS
+
+  AlbRecord:
+    Type: AWS::Route53::RecordSet
+    Properties: 
+      AliasTarget: 
+        DNSName: !GetAtt Alb.DNSName
+        HostedZoneId: !GetAtt Alb.CanonicalHostedZoneID
+      HostedZoneId: !Ref RootDomainHostedZoneId
+      Name: !Sub alb.${SYSTEM}.${RootDomainName}
+      Type: A
+
+Outputs:
+  AlbDns:
+    Description: dns for alb endpoint
+    Value: !Sub alb.${SYSTEM}.${RootDomainName}
+
+  AlbUrl:
+    Description: url for alb endpoint
+    Value: !Sub https://alb.${SYSTEM}.${RootDomainName}/

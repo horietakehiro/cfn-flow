@@ -43,8 +43,9 @@ export const StackNode = ({ data }: NodeProps<StackNodeData>) => {
   return (
     <>
       {data.parameters.filter((p) => p.visible).map((p, i) => {
+        const id = `${data.nodeId}/${p.name}`
         return (
-          <Handle isConnectable type='source' position={Position.Top} id={`${data.nodeName}/${p.name}`} key={`${data.nodeName}/${p.name}`} style={{ left: 20 * (i + 1) }} />
+          <Handle isConnectable type='source' position={Position.Top} id={id} key={id} style={{ left: 20 * (i + 1) }} />
         )
       })}
       <Stack direction={"row"} spacing={1}>
@@ -55,8 +56,9 @@ export const StackNode = ({ data }: NodeProps<StackNodeData>) => {
         </Stack>
       </Stack>
       {data.outputs.filter((o) => o.visible).map((o, i) => {
+        const id = `${data.nodeId}/${o.name}`
         return (
-          <Handle isConnectable type='target' position={Position.Bottom} id={`${data.nodeName}/${o.name}`} key={`${data.nodeName}/${o.name}`} style={{ left: 20 * (i + 1) }} />
+          <Handle isConnectable type='target' position={Position.Bottom} id={id} key={id} style={{ left: 20 * (i + 1) }} />
         )
       })}
     </>
@@ -98,7 +100,6 @@ export default function FlowCanvas() {
         initialNodes = flow.nodes
         initialEdges = flow.edges
       } else {
-        console.log("init")
         const reactFlowBounds = reactFlowWrapper.current.getBoundingClientRect();
         initialNodes = [
           {
@@ -122,8 +123,6 @@ export default function FlowCanvas() {
   useEffect(() => {
     if (selectedNode === null) return
     updateNode({ ...selectedNode })
-
-    console.log(selectedNode)
   }, [selectedNode])
 
   const onDragOver = React.useCallback((event: React.DragEvent<HTMLDivElement>) => {
@@ -150,9 +149,12 @@ export default function FlowCanvas() {
             x: event.clientX - reactFlowBounds.left,
             y: event.clientY - reactFlowBounds.top,
           });
-          const id = getId()
+          const id = `stackNode-${getId()}`
           const data: StackNodeData = {
-            nodeName: `stackNode-${id}`, toolbarVisible: true, nodeDeletable: true,
+            nodeId: id, 
+            nodeName: id,
+            toolbarVisible: true, 
+            nodeDeletable: true,
             regionName: "-", templateName: "",
             parameters: [],
             outputs: [],
@@ -184,8 +186,6 @@ export default function FlowCanvas() {
     updateNode({ ...node, selected: true })
     dispatch(selectNode(node))
     dispatch(openNodeEditDrawer())
-
-    console.log(edges)
   }
 
   return (

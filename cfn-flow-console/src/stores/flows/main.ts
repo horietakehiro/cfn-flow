@@ -16,12 +16,16 @@ export interface NodeEditDrawerState {
 export interface SelectedNodeState {
     node: StackNode | null
 }
-export interface EditParameterSourceDialogState {
+export interface EditIODialogState {
     opened: boolean
-}
-export interface EditOutputTargetDialogState {
-    opened: boolean
-}
+    type: "Parameters" | "Outputs" | null
+} 
+// export interface EditParameterSourceDialogState {
+//     opened: boolean
+// }
+// export interface EditOutputTargetDialogState {
+//     opened: boolean
+// }
 export interface ParameterRowSelectionModelState {
     rowIds: GridRowId[]
 }
@@ -47,12 +51,16 @@ const NodeEditDrawerInitialState: NodeEditDrawerState = {
 const SelectedNodeInitialState: SelectedNodeState = {
     node: null
 }
-const EditParameterSourceDialogInitialState: EditParameterSourceDialogState = {
-    opened: false
+const EditIODialogInitialState: EditIODialogState = {
+    opened: false,
+    type: null
 }
-const EditOutputTargetDialogInitialState: EditOutputTargetDialogState = {
-    opened: false
-}
+// const EditParameterSourceDialogInitialState: EditParameterSourceDialogState = {
+//     opened: false
+// }
+// const EditOutputTargetDialogInitialState: EditOutputTargetDialogState = {
+//     opened: false
+// }
 const ParameterRowSelectionModelInitialState: ParameterRowSelectionModelState = {
     rowIds: []
 }
@@ -74,8 +82,10 @@ export type RFState = {
     initNodes: (nodes: Node[]) => void
     deleteNode: (node: Node) => void
 
-    addEdge: (edge: Edge) => void
+    // addEdge: (edge: Edge) => void
     initEdges: (edges: Edge[]) => void
+    removeEdges: (sourceNodeId:string, targetNodeId:string) => void
+    upsertEdge: (edge:Edge) => void
 };
 
 // this is our useStore hook that we can use in our components to get parts of the store and call actions
@@ -104,7 +114,6 @@ export const useStore = create<RFState>((set, get) => ({
         })
     },
     updateNode: (node) => {
-        console.log(node)
         set({
             nodes: get().nodes.map((n) => {
                 if (n.id === node.id) return node
@@ -113,7 +122,6 @@ export const useStore = create<RFState>((set, get) => ({
         })
     },
     initNodes: (nodes) => {
-        console.log(nodes)
         set({
             nodes: [...nodes]
         })
@@ -129,12 +137,21 @@ export const useStore = create<RFState>((set, get) => ({
             edges: [...edges],
         })
     },
-    addEdge: (edge: Edge) => {
-        console.log(edge)
+    // addEdge: (edge: Edge) => {
+    //     set({
+    //         edges: addEdge({...edge}, get().edges),
+    //     });
+    // },
+    removeEdges: (sourceNodeId:string, targetNodeId:string) => {
         set({
-            edges: addEdge({...edge}, get().edges),
-        });
+            edges: get().edges.filter(e => e.source !== sourceNodeId || e.target !== targetNodeId)
+        })
     },
+    upsertEdge: (edge: Edge) => {
+        set({
+            edges: addEdge({...edge}, get().edges.filter(e => e.id !== edge.id))
+        })
+    }
 
 }));
 export const FlowsSlice = createSlice({
@@ -196,30 +213,45 @@ export const SelectedNodeSlice = createSlice({
         },
     }
 })
-export const EditParameterSourceDialogSlice = createSlice({
-    name: "EditParameterSourceDialog",
-    initialState: EditParameterSourceDialogInitialState,
+export const EditIODialogSlice = createSlice({
+    name: "EditIODialog",
+    initialState: EditIODialogInitialState,
     reducers: {
-        open: (state) => {
+        open: (state, action: PayloadAction<"Parameters" | "Outputs">) => {
             state.opened = true
+            state.type = action.payload
         },
         close: (state) => {
             state.opened = false
+            state.type = null
         }
     }
 })
-export const EditOutputTargetDialogSlice = createSlice({
-    name: "EditOutputTargetDialog",
-    initialState: EditOutputTargetDialogInitialState,
-    reducers: {
-        open: (state) => {
-            state.opened = true
-        },
-        close: (state) => {
-            state.opened = false
-        }
-    }
-})
+
+// export const EditParameterSourceDialogSlice = createSlice({
+//     name: "EditParameterSourceDialog",
+//     initialState: EditParameterSourceDialogInitialState,
+//     reducers: {
+//         open: (state) => {
+//             state.opened = true
+//         },
+//         close: (state) => {
+//             state.opened = false
+//         }
+//     }
+// })
+// export const EditOutputTargetDialogSlice = createSlice({
+//     name: "EditOutputTargetDialog",
+//     initialState: EditOutputTargetDialogInitialState,
+//     reducers: {
+//         open: (state) => {
+//             state.opened = true
+//         },
+//         close: (state) => {
+//             state.opened = false
+//         }
+//     }
+// })
 export const ParameterRowSelectionModelSlice = createSlice({
     name: "ParameterRowSelectionModel",
     initialState: ParameterRowSelectionModelInitialState,
@@ -254,8 +286,9 @@ export const {
 } = FlowsSlice.actions
 export const { open: openNodeEditDrawe, close: closeNodeEditDrawe } = NodeEditDrawerSlice.actions
 export const { select: selectNode } = SelectedNodeSlice.actions
-export const { open: openEditParameterSourceDialog, close: closeEditParameterSourceDialog } = EditParameterSourceDialogSlice.actions
-export const { open: openEditOutputTargetDialog, close: closeEditOutputTargetDialog } = EditOutputTargetDialogSlice.actions
+export const { open: openEditIODialog, close: closeEditIODialog } = EditIODialogSlice.actions
+// export const { open: openEditParameterSourceDialog, close: closeEditParameterSourceDialog } = EditParameterSourceDialogSlice.actions
+// export const { open: openEditOutputTargetDialog, close: closeEditOutputTargetDialog } = EditOutputTargetDialogSlice.actions
 export const { set: setParameterRowSelectionModel } = ParameterRowSelectionModelSlice.actions
 export const { set: setOutputRowSelectionModel } = OutputRowSelectionModelSlice.actions
 export const { set: setReactFlowInstance } = ReactFlowInstanceSlice.actions
@@ -265,8 +298,9 @@ export const SelectFlowReducer = SelectedFlowSlice.reducer
 export const FlowsReducer = FlowsSlice.reducer
 export const NodeEditDrawerReducer = NodeEditDrawerSlice.reducer
 export const SelectNodeReducer = SelectedNodeSlice.reducer
-export const EditParameterSourceDialogReducer = EditParameterSourceDialogSlice.reducer
-export const EditOutputTargetDialogReducer = EditOutputTargetDialogSlice.reducer
+export const EditIODialogReducer = EditIODialogSlice.reducer
+// export const EditParameterSourceDialogReducer = EditParameterSourceDialogSlice.reducer
+// export const EditOutputTargetDialogReducer = EditOutputTargetDialogSlice.reducer
 export const ParameterRowSelectionModelReducer = ParameterRowSelectionModelSlice.reducer
 export const OutputRowSelectionModelReducer = OutputRowSelectionModelSlice.reducer
 export const ReactFlowInstanceReducer = ReactFlowInstanceSlice.reducer
@@ -277,8 +311,9 @@ export const selectSelectedFlow = (state: RootState) => state.selectedFlow.flow
 export const selectFlows = (state: RootState) => state.flows.flows
 export const selectNodeEditDrawer = (state: RootState) => state.nodeEditDrawer.opened
 export const selectSelectedNode = (state: RootState) => state.selectedNode.node
-export const selectEditParameterSourceDialog = (state: RootState) => state.editParameterSourceDialog.opened
-export const selectEditOutputTargetDialog = (state: RootState) => state.editOutputTargetDialog.opened
+export const selectEditIODialog = (state: RootState) => state.editIODialog
+// export const selectEditParameterSourceDialog = (state: RootState) => state.editParameterSourceDialog.opened
+// export const selectEditOutputTargetDialog = (state: RootState) => state.editOutputTargetDialog.opened
 export const selectParameterRowSelectionModel = (state: RootState) => state.parametersRowSelectionModel.rowIds
 export const selectOutputRowSelectionModel = (state: RootState) => state.outputRowSelectionModel.rowIds
 export const selectReactFlowInstance = (state: RootState) => state.reactFlowInstance.reactFlowInstance
@@ -294,7 +329,9 @@ export const selector = (state: RFState) => ({
     updateNode: state.updateNode,
     deleteNode: state.deleteNode,
     initNodes: state.initNodes,
-    addEdge: state.addEdge,
+    // addEdge: state.addEdge,
     initEdges: state.initEdges,
+    removeEdges: state.removeEdges,
+    upsertEdge: state.upsertEdge,
 
 });

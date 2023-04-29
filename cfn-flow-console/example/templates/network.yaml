@@ -31,7 +31,7 @@ Resources:
         Fn::Select:
           - 0
           - !GetAZs ''
-      VpcId: vpc-id
+      VpcId: !Ref VPC
       CidrBlock: 10.0.0.0/24
       MapPublicIpOnLaunch: true
       Tags:
@@ -45,7 +45,7 @@ Resources:
         Fn::Select:
           - 1
           - !GetAZs ''
-      VpcId: vpc-id
+      VpcId: !Ref VPC
       CidrBlock: 10.0.1.0/24
       MapPublicIpOnLaunch: true
       Tags:
@@ -59,7 +59,7 @@ Resources:
         Fn::Select:
           - 0
           - !GetAZs ''
-      VpcId: vpc-id
+      VpcId: !Ref VPC
       CidrBlock: 10.0.10.0/24
       MapPublicIpOnLaunch: false
       Tags:
@@ -73,7 +73,7 @@ Resources:
         Fn::Select:
           - 1
           - !GetAZs ''
-      VpcId: vpc-id
+      VpcId: !Ref VPC
       CidrBlock: 10.0.11.0/24
       MapPublicIpOnLaunch: false
       Tags:

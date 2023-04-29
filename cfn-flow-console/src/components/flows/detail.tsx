@@ -31,7 +31,7 @@ import { getRegions, parseS3HttpUrl, uploadObj } from '../../apis/common';
 import { getTemplateSummary, getTemplates } from '../../apis/templates/api';
 import { useAppDispatch, useAppSelector } from '../../hooks';
 import { editDialogClose } from '../../stores/flows/common';
-import { closeEditOutputTargetDialog, closeEditParameterSourceDialog, closeNodeEditDrawe as closeNodeEditDrawer, openEditOutputTargetDialog, openEditParameterSourceDialog, selectEditOutputTargetDialog, selectEditParameterSourceDialog, selectNode, selectNodeEditDrawer, selectOutputRowSelectionModel, selectParameterRowSelectionModel, selectReactFlowInstance, selectSelectedFlow, selectSelectedNode, selector, setOutputRowSelectionModel, setParameterRowSelectionModel } from '../../stores/flows/main';
+import { closeEditIODialog, closeNodeEditDrawe as closeNodeEditDrawer, openEditIODialog, selectEditIODialog, selectNode, selectNodeEditDrawer, selectOutputRowSelectionModel, selectParameterRowSelectionModel, selectReactFlowInstance, selectSelectedFlow, selectSelectedNode, selector, setOutputRowSelectionModel, setParameterRowSelectionModel } from '../../stores/flows/main';
 import { createTemplates, selectTemplates } from '../../stores/templates/main';
 import { useStore } from './../../stores/flows/main';
 
@@ -177,224 +177,341 @@ const StyledInputBase = styled(InputBase)(({ theme }) => ({
   },
 }));
 
-
-
-export const EditParameterSourceDialog: React.FC = () => {
-  const { nodes, edges, onNodesChange, onEdgesChange, onConnect, mergeNodes, updateNode, deleteNode, initNodes, addEdge } = useStore(selector, shallow);
+type EditIODialogProps = {
+  type: "Parameters" | "Outputs"
+}
+export const EditIODialog: React.FC<EditIODialogProps> = ({ type }) => {
   const dispatch = useAppDispatch()
-  const open = useAppSelector(selectEditParameterSourceDialog)
+  const { opened } = useAppSelector(selectEditIODialog)
+  const {
+    nodes, edges,
+    onNodesChange, onEdgesChange, onConnect,
+    mergeNodes, updateNode, deleteNode, initNodes,
+    upsertEdge, removeEdges,
+  } = useStore(selector, shallow);
   const selectedNode = useAppSelector(selectSelectedNode)
-  // const [personName, setPersonName] = React.useState<string[]>([]);
-  const [selectableOutputs, setSelectableOutputs] = React.useState<StackNodeParameterSource[]>([])
-  const [parameterSources, setParameterSources] = React.useState<StackNodeParameterSource[]>([])
+
+  const [selectedIO, setSelectedIO] = React.useState<StackNodeParameter | StackNodeOutput | null>(null)
+  const [selectableIOs, setSelectableIOs] = React.useState<StackNodeIODependency[]>([])
+  const [ioDependencies, setIODependencies] = React.useState<StackNodeIODependency[]>([])
+  const [prevIODependencies, setPrevIODependencies] = React.useState<StackNodeIODependency[]>([])
 
 
   React.useEffect(() => {
-    console.log("init output targets")
     if (selectedNode === null) return
-    if ((selectedNode.data.parameters.filter(p => p.selected)).length == 0) return
-    const parameter = selectedNode.data.parameters.filter(p => p.selected)[0]
 
-    const sourceOutputs = nodes.filter((n) => n.type === "stackNode").map((n: StackNode) => {
-      return n.data.outputs.filter(o => o.target.filter(t => t.parameter.name === parameter.name).length > 0).map((o) => {
-        return { node: n, output: o as OutputSummary }
-      })
+    const selectedIOs = type === "Parameters" ? selectedNode.data.parameters.filter(p => p.selected) : selectedNode.data.outputs.filter(o => o.selected)
+    if (selectedIOs.length == 0) return
+    const selectedIO = selectedIOs[0]
+    setSelectedIO(selectedIO)
+
+    // get exsiting io dependencies
+    const ioDependencies = nodes.filter((n) => n.type === "stackNode").map((n: StackNode) => {
+      return type === "Parameters" ?
+        n.data.outputs.map((o) => {
+          const isDepended = o.dependencies.filter(d => d.node.id === selectedNode.id && d.dependsOn.name === selectedIO.name)
+          if (isDepended.length === 0) return []
+          return [{ node: n, dependsOn: o }]
+        }).flat() :
+        // n.data.parameters.map(p => p.dependencies.filter(d => d.node.id === selectedNode.id)).flat()
+        n.data.parameters.map((p) => {
+          const isDepended = p.dependencies.filter(d => d.node.id === selectedNode.id && d.dependsOn.name === selectedIO.name)
+          if (isDepended.length === 0) return []
+          return [{ node: n, dependsOn: p }]
+        }).flat()
     }).flat()
-    console.log(sourceOutputs)
-    setParameterSources(sourceOutputs)
+    console.log(ioDependencies)
+    setIODependencies([...ioDependencies])
+    setPrevIODependencies([...ioDependencies])
   }, [])
 
+
   React.useEffect(() => {
-    console.log("get selectable outputs")
-    const outputs = nodes.filter((n) => n.type === "stackNode").map((n: StackNode) => {
-      return n.data.outputs.filter((o) => o.visible && n.data.nodeName !== selectedNode?.data.nodeName).map((o) => {
-        return { node: n, output: o }
+    const selectableIOs: StackNodeIODependency[] = nodes.filter((n) => n.type === "stackNode").map((n: StackNode) => {
+      const otherNodesIOs = type === "Parameters" ?
+        n.data.outputs.filter(o => o.visible && n.data.nodeName !== selectedNode?.data.nodeName) :
+        n.data.parameters.filter(p => p.visible && n.data.nodeName !== selectedNode?.data.nodeName)
+      return otherNodesIOs.map((io) => {
+        return { node: n, dependsOn: io }
       })
     }).flat()
-    console.log(nodes)
-    setSelectableOutputs(outputs)
+    console.log(selectableIOs)
+    setSelectableIOs(selectableIOs)
   }, [selectedNode])
 
-  const getStackNodeParameterSource = (value: string): StackNodeParameterSource | null => {
+
+  const getStackNodeIODependency = (value: string): StackNodeIODependency | null => {
     const nodeName = value.split("/")[0]
-    const outputName = value.split("/")[1]
+    const ioName = value.split("/")[1]
     const node: StackNode[] = nodes.filter((n) => n.type === "stackNode").filter((n: StackNode) => n.data.nodeName === nodeName)
     if (node.length === 1) {
-      const output = node[0].data.outputs.filter((o) => o.name === outputName)
-      if (output.length === 1) {
-        return { output: output[0], node: node[0] }
+      const io = type === "Parameters" ?
+        node[0].data.outputs.filter(o => o.name === ioName) :
+        node[0].data.parameters.filter(p => p.name === ioName)
+
+      if (io.length === 1) {
+        return { dependsOn: io[0], node: node[0] }
       }
     }
     return null
   }
 
+
   const handleChange = (event: SelectChangeEvent<string | string[]>) => {
+    console.log(event.target)
     const { target: { value } } = event;
-    console.log(value)
     if (typeof value === "string") {
-      const source = getStackNodeParameterSource(value)
-      if (source === null) return
-      setParameterSources([source])
+      const ioDependency = getStackNodeIODependency(value)
+      if (ioDependency === null) return
+      setIODependencies([ioDependency])
     }
     if (Array.isArray(value)) {
-      setParameterSources(value.map(
-        v => getStackNodeParameterSource(v)
-      ).filter((v): v is StackNodeParameterSource => v !== null)
-      )
+      const newIOs = value.map(
+        v => getStackNodeIODependency(v)
+      ).filter((v): v is StackNodeIODependency => v !== null)
+      setIODependencies([...newIOs])
     }
-
   };
 
-
   const onClose = (submit: boolean) => {
-    setSelectableOutputs([])
-    setParameterSources([])
+    if (submit === false) {
+      setSelectableIOs([])
+      setIODependencies([])
+      setPrevIODependencies([])
 
-    if (submit === true) {
-      if (selectedNode !== null) {
-        dispatch(selectNode({
-          ...selectedNode, data: {
-            ...selectedNode.data, parameters: selectedNode.data.parameters.map((p) => {
-              if (p.selected) return { ...p, selected: false, source: parameterSources }
-              return { ...p, selected: false }
+      dispatch(closeEditIODialog())
+      return
+    }
+    if (selectedNode === null) return
+
+    if (type === "Parameters") {
+      dispatch(selectNode({
+        ...selectedNode, data: {
+          ...selectedNode.data, parameters: selectedNode.data.parameters.map((p) => {
+            if (p.selected) return { ...p, selected: false, dependencies: ioDependencies }
+            return { ...p, selected: false }
+          })
+        }
+      }))
+    }
+    if (type === "Outputs") {
+      dispatch(selectNode({
+        ...selectedNode, data: {
+          ...selectedNode.data, outputs: selectedNode.data.outputs.map((o) => {
+            if (o.selected) return { ...o, selected: false, dependencies: ioDependencies }
+            return { ...o, selected: false }
+          })
+        }
+      }))
+    }
+    updateNode({ ...selectedNode })
+
+    // update other nodes' dependencies
+    initNodes(nodes.map((n) => {
+      if (n.type !== "stackNode" || n.id === selectedNode.id) return n
+
+      let otherNode: StackNode = { ...n }
+
+      ioDependencies.filter(
+        ioDenedency => ioDenedency.node.id === otherNode.id
+      ).map(
+        (ioDependency) => {
+          const otherNodeIOs = type === "Parameters" ? [...otherNode.data.outputs] : [...otherNode.data.parameters]
+          const newIOs = otherNodeIOs.map((otherNodeIO) => {
+            if (otherNodeIO.name !== ioDependency.dependsOn.name) return otherNodeIO
+            const updatedDeps = otherNodeIO.dependencies.map((d) => {
+              console.log(d)
+              if (d.node.id === selectedNode.id && d.dependsOn.name === selectedIO?.name) {
+                // if dependency with for same node and same io has been existed, return updated latest dependency
+                return { node: { ...selectedNode }, dependsOn: { ...selectedIO } }
+              }
+              return d
             })
-          }
-        }))
-        updateNode(selectedNode)
-        initNodes(nodes.map((n) => {
-          if (n.type !== "stackNode" || (selectedNode.data.parameters.filter(p => p.selected)).length == 0) return n
-          const parameter = selectedNode.data.parameters.filter(p => p.selected)[0]
 
-          let newNode: StackNode = {
-            ...n, data: {
-              ...n.data, outputs: (n as StackNode).data.outputs.map((o) => {
-                return {
-                  ...o, target: o.target.map(t => {
-                    if (t.node.id === selectedNode.id) return { ...t, parameter: parameter }
-                    return t
-                  })
-                }
-              })
+            console.log(updatedDeps)
+
+            // if dependency for same node and same io does not exist, append it
+            const isExisted = updatedDeps.findIndex(
+              d => d.node.id === selectedNode.id && d.dependsOn.name === selectedIO?.name
+            )
+            console.log(isExisted)
+            if (isExisted === -1) {
+              return {
+                ...otherNodeIO, dependencies: [...updatedDeps, {
+                  node: { ...selectedNode }, dependsOn: { ...selectedIO }
+                }],
+              }
+            } else {
+              return { ...otherNodeIO, dependencies: [...updatedDeps] }
+            }
+          })
+          console.log(newIOs)
+
+          if (type === "Parameters") {
+            otherNode = {
+              ...otherNode, data: {
+                ...otherNode.data, outputs: [...(newIOs as StackNodeOutput[])]
+              }
             }
           }
-          return newNode
-        }))
+          if (type === "Outputs") {
+            otherNode = {
+              ...otherNode, data: {
+                ...otherNode.data, parameters: [...(newIOs as StackNodeParameter[])]
+              }
+            }
+          }
+        }
+      )
 
-        const parameter = selectedNode.data.parameters.filter(p => p.selected)[0]
-        parameterSources.forEach((p) => {
-          addEdge({
-            id: `${p.node.id}/${p.output.name}-${selectedNode.id}/${parameter.name}`,
-            source: selectedNode.id,
-            sourceHandle: `${selectedNode.data.nodeName}/${parameter.name}`,
-            target: p.node.id,
-            targetHandle: `${p.node.data.nodeName}/${p.output.name}`,
-            updatable: true,
-            label: `${p.node.data.nodeName}/${p.output.name}-${selectedNode.data.nodeName}/${parameter.name}`,
+      const removedDependencies = prevIODependencies.filter(prev => !ioDependencies.some(cur => cur.node.id === prev.node.id && cur.dependsOn.name === prev.dependsOn.name))
+      console.log(removedDependencies)
+      removedDependencies.map((removedDependency) => {
+        // remove removed dependency from other node
+        if (removedDependency.node.id !== otherNode.id) return otherNode
+        const otherNodeIOs:(StackNodeParameter|StackNodeOutput)[] = type === "Parameters" ? [...otherNode.data.outputs] : [...otherNode.data.parameters]
+        const newIOs = otherNodeIOs.map((otherNodeIO) => {
+          const newDeps = otherNodeIO.dependencies.filter((d) => {
+            otherNodeIO.name
+            return d.node.id !== selectedNode.id || (d.node.id === selectedNode.id && d.dependsOn.name === selectedIO?.name)
           })
+          console.log(newDeps)
+          return {...otherNodeIO, dependencies: [...newDeps]}
         })
+        console.log(newIOs)
+        if (type === "Parameters") {
+          otherNode = {
+            ...otherNode, data: {
+              ...otherNode.data, outputs: [...(newIOs as StackNodeOutput[])]
+            }
+          }
+        }
+        if (type === "Outputs") {
+          otherNode = {
+            ...otherNode, data: {
+              ...otherNode.data, parameters: [...(newIOs as StackNodeParameter[])]
+            }
+          }
+        }
+      })
 
-      }
-    }
-    dispatch(closeEditParameterSourceDialog())
+      return otherNode
+    }))
+
+    // update edges
+    ioDependencies.forEach((ioDependency) => {
+      const sourceNodeId = type === "Parameters" ? selectedNode.id : ioDependency.node.id
+      const targetNodeId = type === "Parameters" ? ioDependency.node.id : selectedNode.id
+
+      const sourceHandleId = type === "Parameters" ? selectedIO?.name : ioDependency.dependsOn.name
+      const targetHandleId = type === "Parameters" ? ioDependency.dependsOn.name : selectedIO?.name
+
+      const sourceId = `${sourceNodeId}/${sourceHandleId}`
+      const targetId = `${targetNodeId}/${targetHandleId}`
+
+      const id = `${sourceId}-${targetId}`
+      const label = `${sourceHandleId}-${targetHandleId}`
+
+      removeEdges(sourceNodeId, targetNodeId)
+      upsertEdge({
+        id: id,
+        source: sourceNodeId,
+        sourceHandle: sourceId,
+        target: targetNodeId,
+        targetHandle: targetId,
+        updatable: true,
+        label: label,
+        type: "step"
+      })
+    })
+    setSelectableIOs([])
+    setIODependencies([])
+    setPrevIODependencies([])
+
+    dispatch(closeEditIODialog())
+    return
+
   }
 
   return (
     <div>
-      <Dialog open={open} onClose={() => onClose(false)}>
-        <DialogTitle>Edit Parameter's source</DialogTitle>
+      <Dialog open={opened} onClose={() => onClose(false)}>
+        <DialogTitle>{type === "Parameters" ? "Edit Parameter's Source" : "Edit Output's Target"}</DialogTitle>
         <DialogContent sx={{ margin: "100" }}>
-          {selectedNode !== null &&
-            selectedNode.data.parameters.map((p) => {
-              if (p.selected) {
-                return (
-                  <>
-                    <TextField
-                      autoFocus={false}
-                      margin="normal"
-                      id="name"
-                      label="Name"
-                      key="Name"
-                      type={"tex"}
-                      fullWidth
-                      variant="outlined"
-                      value={p.name}
-                      disabled
-                      sx={{
-                        "& .MuiInputBase-input.Mui-disabled": {
-                          WebkitTextFillColor: "black",
-                        },
-                      }}
-                    />
-                    <TextField
-                      autoFocus={false}
-                      margin="normal"
-                      id="description"
-                      label="Description"
-                      key={"Description"}
-                      type={"tex"}
-                      fullWidth
-                      variant="outlined"
-                      value={p.description}
-                      disabled
-                      sx={{
-                        "& .MuiInputBase-input.Mui-disabled": {
-                          WebkitTextFillColor: "black",
-                        },
-                      }}
-                    />
-                    <TextField
-                      autoFocus={false}
-                      margin="normal"
-                      id="type"
-                      label="Type"
-                      type={"tex"}
-                      key={"Type"}
-                      fullWidth
-                      variant="outlined"
-                      value={p.type}
-                      disabled
-                      sx={{
-                        "& .MuiInputBase-input.Mui-disabled": {
-                          WebkitTextFillColor: "black",
-                        },
-                      }}
-                    />
-                    <FormControl sx={{ m: 1, width: 300 }}>
-                      <InputLabel id="source">Source</InputLabel>
-                      <Select
-                        labelId="source-selection"
-                        id="source-selection"
-                        multiple
-                        key={"Source"}
-                        value={parameterSources.map(p => `${p.node.data.nodeName}/${p.output.name}`)}
-                        // value={parameterSources}
-                        onChange={handleChange}
-                        input={<OutlinedInput id="select-multiple-chip" label="Chip" />}
-                        fullWidth
-                        renderValue={(selected) => (
-                          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, width: "auto" }}>
-                            {selected.map((value) => (
-                              <Chip key={value} label={value} />
-                            ))}
-                          </Box>
-                        )}
-                        MenuProps={{ PaperProps: { style: { maxHeight: 48 * 4.5 + 8, width: "auto" } } }}
-                      >
-                        {selectableOutputs.map((o) => (
-                          <MenuItem
-                            key={`${o.node.data.nodeName}/${o.output.name}`}
-                            value={`${o.node.data.nodeName}/${o.output.name}`}
-                          // style={getStyles(name, parameters, theme)}
-                          >
-                            {`${o.node.data.nodeName}/${o.output.name}`}
-                          </MenuItem>
+          {(selectedNode !== null && selectedIO !== null) &&
+            <>
+              <TextField
+                autoFocus={false}
+                margin="normal"
+                id="name"
+                label="Name"
+                key="Name"
+                type={"tex"}
+                fullWidth
+                variant="outlined"
+                value={selectedIO.name}
+                disabled
+                sx={{
+                  "& .MuiInputBase-input.Mui-disabled": {
+                    WebkitTextFillColor: "black",
+                  },
+                }}
+              />
+              <TextField
+                autoFocus={false}
+                margin="normal"
+                id="description"
+                label="Description"
+                key={"Description"}
+                type={"tex"}
+                fullWidth
+                variant="outlined"
+                value={selectedIO.description}
+                disabled
+                sx={{
+                  "& .MuiInputBase-input.Mui-disabled": {
+                    WebkitTextFillColor: "black",
+                  },
+                }}
+              />
+              <FormControl sx={{ m: 1, width: 300 }}>
+                <InputLabel id="ioDependency">{type === "Parameters" ? "Source" : "Target"}</InputLabel>
+                <Select
+                  labelId="io-selection"
+                  id="io-selection"
+                  multiple
+                  key={type === "Parameters" ? "Source" : "Target"}
+                  value={ioDependencies.map(io => `${io.node.data.nodeName}/${io.dependsOn.name}`)}
+                  // value={parameterSources}
+                  onChange={handleChange}
+                  input={<OutlinedInput id="select-multiple-chip" label="Chip" />}
+                  fullWidth
+                  renderValue={(selected) => {
+                    console.log(selected)
+                    return (
+                      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, width: "auto" }}>
+                        {selected.map((value) => (
+                          <Chip key={value} label={value} />
                         ))}
-                      </Select>
-                    </FormControl>
-                  </>
-                )
-              }
-            })
+                      </Box>
+                    )
+                  }}
+                  MenuProps={{ PaperProps: { style: { maxHeight: 48 * 4.5 + 8, width: "auto" } } }}
+                >
+                  {selectableIOs.map((io) => {
+                    return (
+                      <MenuItem
+                        key={`${io.node.data.nodeName}/${io.dependsOn.name}`}
+                        value={`${io.node.data.nodeName}/${io.dependsOn.name}`}
+                      // style={getStyles(name, parameters, theme)}
+                      >
+                        {`${io.node.data.nodeName}/${io.dependsOn.name}`}
+                      </MenuItem>
+                    )
+                  })}
+                </Select>
+              </FormControl>
+            </>
           }
         </DialogContent>
         <DialogActions>
@@ -410,219 +527,8 @@ export const EditParameterSourceDialog: React.FC = () => {
         </DialogActions>
       </Dialog>
     </div>
-  );
+  )
 }
-
-
-export const EditOutputTargetDialog: React.FC = () => {
-  const { nodes, edges, onNodesChange, onEdgesChange, onConnect, mergeNodes, updateNode, deleteNode, initNodes, addEdge } = useStore(selector, shallow);
-  const dispatch = useAppDispatch()
-  const open = useAppSelector(selectEditOutputTargetDialog)
-  const selectedNode = useAppSelector(selectSelectedNode)
-  const [selectableParameters, setSelectableParameters] = React.useState<StackNodeOutputTarget[]>([])
-  const [outputTargets, setOutputTargets] = React.useState<StackNodeOutputTarget[]>([])
-
-  React.useEffect(() => {
-    console.log("init parameter sources")
-    if (selectedNode === null) return
-    if ((selectedNode.data.outputs.filter(o => o.selected)).length == 0) return
-    const output = selectedNode.data.outputs.filter(o => o.selected)[0]
-
-    const targetParameters = nodes.filter((n) => n.type === "stackNode").map((n: StackNode) => {
-      return n.data.parameters.filter(p => p.source.filter(s => s.output.name === output.name).length > 0).map((p) => {
-        return { node: n, parameter: p as ParameterSummary }
-      })
-    }).flat()
-    setOutputTargets(targetParameters)
-  }, [])
-
-  React.useEffect(() => {
-    console.log("get selectable parameters")
-    const parameters = nodes.filter((n) => n.type === "stackNode").map((n: StackNode) => {
-      return n.data.parameters.filter((p) => p.visible && n.data.nodeName !== selectedNode?.data.nodeName).map((p) => {
-        return { node: n, parameter: p }
-      })
-    }).flat()
-    console.log(nodes)
-    setSelectableParameters(parameters)
-  }, [selectedNode])
-
-  const getStackNodeOutputTarget = (value: string): StackNodeOutputTarget | null => {
-    const nodeName = value.split("/")[0]
-    const parameterName = value.split("/")[1]
-    const node: StackNode[] = nodes.filter((n) => n.type === "stackNode").filter((n: StackNode) => n.data.nodeName === nodeName)
-    if (node.length === 1) {
-      const parameter = node[0].data.parameters.filter((p) => p.name === parameterName)
-      if (parameter.length === 1) {
-        return { parameter: parameter[0], node: node[0] }
-      }
-    }
-    return null
-  }
-
-  const handleChange = (event: SelectChangeEvent<string | string[]>) => {
-    const { target: { value } } = event;
-    console.log(value)
-    if (typeof value === "string") {
-      const target = getStackNodeOutputTarget(value)
-      if (target === null) return
-      setOutputTargets([target])
-    }
-    if (Array.isArray(value)) {
-      setOutputTargets(value.map(
-        v => getStackNodeOutputTarget(v)
-      ).filter((v): v is StackNodeOutputTarget => v !== null)
-      )
-    }
-
-  };
-
-
-  const onClose = (submit: boolean) => {
-    setSelectableParameters([])
-    setOutputTargets([])
-    if (submit === true) {
-      if (selectedNode !== null) {
-        dispatch(selectNode({
-          ...selectedNode, data: {
-            ...selectedNode.data, outputs: selectedNode.data.outputs.map((o) => {
-              if (o.selected) return { ...o, selected: false, target: outputTargets }
-              return { ...o, selected: false }
-            })
-          }
-        }))
-        updateNode(selectedNode)
-        initNodes(nodes.map((n) => {
-          if (n.type !== "stackNode" || (selectedNode.data.outputs.filter(o => o.selected)).length == 0) return n
-          const output = selectedNode.data.outputs.filter(o => o.selected)[0]
-
-          let newNode: StackNode = {
-            ...n, data: {
-              ...n.data, parameters: (n as StackNode).data.parameters.map((p) => {
-                return {
-                  ...p, source: p.source.map(s => {
-                    if (s.node.id === selectedNode.id) return { ...s, output: output }
-                    return s
-                  })
-                }
-              })
-            }
-          }
-          return newNode
-        }))
-        const output = selectedNode.data.outputs.filter(o => o.selected)[0]
-        outputTargets.forEach((o) => {
-          addEdge({
-            id: `${o.node.id}/${o.parameter.name}-${selectedNode.id}/${output.name}`,
-            source: o.node.id,
-            sourceHandle: `${o.node.data.nodeName}/${o.parameter.name}`,
-            target: selectedNode.id,
-            targetHandle: `${selectedNode.data.nodeName}/${output.name}`,
-            updatable: true,
-            label: `${o.node.id}/${o.parameter.name}-${selectedNode.id}/${output.name}`,
-          })
-        })
-
-      }
-    }
-    dispatch(closeEditOutputTargetDialog())
-  }
-
-  return (
-    <div>
-      <Dialog open={open} onClose={() => onClose(false)}>
-        <DialogTitle>Edit Output's source</DialogTitle>
-        <DialogContent sx={{ margin: "100" }}>
-          {selectedNode !== null &&
-            selectedNode.data.outputs.map((o) => {
-              if (o.selected) {
-                return (
-                  <>
-                    <TextField
-                      autoFocus={false}
-                      margin="normal"
-                      id="name"
-                      label="Name"
-                      type={"tex"}
-                      fullWidth
-                      variant="outlined"
-                      value={o.name}
-                      disabled
-                      sx={{
-                        "& .MuiInputBase-input.Mui-disabled": {
-                          WebkitTextFillColor: "black",
-                        },
-                      }}
-                    />
-                    <TextField
-                      autoFocus={false}
-                      margin="normal"
-                      id="description"
-                      label="Description"
-                      type={"tex"}
-                      fullWidth
-                      variant="outlined"
-                      value={o.description}
-                      disabled
-                      sx={{
-                        "& .MuiInputBase-input.Mui-disabled": {
-                          WebkitTextFillColor: "black",
-                        },
-                      }}
-                    />
-                    <FormControl sx={{ m: 1, width: 300 }}>
-                      <InputLabel id="target">Target</InputLabel>
-                      <Select
-                        labelId="target-selection"
-                        id="target-selection"
-                        multiple
-                        value={outputTargets.map(o => `${o.node.data.nodeName}/${o.parameter.name}`)}
-                        // value={parameterSources}
-                        onChange={handleChange}
-                        input={<OutlinedInput id="select-multiple-chip" label="Chip" />}
-                        renderValue={(selected) => (
-                          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                            {selected.map((value) => (
-                              // <Chip key={`${value.node.data.nodeName}/${value.output.name}`} label={`${value.node.data.nodeName}/${value.output.name}`} />
-                              <Chip key={value} label={value} />
-                            ))}
-                          </Box>
-                        )}
-                        MenuProps={{ PaperProps: { style: { maxHeight: 48 * 4.5 + 8, width: 250 } } }}
-                      >
-                        {selectableParameters.map((p) => (
-                          <MenuItem
-                            key={`${p.node.data.nodeName}/${p.parameter.name}`}
-                            value={`${p.node.data.nodeName}/${p.parameter.name}`}
-                          // style={getStyles(name, parameters, theme)}
-                          >
-                            {`${p.node.data.nodeName}/${p.parameter.name}`}
-                          </MenuItem>
-                        ))}
-                      </Select>
-                    </FormControl>
-                  </>
-                )
-              }
-            })
-          }
-        </DialogContent>
-        <DialogActions>
-          <Box sx={{ m: 1, position: 'relative' }}>
-            <Button
-              data-testid="create-button"
-              onClick={() => onClose(true)}
-              variant={"contained"}
-            >
-              SAVE
-            </Button>
-          </Box>
-        </DialogActions>
-      </Dialog>
-    </div>
-  );
-}
-
 
 export default function FlowDetail() {
 
@@ -630,17 +536,12 @@ export default function FlowDetail() {
   const dispatch = useAppDispatch()
   const selectedFlow = useAppSelector(selectSelectedFlow)
   const selectedNode = useAppSelector(selectSelectedNode)
-  const EditParameterSourceDialogOpened = useAppSelector(selectEditParameterSourceDialog)
-  const EditOutputTargetDialogOpened = useAppSelector(selectEditOutputTargetDialog)
+  const EditIODialogState = useAppSelector(selectEditIODialog)
   const nodeEditDrawerOpened = useAppSelector(selectNodeEditDrawer)
   const parameterRowSelectionModel = useAppSelector(selectParameterRowSelectionModel)
   const outputRowSelectionModel = useAppSelector(selectOutputRowSelectionModel)
 
   const { nodes, edges, onNodesChange, onEdgesChange, onConnect, mergeNodes, updateNode, deleteNode } = useStore(selector, shallow);
-
-  // const [parameterRowSelectionModel, setParameterRowSelectionModel] = React.useState<GridRowSelectionModel>([]);
-
-
 
 
   const templates = useAppSelector(selectTemplates)
@@ -650,84 +551,59 @@ export default function FlowDetail() {
 
   const reactFlowInstance = useAppSelector(selectReactFlowInstance)
 
-  const handleParametersDependencyClick = React.useCallback(
-    (params: GridRowParams) => (event: React.MouseEvent<HTMLButtonElement, MouseEvent>) => {
+  const handleIODependencyClick = React.useCallback(
+    (params: GridRowParams, type: "Parameters" | "Outputs") => (event: React.MouseEvent<HTMLButtonElement, MouseEvent>) => {
       event.stopPropagation()
-      console.log(params)
-
       if (selectedNode === null) {
         console.log("return")
         return
       }
-      dispatch(selectNode({
-        ...selectedNode, data: {
-          ...selectedNode.data, parameters: selectedNode.data.parameters.map((p) => {
+      let newNode = { ...selectedNode }
+      if (type === "Parameters") {
+        newNode.data = {
+          ...newNode.data, parameters: newNode.data.parameters.map((p) => {
             return { ...p, selected: p.name === params.id }
           })
         }
-      }))
-      dispatch(openEditParameterSourceDialog())
-    },
-    [selectedNode]
-  )
-  const handleOutputsDependencyClick = React.useCallback(
-    (params: GridRowParams) => (event: React.MouseEvent<HTMLButtonElement, MouseEvent>) => {
-      event.stopPropagation()
-      console.log(params)
-      if (selectedNode === null) {
-        return
       }
-      dispatch(selectNode({
-        ...selectedNode, data: {
-          ...selectedNode.data, outputs: selectedNode.data.outputs.map((o) => {
+      if (type === "Outputs") {
+        newNode.data = {
+          ...newNode.data, outputs: newNode.data.outputs.map((o) => {
             return { ...o, selected: o.name === params.id }
           })
         }
-      }))
-      dispatch(openEditOutputTargetDialog())
-
+      }
+      dispatch(selectNode({ ...newNode }))
+      dispatch(openEditIODialog(type))
     },
     [selectedNode]
   )
-  const getParametersDependencyAction = React.useCallback(
-    (params: GridRowParams) => {
+
+
+  const getIODependencyAction = React.useCallback(
+    (params: GridRowParams, type: "Parameters" | "Outputs") => {
       if (selectedNode === null) {
         return []
       }
-      const param = selectedNode.data.parameters.find((p) => p.name === params.id)
-      const isVisible = param !== undefined ? param.visible : false
+      const io = type === "Parameters" ?
+        selectedNode.data.parameters.find((p) => p.name === params.id) :
+        selectedNode.data.outputs.find((o) => o.name === params.id)
+      const isVisible = io !== undefined ? io.visible : false
       return [
         <GridActionsCellItem
           icon={isVisible ? <EditIcon color='primary' /> : <HorizontalRuleIcon />}
-          label='source'
-          onClick={handleParametersDependencyClick(params)}
+          label={type === "Parameters" ? 'source' : "target"}
+          onClick={handleIODependencyClick(params, type)}
           color='inherit'
           disabled={!isVisible}
         />
       ]
-    }, [handleParametersDependencyClick])
-  const getOutputsDependencyAction = React.useCallback(
-    (params: GridRowParams) => {
-      if (selectedNode === null) {
-        return []
-      }
-      const output = selectedNode.data.outputs.find((o) => o.name === params.id)
-      const isVisible = output !== undefined ? output.visible : false
-      return [
-        <GridActionsCellItem
-          icon={isVisible ? <EditIcon color='primary' /> : <HorizontalRuleIcon />}
-          label='target'
-          onClick={handleOutputsDependencyClick(params)}
-          color='inherit'
-          disabled={!isVisible}
-        />
-      ]
-    }, [handleOutputsDependencyClick])
+    }, [handleIODependencyClick])
 
   const parametersCols: GridColDef[] = [
     {
       field: "source", headerName: "Source", align: "center", flex: 1,
-      type: "actions", getActions: getParametersDependencyAction
+      type: "actions", getActions: (params) => getIODependencyAction(params, "Parameters")
     } as GridColDef,
     {
       field: "name", headerName: "Name", flex: 1, align: "left",
@@ -748,7 +624,7 @@ export default function FlowDetail() {
   const outputsCols: GridColDef[] = [
     {
       field: "target", headerName: "Target", align: "center", flex: 1,
-      type: "actions", getActions: getOutputsDependencyAction,
+      type: "actions", getActions: (params) => getIODependencyAction(params, "Outputs")
     } as GridColDef,
     {
       field: "name", headerName: "Name", flex: 1, align: "left",
@@ -812,7 +688,7 @@ export default function FlowDetail() {
       try {
         const response = await getTemplateSummary(event.target.value, "Parameters")
         newNode.data.parameters = (response.templateSummary.summary as ParameterSummary[]).map((p) => {
-          return { ...p, visible: false, source: [], selected: false }
+          return { ...p, visible: false, selected: false, dependencies: [] }
         })
         dispatch(setParameterRowSelectionModel([]))
       } catch (e) {
@@ -821,7 +697,7 @@ export default function FlowDetail() {
       try {
         const response = await getTemplateSummary(event.target.value, "Outputs")
         newNode.data.outputs = (response.templateSummary.summary as OutputSummary[]).map((p) => {
-          return { ...p, visible: false, target: [], selected: false }
+          return { ...p, visible: false, selected: false, dependencies: [] }
         })
         dispatch(setOutputRowSelectionModel([]))
       } catch (e) {
@@ -862,7 +738,7 @@ export default function FlowDetail() {
     }
     if (sectionName === "Parameters") {
       const newParameters = selectedNode.data.parameters.map((p) => {
-        return { ...p, visible: e.includes(p.name as string) || p.source.length > 0 }
+        return { ...p, visible: e.includes(p.name as string) || p.dependencies.length > 0 }
       })
       dispatch(selectNode({
         ...selectedNode, data: {
@@ -873,7 +749,7 @@ export default function FlowDetail() {
     }
     if (sectionName === "Outputs") {
       const newOutputs = selectedNode.data.outputs.map((o) => {
-        return { ...o, visible: e.includes(o.name as string) || o.target.length > 0 }
+        return { ...o, visible: e.includes(o.name as string) || o.dependencies.length > 0 }
       })
       dispatch(selectNode({
         ...selectedNode, data: {
@@ -1006,8 +882,7 @@ export default function FlowDetail() {
             </List>
           </LeftDrawer>
         </Grid>
-        {EditParameterSourceDialogOpened && <EditParameterSourceDialog />}
-        {EditOutputTargetDialogOpened && <EditOutputTargetDialog />}
+        {(EditIODialogState.opened && EditIODialogState.type !== null) && <EditIODialog type={EditIODialogState.type} />}
         <Grid item sx={{ height: "80vh" }} xs={true}>
           <FlowCanvas />
         </Grid>

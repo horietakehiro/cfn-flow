@@ -4,8 +4,9 @@ import storage from "redux-persist/lib/storage";
 
 import { AlertReducer } from "./stores/common";
 import {
-    EditOutputTargetDialogReducer,
-    EditParameterSourceDialogReducer, FlowsReducer, NodeEditDrawerReducer,
+    EditIODialogReducer,
+    // EditOutputTargetDialogReducer, EditParameterSourceDialogReducer, 
+    FlowsReducer, NodeEditDrawerReducer,
     OutputRowSelectionModelReducer,
     ParameterRowSelectionModelReducer,
     ReactFlowInstanceReducer,
@@ -27,8 +28,9 @@ const reducers = combineReducers({
     alert: AlertReducer,
     nodeEditDrawer: NodeEditDrawerReducer,
     selectedNode: SelectNodeReducer,
-    editParameterSourceDialog: EditParameterSourceDialogReducer,
-    editOutputTargetDialog: EditOutputTargetDialogReducer,
+    editIODialog: EditIODialogReducer,
+    // editParameterSourceDialog: EditParameterSourceDialogReducer,
+    // editOutputTargetDialog: EditOutputTargetDialogReducer,
     parametersRowSelectionModel: ParameterRowSelectionModelReducer,
     outputRowSelectionModel: OutputRowSelectionModelReducer,
     reactFlowInstance: ReactFlowInstanceReducer,

@@ -124,6 +124,7 @@ type PostStackTemplateResponse = {
 type NodeType = "stackNode" | "StackSetNode"
 // type Node = import("reactflow").Node
 type BaseCUstomNodeData = {
+    nodeId: string
     nodeName: string
     toolbarVisible: boolean
     nodeDeletable: boolean
@@ -131,22 +132,36 @@ type BaseCUstomNodeData = {
 
 type StartNodeData = BaseCUstomNodeData & {}
 type StartNode = import("reactflow").Node<StartNodeData>
-type StackNodeParameterSource = {
-    node: StackNode,
-    output: OutputSummary
+type StackNodeIO = {
+    node: StackNode
+    io: ParameterSummary | OutputSummary
 }
-type StackNodeOutputTarget = {
-    node: StackNode,
-    parameter: ParameterSummary
-}
+// type StackNodeParameterSource = {
+//     node: StackNode,
+//     output: OutputSummary
+// }
+// type StackNodeOutputTarget = {
+//     node: StackNode,
+//     parameter: ParameterSummary
+// }
+
+// type StackNodeIODependency = {
+//     id: string
+//     source: string
+//     target: string
+//     sourceHandle: string
+//     targetHandle: string
+// }
 type StackNodeParameter = ParameterSummary & {
     visible: boolean
-    source: StackNodeParameterSource[]
+    // source: StackNodeParameterSource[]
+    dependencies: StackNodeIODependency[]
     selected: boolean
 }
 type StackNodeOutput = OutputSummary & {
     visible: boolean
-    target: StackNodeOutputTarget[]
+    // target: StackNodeOutputTarget[]
+    dependencies: StackNodeIODependency[]
     selected: boolean
 }
 type StackNodeData = BaseCUstomNodeData & {
