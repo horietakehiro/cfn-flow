@@ -81,10 +81,10 @@ export type RFState = {
     updateNode: (node: Node) => void
     initNodes: (nodes: Node[]) => void
     deleteNode: (node: Node) => void
-
+    getNode: (nodeId:string) => Node | null
     // addEdge: (edge: Edge) => void
     initEdges: (edges: Edge[]) => void
-    removeEdges: (sourceNodeId:string, targetNodeId:string) => void
+    removeEdges: (sourceNodeId:string|null, targetNodeId:string|null, sourceHandleId:string|null, targetHandleId:string|null) => void
     upsertEdge: (edge:Edge) => void
 };
 
@@ -126,6 +126,14 @@ export const useStore = create<RFState>((set, get) => ({
             nodes: [...nodes]
         })
     },
+    getNode: (nodeId:string) => {
+        const node = get().nodes.filter(n => n.id === nodeId)
+        if (node.length > 0) {
+            return node[0]
+        } else {
+            return null
+        }
+    },
     deleteNode: (node) => {
         console.log(node)
         set({
@@ -142,10 +150,96 @@ export const useStore = create<RFState>((set, get) => ({
     //         edges: addEdge({...edge}, get().edges),
     //     });
     // },
-    removeEdges: (sourceNodeId:string, targetNodeId:string) => {
-        set({
-            edges: get().edges.filter(e => e.source !== sourceNodeId || e.target !== targetNodeId)
-        })
+    removeEdges: (sourceNodeId:string|null, targetNodeId:string|null, sourceHandleId:string|null, targetHandleId:string|null) => {
+        if (sourceNodeId === null && targetNodeId === null) {
+            return
+        }
+        if (sourceNodeId !== null && targetNodeId !== null) {
+            if (sourceHandleId === null && targetHandleId === null) {
+                set({
+                    edges: get().edges.filter(
+                        e => !(e.source === sourceNodeId && e.target === targetNodeId)
+                    )
+                })
+            } else if (sourceHandleId === null && targetHandleId !== null) {
+                set({
+                    edges: get().edges.filter(
+                        e => !(e.source === sourceNodeId && e.target === targetNodeId && e.targetHandle === targetHandleId)
+                    )
+                })    
+            } else if (targetHandleId === null && sourceHandleId !== null) {
+                set({
+                    edges: get().edges.filter(
+                        e => !(e.source === sourceNodeId && e.target === targetNodeId && e.sourceHandle === sourceHandleId)
+                    )
+                })    
+            } else {
+                set({
+                    edges: get().edges.filter(
+                        e => !(e.source === sourceNodeId && e.target === targetNodeId && e.sourceHandle === sourceHandleId && e.targetHandle === targetHandleId)
+                    )
+                })    
+            }
+            return
+        }
+        if (sourceNodeId === null && targetNodeId !== null) {
+            if (sourceHandleId === null && targetHandleId === null) {
+                set({
+                    edges: get().edges.filter(
+                        e => !(e.target === targetNodeId)
+                    )
+                })
+            } else if (sourceHandleId === null && targetHandleId !== null) {
+                set({
+                    edges: get().edges.filter(
+                        e => !(e.target === targetNodeId && e.targetHandle === targetHandleId)
+                    )
+                })    
+            } else if (targetHandleId === null && sourceHandleId !== null) {
+                set({
+                    edges: get().edges.filter(
+                        e => !(e.target === targetNodeId && e.sourceHandle === sourceHandleId)
+                    )
+                })    
+            } else {
+                set({
+                    edges: get().edges.filter(
+                        e => !(e.target === targetNodeId && e.sourceHandle === sourceHandleId && e.targetHandle === targetHandleId)
+                    )
+                })    
+            }
+            return
+        }
+        if (sourceNodeId !== null && targetNodeId === null) {
+            if (sourceHandleId === null && targetHandleId === null) {
+                set({
+                    edges: get().edges.filter(
+                        e => !(e.source === sourceNodeId)
+                    )
+                })
+            } else if (sourceHandleId === null && targetHandleId !== null) {
+                set({
+                    edges: get().edges.filter(
+                        e => !(e.source === sourceNodeId && e.targetHandle === targetHandleId)
+                    )
+                })    
+            } else if (targetHandleId === null && sourceHandleId !== null) {
+                set({
+                    edges: get().edges.filter(
+                        e => !(e.source === sourceNodeId && e.sourceHandle === sourceHandleId)
+                    )
+                })    
+            } else {
+                set({
+                    edges: get().edges.filter(
+                        e => !(e.source === sourceNodeId && e.sourceHandle === sourceHandleId && e.targetHandle === targetHandleId)
+                    )
+                })    
+            }
+            return
+        }
+
+
     },
     upsertEdge: (edge: Edge) => {
         set({
@@ -329,6 +423,7 @@ export const selector = (state: RFState) => ({
     updateNode: state.updateNode,
     deleteNode: state.deleteNode,
     initNodes: state.initNodes,
+    getNode: state.getNode,
     // addEdge: state.addEdge,
     initEdges: state.initEdges,
     removeEdges: state.removeEdges,

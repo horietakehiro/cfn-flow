@@ -553,22 +553,22 @@ export const DeleteFlowDialog: React.FC = () => {
         }))
       } finally {
         setInProgress(false)
-
       }
+      if (flowName !== undefined) {
+        window.location.replace("/flows")
+      }
+      
     }
     dispatch(selectFlow(null))
     dispatch(deleteDialogClose())
 
-    if (flowName !== undefined) {
-      window.location.replace("/flows")
-    }
   }
 
   return (
     <div>
       <AlertSnackbar />
       <Dialog open={open} onClose={() => onSubmit(false)}>
-        <DialogTitle>Delete {selectFlow?.name}?</DialogTitle>
+        <DialogTitle>Delete {selectedFlow?.name}?</DialogTitle>
         <DialogContent sx={{ margin: "100" }}>
           <DialogContentText>
             Are you sure that you want to delete flow {selectedFlow?.name}?

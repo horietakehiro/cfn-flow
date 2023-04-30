@@ -132,10 +132,10 @@ type BaseCUstomNodeData = {
 
 type StartNodeData = BaseCUstomNodeData & {}
 type StartNode = import("reactflow").Node<StartNodeData>
-type StackNodeIO = {
-    node: StackNode
-    io: ParameterSummary | OutputSummary
-}
+// type StackNodeIO = {
+//     node: StackNode
+//     io: StackNodeParameter | StackNodeOutput
+// }
 // type StackNodeParameterSource = {
 //     node: StackNode,
 //     output: OutputSummary
@@ -152,22 +152,37 @@ type StackNodeIO = {
 //     sourceHandle: string
 //     targetHandle: string
 // }
+type StackNodeIO = {
+    node: StackNode
+    io: StackNodeParameter | StackNodeOutput
+}
 type StackNodeParameter = ParameterSummary & {
     visible: boolean
     // source: StackNodeParameterSource[]
-    dependencies: StackNodeIODependency[]
+    // dependencies: StackNodeIODependency[]
     selected: boolean
+    regionName: string | null
+    accountId: string | null
 }
 type StackNodeOutput = OutputSummary & {
     visible: boolean
     // target: StackNodeOutputTarget[]
-    dependencies: StackNodeIODependency[]
+    // dependencies: StackNodeIODependency[]
     selected: boolean
+    regionName: string | null
+    accountId: string | null
 }
 type StackNodeData = BaseCUstomNodeData & {
-    regionName: string
+    regionNames: string[]
+    templateName: string
+    parameters: StackNodeParameter[]
+    outputs: StackNodeOutput[]
+}
+type StackSetNodeData = BaseCUstomNodeData & {
+    regionNames: string[]
     templateName: string
     parameters: StackNodeParameter[] 
     outputs: StackNodeOutput[]
 }
 type StackNode = import("reactflow").Node<StackNodeData>
+type StackSetNode = import("reactflow").Node<StackSetNodeData>

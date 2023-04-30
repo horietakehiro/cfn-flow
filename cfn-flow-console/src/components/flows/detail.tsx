@@ -1,6 +1,6 @@
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import MenuIcon from '@mui/icons-material/Menu';
-import { Box, Chip, Dialog, DialogActions, DialogContent, DialogTitle, FormControl, InputLabel, ListItemIcon, OutlinedInput, Select, SelectChangeEvent, Stack, TextField } from '@mui/material';
+import { Box, Chip, CircularProgress, Dialog, DialogActions, DialogContent, DialogTitle, FormControl, InputLabel, ListItemIcon, OutlinedInput, Select, SelectChangeEvent, Stack, TextField } from '@mui/material';
 import Button from "@mui/material/Button";
 import CssBaseline from '@mui/material/CssBaseline';
 import Divider from '@mui/material/Divider';
@@ -19,21 +19,24 @@ import SearchIcon from '@mui/icons-material/Search';
 import InputBase from '@mui/material/InputBase';
 
 import ClearIcon from '@mui/icons-material/Clear';
+import { ReactComponent as StackSetSVG } from "../../images/Arch_AWS-Organizations_48.svg";
 import { ReactComponent as StackSVG } from "../../images/Res_AWS-CloudFormation_Stack_48_Dark.svg";
 // import 'reactflow/dist/style.css';
 import EditIcon from "@mui/icons-material/Edit";
 import HorizontalRuleIcon from '@mui/icons-material/HorizontalRule';
 import MenuItem from '@mui/material/MenuItem';
 import { DataGrid, GridActionsCellItem, GridColDef, GridRowId, GridRowParams, GridRowSelectionModel } from '@mui/x-data-grid';
-import axios from 'axios';
+import axios, { isAxiosError } from 'axios';
 import { shallow } from 'zustand/shallow';
 import { getRegions, parseS3HttpUrl, uploadObj } from '../../apis/common';
 import { getTemplateSummary, getTemplates } from '../../apis/templates/api';
 import { useAppDispatch, useAppSelector } from '../../hooks';
-import { editDialogClose } from '../../stores/flows/common';
+import { setAlert } from '../../stores/common';
+import { deleteDialogOpen, editDialogClose } from '../../stores/flows/common';
 import { closeEditIODialog, closeNodeEditDrawe as closeNodeEditDrawer, openEditIODialog, selectEditIODialog, selectNode, selectNodeEditDrawer, selectOutputRowSelectionModel, selectParameterRowSelectionModel, selectReactFlowInstance, selectSelectedFlow, selectSelectedNode, selector, setOutputRowSelectionModel, setParameterRowSelectionModel } from '../../stores/flows/main';
 import { createTemplates, selectTemplates } from '../../stores/templates/main';
 import { useStore } from './../../stores/flows/main';
+import { DeleteFlowDialog } from './common';
 
 const leftDrawerWidth = 240;
 const rightDrawerWidth = 600;
@@ -186,53 +189,61 @@ export const EditIODialog: React.FC<EditIODialogProps> = ({ type }) => {
   const {
     nodes, edges,
     onNodesChange, onEdgesChange, onConnect,
-    mergeNodes, updateNode, deleteNode, initNodes,
+    mergeNodes, updateNode, deleteNode, initNodes, getNode,
     upsertEdge, removeEdges,
   } = useStore(selector, shallow);
   const selectedNode = useAppSelector(selectSelectedNode)
 
   const [selectedIO, setSelectedIO] = React.useState<StackNodeParameter | StackNodeOutput | null>(null)
-  const [selectableIOs, setSelectableIOs] = React.useState<StackNodeIODependency[]>([])
-  const [ioDependencies, setIODependencies] = React.useState<StackNodeIODependency[]>([])
-  const [prevIODependencies, setPrevIODependencies] = React.useState<StackNodeIODependency[]>([])
+  const [selectableIOs, setSelectableIOs] = React.useState<StackNodeIO[]>([])
+  const [ios, setIOs] = React.useState<StackNodeIO[]>([])
 
 
   React.useEffect(() => {
+    console.log(selectedNode)
     if (selectedNode === null) return
 
     const selectedIOs = type === "Parameters" ? selectedNode.data.parameters.filter(p => p.selected) : selectedNode.data.outputs.filter(o => o.selected)
     if (selectedIOs.length == 0) return
     const selectedIO = selectedIOs[0]
+    console.log(selectedIO)
     setSelectedIO(selectedIO)
 
     // get exsiting io dependencies
-    const ioDependencies = nodes.filter((n) => n.type === "stackNode").map((n: StackNode) => {
-      return type === "Parameters" ?
-        n.data.outputs.map((o) => {
-          const isDepended = o.dependencies.filter(d => d.node.id === selectedNode.id && d.dependsOn.name === selectedIO.name)
-          if (isDepended.length === 0) return []
-          return [{ node: n, dependsOn: o }]
-        }).flat() :
-        // n.data.parameters.map(p => p.dependencies.filter(d => d.node.id === selectedNode.id)).flat()
-        n.data.parameters.map((p) => {
-          const isDepended = p.dependencies.filter(d => d.node.id === selectedNode.id && d.dependsOn.name === selectedIO.name)
-          if (isDepended.length === 0) return []
-          return [{ node: n, dependsOn: p }]
-        }).flat()
-    }).flat()
-    console.log(ioDependencies)
-    setIODependencies([...ioDependencies])
-    setPrevIODependencies([...ioDependencies])
+    const ios = edges.filter((e) => {
+      const handleId = type === "Parameters" ? e.sourceHandle : e.targetHandle
+      if (handleId === undefined || handleId === null) return false
+      const [nodeId, regionName, ioName] = handleId?.split("/")
+      return nodeId === selectedNode.id && regionName === selectedIO.regionName && ioName === selectedIO.name
+    }).map((e) => {
+      const otherNode: StackNode | null = type === "Parameters" ? getNode(e.target) : getNode(e.source)
+      if (otherNode === null) return null
+
+      const otherHandleId = type === "Parameters" ? e.targetHandle : e.sourceHandle
+      const myHandleId = type === "Parameters" ? e.sourceHandle : e.targetHandle
+      if (otherHandleId === null || otherHandleId === undefined) return
+      if (myHandleId === null || myHandleId === undefined) return
+      const [otherNodeId, otherRegionName, otherIOName] = otherHandleId.split("/")
+      const [myNodeId, myRegionName, myIOName] = myHandleId.split("/")
+
+      const ios = type === "Parameters" ?
+        otherNode.data.outputs.filter(o => o.name === otherIOName && o.regionName === otherRegionName) :
+        otherNode.data.parameters.filter(p => p.name === otherIOName && p.regionName === otherRegionName)
+      return ios.map(io => { return { node: otherNode, io: io } })
+
+    }).filter(io => io !== null).flat()
+    console.log(ios)
+    setIOs((ios as StackNodeIO[]))
   }, [])
 
 
   React.useEffect(() => {
-    const selectableIOs: StackNodeIODependency[] = nodes.filter((n) => n.type === "stackNode").map((n: StackNode) => {
+    const selectableIOs: StackNodeIO[] = nodes.filter((n) => true).map((n: StackNode) => {
       const otherNodesIOs = type === "Parameters" ?
-        n.data.outputs.filter(o => o.visible && n.data.nodeName !== selectedNode?.data.nodeName) :
-        n.data.parameters.filter(p => p.visible && n.data.nodeName !== selectedNode?.data.nodeName)
+        n.data.outputs.filter(o => o.visible && n.id !== selectedNode?.id) :
+        n.data.parameters.filter(p => p.visible && n.id !== selectedNode?.id)
       return otherNodesIOs.map((io) => {
-        return { node: n, dependsOn: io }
+        return { node: n, io: io }
       })
     }).flat()
     console.log(selectableIOs)
@@ -240,17 +251,22 @@ export const EditIODialog: React.FC<EditIODialogProps> = ({ type }) => {
   }, [selectedNode])
 
 
-  const getStackNodeIODependency = (value: string): StackNodeIODependency | null => {
-    const nodeName = value.split("/")[0]
-    const ioName = value.split("/")[1]
-    const node: StackNode[] = nodes.filter((n) => n.type === "stackNode").filter((n: StackNode) => n.data.nodeName === nodeName)
+  const getStackNodeIO = (value: string): StackNodeIO | null => {
+    const [nodeName, regionName, ioName] = value.split("/")
+    // const nodeName = value.split("/")[0]
+    // const ioName = value.split("/")[1]
+    const node: StackNode[] = nodes.filter(
+      n => true).filter((n: StackNode) => n.data.nodeName === nodeName
+      )
+    console.log(node)
+
     if (node.length === 1) {
       const io = type === "Parameters" ?
-        node[0].data.outputs.filter(o => o.name === ioName) :
-        node[0].data.parameters.filter(p => p.name === ioName)
-
+        node[0].data.outputs.filter(o => o.name === ioName && o.regionName === regionName) :
+        node[0].data.parameters.filter(p => p.name === ioName && p.regionName === regionName)
+      console.log(io)
       if (io.length === 1) {
-        return { dependsOn: io[0], node: node[0] }
+        return { io: io[0], node: node[0] }
       }
     }
     return null
@@ -258,162 +274,75 @@ export const EditIODialog: React.FC<EditIODialogProps> = ({ type }) => {
 
 
   const handleChange = (event: SelectChangeEvent<string | string[]>) => {
-    console.log(event.target)
     const { target: { value } } = event;
+    console.log(value)
     if (typeof value === "string") {
-      const ioDependency = getStackNodeIODependency(value)
-      if (ioDependency === null) return
-      setIODependencies([ioDependency])
+      const io = getStackNodeIO(value)
+      if (io === null) return
+      setIOs([io])
     }
     if (Array.isArray(value)) {
       const newIOs = value.map(
-        v => getStackNodeIODependency(v)
-      ).filter((v): v is StackNodeIODependency => v !== null)
-      setIODependencies([...newIOs])
+        v => getStackNodeIO(v)
+      ).filter((v): v is StackNodeIO => v !== null)
+      setIOs([...newIOs])
+      console.log(newIOs)
     }
   };
 
   const onClose = (submit: boolean) => {
-    if (submit === false) {
-      setSelectableIOs([])
-      setIODependencies([])
-      setPrevIODependencies([])
+    setSelectableIOs([])
+    setIOs([])
 
-      dispatch(closeEditIODialog())
-      return
-    }
+    dispatch(closeEditIODialog())
     if (selectedNode === null) return
 
-    if (type === "Parameters") {
-      dispatch(selectNode({
-        ...selectedNode, data: {
-          ...selectedNode.data, parameters: selectedNode.data.parameters.map((p) => {
-            if (p.selected) return { ...p, selected: false, dependencies: ioDependencies }
-            return { ...p, selected: false }
-          })
-        }
-      }))
-    }
-    if (type === "Outputs") {
-      dispatch(selectNode({
-        ...selectedNode, data: {
-          ...selectedNode.data, outputs: selectedNode.data.outputs.map((o) => {
-            if (o.selected) return { ...o, selected: false, dependencies: ioDependencies }
-            return { ...o, selected: false }
-          })
-        }
-      }))
-    }
+    dispatch(selectNode({
+      ...selectedNode, data: {
+        ...selectedNode.data,
+        parameters: selectedNode.data.parameters.map((p) => {
+          return { ...p, selected: false }
+        }),
+        outputs: selectedNode.data.outputs.map((o) => {
+          return { ...o, selected: false }
+        })
+      }
+    }))
     updateNode({ ...selectedNode })
 
-    // update other nodes' dependencies
-    initNodes(nodes.map((n) => {
-      if (n.type !== "stackNode" || n.id === selectedNode.id) return n
-
-      let otherNode: StackNode = { ...n }
-
-      ioDependencies.filter(
-        ioDenedency => ioDenedency.node.id === otherNode.id
-      ).map(
-        (ioDependency) => {
-          const otherNodeIOs = type === "Parameters" ? [...otherNode.data.outputs] : [...otherNode.data.parameters]
-          const newIOs = otherNodeIOs.map((otherNodeIO) => {
-            if (otherNodeIO.name !== ioDependency.dependsOn.name) return otherNodeIO
-            const updatedDeps = otherNodeIO.dependencies.map((d) => {
-              console.log(d)
-              if (d.node.id === selectedNode.id && d.dependsOn.name === selectedIO?.name) {
-                // if dependency with for same node and same io has been existed, return updated latest dependency
-                return { node: { ...selectedNode }, dependsOn: { ...selectedIO } }
-              }
-              return d
-            })
-
-            console.log(updatedDeps)
-
-            // if dependency for same node and same io does not exist, append it
-            const isExisted = updatedDeps.findIndex(
-              d => d.node.id === selectedNode.id && d.dependsOn.name === selectedIO?.name
-            )
-            console.log(isExisted)
-            if (isExisted === -1) {
-              return {
-                ...otherNodeIO, dependencies: [...updatedDeps, {
-                  node: { ...selectedNode }, dependsOn: { ...selectedIO }
-                }],
-              }
-            } else {
-              return { ...otherNodeIO, dependencies: [...updatedDeps] }
-            }
-          })
-          console.log(newIOs)
-
-          if (type === "Parameters") {
-            otherNode = {
-              ...otherNode, data: {
-                ...otherNode.data, outputs: [...(newIOs as StackNodeOutput[])]
-              }
-            }
-          }
-          if (type === "Outputs") {
-            otherNode = {
-              ...otherNode, data: {
-                ...otherNode.data, parameters: [...(newIOs as StackNodeParameter[])]
-              }
-            }
-          }
-        }
-      )
-
-      const removedDependencies = prevIODependencies.filter(prev => !ioDependencies.some(cur => cur.node.id === prev.node.id && cur.dependsOn.name === prev.dependsOn.name))
-      console.log(removedDependencies)
-      removedDependencies.map((removedDependency) => {
-        // remove removed dependency from other node
-        if (removedDependency.node.id !== otherNode.id) return otherNode
-        const otherNodeIOs:(StackNodeParameter|StackNodeOutput)[] = type === "Parameters" ? [...otherNode.data.outputs] : [...otherNode.data.parameters]
-        const newIOs = otherNodeIOs.map((otherNodeIO) => {
-          const newDeps = otherNodeIO.dependencies.filter((d) => {
-            otherNodeIO.name
-            return d.node.id !== selectedNode.id || (d.node.id === selectedNode.id && d.dependsOn.name === selectedIO?.name)
-          })
-          console.log(newDeps)
-          return {...otherNodeIO, dependencies: [...newDeps]}
-        })
-        console.log(newIOs)
-        if (type === "Parameters") {
-          otherNode = {
-            ...otherNode, data: {
-              ...otherNode.data, outputs: [...(newIOs as StackNodeOutput[])]
-            }
-          }
-        }
-        if (type === "Outputs") {
-          otherNode = {
-            ...otherNode, data: {
-              ...otherNode.data, parameters: [...(newIOs as StackNodeParameter[])]
-            }
-          }
-        }
-      })
-
-      return otherNode
-    }))
-
+    // remove previous edges
+    if (ios.length === 0) {
+      if (type === "Parameters" && selectedIO !== null) {
+        removeEdges(selectedNode.id, null, `${selectedNode.id}/${selectedIO.regionName}/${selectedIO.name}`, null)
+      }
+      if (type === "Outputs" && selectedIO !== null) {
+        removeEdges(null, selectedNode.id, null, `${selectedNode.id}/${selectedIO.regionName}/${selectedIO.name}`)
+      }
+    }
     // update edges
-    ioDependencies.forEach((ioDependency) => {
-      const sourceNodeId = type === "Parameters" ? selectedNode.id : ioDependency.node.id
-      const targetNodeId = type === "Parameters" ? ioDependency.node.id : selectedNode.id
+    const edges = ios.map((io) => {
+      const sourceNodeId = type === "Parameters" ? selectedNode.id : io.node.id
+      const targetNodeId = type === "Parameters" ? io.node.id : selectedNode.id
 
-      const sourceHandleId = type === "Parameters" ? selectedIO?.name : ioDependency.dependsOn.name
-      const targetHandleId = type === "Parameters" ? ioDependency.dependsOn.name : selectedIO?.name
+      const sourceRegionName = type === "Parameters" ? selectedIO?.regionName : io.io.regionName
+      const targetRegionName = type === "Parameters" ? io.io.regionName : selectedIO?.regionName
 
-      const sourceId = `${sourceNodeId}/${sourceHandleId}`
-      const targetId = `${targetNodeId}/${targetHandleId}`
+      const sourceHandleId = type === "Parameters" ? selectedIO?.name : io.io.name
+      const targetHandleId = type === "Parameters" ? io.io.name : selectedIO?.name
+
+      const sourceId = `${sourceNodeId}/${sourceRegionName}/${sourceHandleId}`
+      const targetId = `${targetNodeId}/${targetRegionName}/${targetHandleId}`
 
       const id = `${sourceId}-${targetId}`
       const label = `${sourceHandleId}-${targetHandleId}`
 
-      removeEdges(sourceNodeId, targetNodeId)
-      upsertEdge({
+      if (type === "Parameters") {
+        removeEdges(sourceNodeId, targetNodeId, sourceId, null)
+      }
+      if (type === "Outputs") {
+        removeEdges(sourceNodeId, targetNodeId, null, targetId)
+      }
+      return {
         id: id,
         source: sourceNodeId,
         sourceHandle: sourceId,
@@ -422,15 +351,9 @@ export const EditIODialog: React.FC<EditIODialogProps> = ({ type }) => {
         updatable: true,
         label: label,
         type: "step"
-      })
+      }
     })
-    setSelectableIOs([])
-    setIODependencies([])
-    setPrevIODependencies([])
-
-    dispatch(closeEditIODialog())
-    return
-
+    edges.forEach(e => upsertEdge(e))
   }
 
   return (
@@ -481,7 +404,7 @@ export const EditIODialog: React.FC<EditIODialogProps> = ({ type }) => {
                   id="io-selection"
                   multiple
                   key={type === "Parameters" ? "Source" : "Target"}
-                  value={ioDependencies.map(io => `${io.node.data.nodeName}/${io.dependsOn.name}`)}
+                  value={ios.map(io => `${io.node.data.nodeName}/${io.io.name}`)}
                   // value={parameterSources}
                   onChange={handleChange}
                   input={<OutlinedInput id="select-multiple-chip" label="Chip" />}
@@ -501,11 +424,11 @@ export const EditIODialog: React.FC<EditIODialogProps> = ({ type }) => {
                   {selectableIOs.map((io) => {
                     return (
                       <MenuItem
-                        key={`${io.node.data.nodeName}/${io.dependsOn.name}`}
-                        value={`${io.node.data.nodeName}/${io.dependsOn.name}`}
+                        key={`${io.node.data.nodeName}/${io.io.regionName}/${io.io.name}`}
+                        value={`${io.node.data.nodeName}/${io.io.regionName}/${io.io.name}`}
                       // style={getStyles(name, parameters, theme)}
                       >
-                        {`${io.node.data.nodeName}/${io.dependsOn.name}`}
+                        {`${io.node.data.nodeName}/${io.io.regionName}/${io.io.name}`}
                       </MenuItem>
                     )
                   })}
@@ -541,6 +464,8 @@ export default function FlowDetail() {
   const parameterRowSelectionModel = useAppSelector(selectParameterRowSelectionModel)
   const outputRowSelectionModel = useAppSelector(selectOutputRowSelectionModel)
 
+  const [inProgress, setInProgress] = React.useState<boolean>(false)
+
   const { nodes, edges, onNodesChange, onEdgesChange, onConnect, mergeNodes, updateNode, deleteNode } = useStore(selector, shallow);
 
 
@@ -558,18 +483,19 @@ export default function FlowDetail() {
         console.log("return")
         return
       }
+      const [regionName, ioName] = (params.id as string).split("/")
       let newNode = { ...selectedNode }
       if (type === "Parameters") {
         newNode.data = {
           ...newNode.data, parameters: newNode.data.parameters.map((p) => {
-            return { ...p, selected: p.name === params.id }
+            return { ...p, selected: p.name === ioName && p.regionName === regionName }
           })
         }
       }
       if (type === "Outputs") {
         newNode.data = {
           ...newNode.data, outputs: newNode.data.outputs.map((o) => {
-            return { ...o, selected: o.name === params.id }
+            return { ...o, selected: o.name === ioName && o.regionName === regionName }
           })
         }
       }
@@ -585,9 +511,10 @@ export default function FlowDetail() {
       if (selectedNode === null) {
         return []
       }
+      const [regionName, ioName] = (params.id as string).split("/")
       const io = type === "Parameters" ?
-        selectedNode.data.parameters.find((p) => p.name === params.id) :
-        selectedNode.data.outputs.find((o) => o.name === params.id)
+        selectedNode.data.parameters.find((p) => p.name === ioName && p.regionName === regionName) :
+        selectedNode.data.outputs.find((o) => o.name === ioName && o.regionName === regionName)
       const isVisible = io !== undefined ? io.visible : false
       return [
         <GridActionsCellItem
@@ -605,6 +532,9 @@ export default function FlowDetail() {
       field: "source", headerName: "Source", align: "center", flex: 1,
       type: "actions", getActions: (params) => getIODependencyAction(params, "Parameters")
     } as GridColDef,
+    {
+      field: "regionName", headerName: "Region", flex: 1, align: "left",
+    },
     {
       field: "name", headerName: "Name", flex: 1, align: "left",
     },
@@ -626,6 +556,9 @@ export default function FlowDetail() {
       field: "target", headerName: "Target", align: "center", flex: 1,
       type: "actions", getActions: (params) => getIODependencyAction(params, "Outputs")
     } as GridColDef,
+    {
+      field: "regionName", headerName: "Region", flex: 1, align: "left",
+    },
     {
       field: "name", headerName: "Name", flex: 1, align: "left",
     },
@@ -674,48 +607,137 @@ export default function FlowDetail() {
     dispatch(selectNode(null))
   }
 
-  const onNodeDataChange = async (event: React.ChangeEvent<HTMLInputElement>, fieldName: string) => {
+  const onNodeDataChange = async (event: React.ChangeEvent<HTMLInputElement>|SelectChangeEvent<string[]>, fieldName: "nodeName" | "regionNames" | "templateName") => {
     if (selectedNode === null) {
       return
     }
+    const value = event.target.value
+    let newNode: StackNode | StackSetNode | null = null
 
-    let newNode = {
-      ...selectedNode, data: {
-        ...selectedNode.data, [fieldName]: event.target.value,
-      }
+    let parameters: StackNodeParameter[] = []
+    let outputs: StackNodeOutput[] = []
+    switch (fieldName) {
+      case "nodeName":
+        newNode = {
+          ...selectedNode, data: {
+            ...selectedNode.data, [fieldName]: value as string
+          }
+        }
+        break
+      case "regionNames":
+        let regionNames: string[] = []
+        if (selectedNode.type === "stackNode") {
+          regionNames = [value as string]
+        }
+        if (selectedNode.type === "stackSetNode") {
+          regionNames = value as string[]
+        }
+        const removeDupulicate = (arr:(StackNodeParameter|StackNodeOutput)[]) => {
+          const uniqArr:(StackNodeParameter|StackNodeOutput)[] = []
+          arr.filter((a) => {
+            if (uniqArr.some((ua) => ua.name === a.name && ua.regionName === a.regionName)) {
+              return false
+            } else {
+              uniqArr.push(a)
+              return true
+            }
+          })
+          return uniqArr
+        }
+        parameters = removeDupulicate(selectedNode.data.parameters.map((p) => {
+          return regionNames.map((r) => {
+            return {...p, regionName: r}
+          })
+        }).flat()) as StackNodeParameter[]
+        outputs = removeDupulicate(selectedNode.data.outputs.map((o) => {
+          return regionNames.map((r) => {
+            return {...o, regionName: r}
+          })
+        }).flat()) as StackNodeOutput[]
+        newNode = {
+          ...selectedNode, data: {
+            ...selectedNode.data, [fieldName]: regionNames,
+            parameters: parameters, outputs: outputs
+          }
+        }
+        break
+      case "templateName":
+
+        try {
+          const response = await getTemplateSummary(value as string, "Parameters")
+          parameters = (response.templateSummary.summary as ParameterSummary[]).map((p) => {
+            if (selectedNode.data.regionNames.length !== 0) {
+              return selectedNode.data.regionNames.map((r) => {
+                return { ...p, visible: false, selected: false, regionName: r, accountId: null }
+              })
+            } else {
+              return { ...p, visible: false, selected: false, regionName: null, accountId: null }
+            }
+          }).flat()
+          console.log(parameters)
+          dispatch(setParameterRowSelectionModel([]))
+        } catch (e) {
+          console.error(e)
+        }
+        try {
+          const response = await getTemplateSummary(value as string, "Outputs")
+          outputs = (response.templateSummary.summary as OutputSummary[]).map((o) => {
+            if (selectedNode.data.regionNames.length !== 0) {
+              return selectedNode.data.regionNames.map((r) => {
+                return { ...o, visible: false, selected: false, regionName: r, accountId: null }
+              })
+            } else {
+              return { ...o, visible: false, selected: false, regionName: null, accountId: null }
+            }
+          }).flat()
+          dispatch(setOutputRowSelectionModel([]))
+          
+        } catch (e) {
+          console.error(e)
+        }
+        newNode = {
+          ...selectedNode, data: {
+            ...selectedNode.data, [fieldName]: value as string,
+            parameters: parameters, outputs: outputs
+          }
+        }
+        break
+      default:
+        console.log(`invalid fieldName : ${fieldName}`)
     }
-    if (fieldName === "templateName") {
-      try {
-        const response = await getTemplateSummary(event.target.value, "Parameters")
-        newNode.data.parameters = (response.templateSummary.summary as ParameterSummary[]).map((p) => {
-          return { ...p, visible: false, selected: false, dependencies: [] }
-        })
-        dispatch(setParameterRowSelectionModel([]))
-      } catch (e) {
-        console.error(e)
-      }
-      try {
-        const response = await getTemplateSummary(event.target.value, "Outputs")
-        newNode.data.outputs = (response.templateSummary.summary as OutputSummary[]).map((p) => {
-          return { ...p, visible: false, selected: false, dependencies: [] }
-        })
-        dispatch(setOutputRowSelectionModel([]))
-      } catch (e) {
-        console.error(e)
-      }
-    }
+
     dispatch(selectNode(newNode))
-    console.log(event.target.value)
-
   }
+
   const onSave = React.useCallback(() => {
     (async () => {
-      if (reactFlowInstance && selectedFlow) {
-        const flow = JSON.stringify(reactFlowInstance.toObject(), null, 2)
-        const { accessLevel, baseObjname, s3PartialKey } = parseS3HttpUrl(selectedFlow.httpUrl)
-        const fileObj = new File([flow], baseObjname, { "type": "application/json" })
-        const response = await uploadObj(s3PartialKey, fileObj, accessLevel as "public" | "private" | "protected")
-        console.log(response)
+      setInProgress(true)
+      try {
+        if (reactFlowInstance && selectedFlow) {
+          const flow = JSON.stringify(reactFlowInstance.toObject(), null, 2)
+          const { accessLevel, baseObjname, s3PartialKey } = parseS3HttpUrl(selectedFlow.httpUrl)
+          const fileObj = new File([flow], baseObjname, { "type": "application/json" })
+          const response = await uploadObj(s3PartialKey, fileObj, accessLevel as "public" | "private" | "protected")
+          console.log(response)
+          dispatch(setAlert({
+            persist: 5000, message: `Successfully save flow : ${selectedFlow.name}`,
+            opened: true, severity: "success"
+          }))
+        }
+      } catch (e) {
+        console.error(e)
+        let errorMessage = `Failed to save flow : ${selectedFlow?.name}`
+        if (isAxiosError(e)) {
+          const response = e.response?.data
+          errorMessage += ` : ${response?.error}`
+          console.error(e.response)
+        }
+        dispatch(setAlert({
+          persist: null, message: errorMessage,
+          opened: true, severity: "error"
+        }))
+      } finally {
+        setInProgress(false)
       }
     })()
   }, [reactFlowInstance])
@@ -723,10 +745,10 @@ export default function FlowDetail() {
   React.useEffect(() => {
     if (selectedNode === null) return
     dispatch(setParameterRowSelectionModel(
-      selectedNode.data.parameters.filter(p => p.visible).map(p => p.name.toString()) as GridRowId[])
+      selectedNode.data.parameters.filter(p => p.visible).map(p => `${p.regionName}/${p.name}`) as GridRowId[])
     )
     dispatch(setOutputRowSelectionModel(
-      selectedNode.data.outputs.filter(o => o.visible).map(o => o.name.toString()) as GridRowId[])
+      selectedNode.data.outputs.filter(o => o.visible).map(o => `${o.regionName}/${o.name}`) as GridRowId[])
     )
 
   }, [selectedNode])
@@ -738,7 +760,9 @@ export default function FlowDetail() {
     }
     if (sectionName === "Parameters") {
       const newParameters = selectedNode.data.parameters.map((p) => {
-        return { ...p, visible: e.includes(p.name as string) || p.dependencies.length > 0 }
+        const hasEdge = edges.some(
+          e => e.sourceHandle === `${selectedNode.id}/${p.name}` || e.targetHandle === `${selectedNode.id}/${p.name}`)
+        return { ...p, visible: e.includes(`${p.regionName}/${p.name}`) || hasEdge }
       })
       dispatch(selectNode({
         ...selectedNode, data: {
@@ -749,7 +773,10 @@ export default function FlowDetail() {
     }
     if (sectionName === "Outputs") {
       const newOutputs = selectedNode.data.outputs.map((o) => {
-        return { ...o, visible: e.includes(o.name as string) || o.dependencies.length > 0 }
+        const hasEdge = edges.some(
+          e => e.sourceHandle === `${selectedNode.id}/${o.name}` || e.targetHandle === `${selectedNode.id}/${o.name}`
+        )
+        return { ...o, visible: e.includes(`${o.regionName}/${o.name}`) || hasEdge }
       })
       dispatch(selectNode({
         ...selectedNode, data: {
@@ -779,15 +806,7 @@ export default function FlowDetail() {
               <Button
                 variant="outlined"
                 style={{ textTransform: 'none' }}
-              // onClick={() => dispatch(editDialogOpen())}
-              // disabled={selectedTemplate === null}
-              >
-                Edit
-              </Button>
-              <Button
-                variant="outlined"
-                style={{ textTransform: 'none' }}
-              // onClick={() => dispatch(deleteDialogOpen())}
+                onClick={() => dispatch(deleteDialogOpen())}
               // disabled={selectedTemplate === null}
               >
                 Delete
@@ -879,6 +898,42 @@ export default function FlowDetail() {
                   />
                 </ListItemButton>
               </ListItem>
+              <ListItem
+                key={`stackset-node`}
+                disablePadding
+                sx={{ display: 'block', }}
+                draggable
+                onDragStart={(event) => onDragStart(event, "stackSetNode")}
+              >
+                <ListItemButton
+                  sx={{
+                    cursor: "grab",
+                    minHeight: 48,
+                    justifyContent: open ? 'initial' : 'center',
+                    px: 2.5,
+                  }}
+                  disableRipple
+                  disableTouchRipple
+                >
+                  <ListItemIcon sx={{ opacity: open ? 1 : 0, }}>
+                    <StackSetSVG />
+                  </ListItemIcon>
+                  <TextField
+                    id="name" label="Type" variant="outlined"
+                    value={"StackSet Node"}
+                    sx={{
+                      overflow: "visible",
+                      "& .MuiInputBase-input.Mui-disabled": {
+                        WebkitTextFillColor: "black",
+                      },
+                      cursor: "grabbing",
+                      opacity: open ? 1 : 0
+                    }}
+                    size="small"
+                    disabled
+                  />
+                </ListItemButton>
+              </ListItem>
             </List>
           </LeftDrawer>
         </Grid>
@@ -936,27 +991,67 @@ export default function FlowDetail() {
                   required
                   inputProps={{ "data-testid": "template-name" }}
                 />
-                <TextField
-                  autoFocus={false}
-                  select
-                  margin="normal"
-                  id="region-name"
-                  label="Region name"
-                  type={"tex"}
-                  fullWidth
-                  variant="outlined"
-                  value={selectedNode?.data.regionName === "" ? "-" : selectedNode?.data.regionName}
-                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => onNodeDataChange(e, "regionName")}
-                  required
-                  inputProps={{ "data-testid": "template-name" }}
-                >
-                  <MenuItem hidden={true} key={"default"} value={"-"}>-</MenuItem>
-                  {getRegions().map((r, i) => {
-                    return (
-                      <MenuItem value={r} key={r}>{r}</MenuItem>
-                    )
-                  })}
-                </TextField>
+                {selectedNode.type === "stackNode" &&
+                  <TextField
+                    autoFocus={false}
+                    select
+                    margin="normal"
+                    id="region-name"
+                    label="Region name"
+                    type={"tex"}
+                    fullWidth
+                    variant="outlined"
+                    value={selectedNode?.data.regionNames.length === 0 ? "-" : selectedNode?.data.regionNames[0]}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => onNodeDataChange(e, "regionNames")}
+                    required
+                    inputProps={{ "data-testid": "template-name" }}
+                  >
+                    <MenuItem hidden={true} key={"default"} value={"-"}>-</MenuItem>
+                    {getRegions().map((r, i) => {
+                      return (
+                        <MenuItem value={r} key={r}>{r}</MenuItem>
+                      )
+                    })}
+                  </TextField>
+                }
+                {selectedNode.type === "stackSetNode" &&
+                  <FormControl sx={{ m: 1, width: 300 }}>
+                    <InputLabel id="regionNames">Region names</InputLabel>
+                    <Select
+                      labelId="region-selection"
+                      id="io-selection"
+                      multiple
+                      key={"RegionNames"}
+                      value={selectedNode.data.regionNames}
+                      onChange={(e:SelectChangeEvent<string[]>) => onNodeDataChange(e, "regionNames")}
+                      input={<OutlinedInput id="select-multiple-chip" label="Chip" />}
+                      fullWidth
+                      renderValue={(selected) => {
+                        console.log(selected)
+                        return (
+                          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, width: "auto" }}>
+                            {selected.map((value) => (
+                              <Chip key={value} label={value} />
+                            ))}
+                          </Box>
+                        )
+                      }}
+                      MenuProps={{ PaperProps: { style: { maxHeight: 48 * 4.5 + 8, width: "auto" } } }}
+                    >
+                      {getRegions().map((r) => {
+                        return (
+                          <MenuItem
+                            key={r}
+                            value={r}
+                          // style={getStyles(name, parameters, theme)}
+                          >
+                            {r}
+                          </MenuItem>
+                        )
+                      })}
+                    </Select>
+                  </FormControl>
+                }
                 <TextField
                   autoFocus={false}
                   select
@@ -993,7 +1088,7 @@ export default function FlowDetail() {
                         },
                       }}
                       pageSizeOptions={[10]}
-                      getRowId={(row) => row.name}
+                      getRowId={(row) => `${row.regionName}/${row.name}`}
                       checkboxSelection
                       disableRowSelectionOnClick
                       onRowSelectionModelChange={(e) => onRowSelectionChange(e, "Parameters")}
@@ -1017,7 +1112,7 @@ export default function FlowDetail() {
                         },
                       }}
                       pageSizeOptions={[10]}
-                      getRowId={(row) => row.name}
+                      getRowId={(row) => `${row.regionName}/${row.name}`}
                       checkboxSelection
                       disableRowSelectionOnClick
                       onRowSelectionModelChange={(e) => onRowSelectionChange(e, "Outputs")}
@@ -1031,7 +1126,20 @@ export default function FlowDetail() {
           </Grid>
         }
       </Grid>
-
+      <DeleteFlowDialog />
+      {inProgress &&
+        <CircularProgress
+          size={24}
+          sx={{
+            // color: green[500],
+            position: 'absolute',
+            top: '50%',
+            left: '50%',
+            marginTop: '-12px',
+            marginLeft: '-12px',
+          }}
+        />
+      }
     </Stack>
   );
 }
