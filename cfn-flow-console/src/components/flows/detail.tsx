@@ -35,6 +35,7 @@ import { setAlert } from '../../stores/common';
 import { deleteDialogOpen, editDialogClose } from '../../stores/flows/common';
 import { closeEditIODialog, closeNodeEditDrawe as closeNodeEditDrawer, openEditIODialog, selectEditIODialog, selectNode, selectNodeEditDrawer, selectOutputRowSelectionModel, selectParameterRowSelectionModel, selectReactFlowInstance, selectSelectedFlow, selectSelectedNode, selector, setOutputRowSelectionModel, setParameterRowSelectionModel } from '../../stores/flows/main';
 import { createTemplates, selectTemplates } from '../../stores/templates/main';
+// import { GetTemplatesResponse, OutputSummary, ParameterSummary, StackNodeIO, StackNodeOutput, StackNodeParameter, StackNodeType, StackSetNodeType, TemplateSummarySection } from '../../types';
 import { useStore } from './../../stores/flows/main';
 import { DeleteFlowDialog } from './common';
 
@@ -213,22 +214,22 @@ export const EditIODialog: React.FC<EditIODialogProps> = ({ type }) => {
     const ios = edges.filter((e) => {
       const handleId = type === "Parameters" ? e.sourceHandle : e.targetHandle
       if (handleId === undefined || handleId === null) return false
-      const [nodeId, regionName, ioName] = handleId?.split("/")
-      return nodeId === selectedNode.id && regionName === selectedIO.regionName && ioName === selectedIO.name
+      const [nodeId, ioName] = handleId?.split("/")
+      return nodeId === selectedNode.id && ioName === selectedIO.name
     }).map((e) => {
-      const otherNode: StackNode | null = type === "Parameters" ? getNode(e.target) : getNode(e.source)
+      const otherNode = (type === "Parameters" ? getNode(e.target) : getNode(e.source)) as StackNodeType | StackSetNodeType | null
       if (otherNode === null) return null
 
       const otherHandleId = type === "Parameters" ? e.targetHandle : e.sourceHandle
       const myHandleId = type === "Parameters" ? e.sourceHandle : e.targetHandle
       if (otherHandleId === null || otherHandleId === undefined) return
       if (myHandleId === null || myHandleId === undefined) return
-      const [otherNodeId, otherRegionName, otherIOName] = otherHandleId.split("/")
-      const [myNodeId, myRegionName, myIOName] = myHandleId.split("/")
+      const [otherNodeId, otherIOName] = otherHandleId.split("/")
+      const [myNodeId, myIOName] = myHandleId.split("/")
 
       const ios = type === "Parameters" ?
-        otherNode.data.outputs.filter(o => o.name === otherIOName && o.regionName === otherRegionName) :
-        otherNode.data.parameters.filter(p => p.name === otherIOName && p.regionName === otherRegionName)
+        otherNode.data.outputs.filter(o => o.name === otherIOName) :
+        otherNode.data.parameters.filter(p => p.name === otherIOName)
       return ios.map(io => { return { node: otherNode, io: io } })
 
     }).filter(io => io !== null).flat()
@@ -238,7 +239,7 @@ export const EditIODialog: React.FC<EditIODialogProps> = ({ type }) => {
 
 
   React.useEffect(() => {
-    const selectableIOs: StackNodeIO[] = nodes.filter((n) => true).map((n: StackNode) => {
+    const selectableIOs: StackNodeIO[] = nodes.map((n: StackNodeType | StackSetNodeType) => {
       const otherNodesIOs = type === "Parameters" ?
         n.data.outputs.filter(o => o.visible && n.id !== selectedNode?.id) :
         n.data.parameters.filter(p => p.visible && n.id !== selectedNode?.id)
@@ -252,18 +253,16 @@ export const EditIODialog: React.FC<EditIODialogProps> = ({ type }) => {
 
 
   const getStackNodeIO = (value: string): StackNodeIO | null => {
-    const [nodeName, regionName, ioName] = value.split("/")
-    // const nodeName = value.split("/")[0]
-    // const ioName = value.split("/")[1]
-    const node: StackNode[] = nodes.filter(
-      n => true).filter((n: StackNode) => n.data.nodeName === nodeName
+    const [nodeName, ioName] = value.split("/")
+    const node: StackNodeType[] = nodes.filter(
+      n => true).filter((n: StackNodeType) => n.data.nodeName === nodeName
       )
     console.log(node)
 
     if (node.length === 1) {
       const io = type === "Parameters" ?
-        node[0].data.outputs.filter(o => o.name === ioName && o.regionName === regionName) :
-        node[0].data.parameters.filter(p => p.name === ioName && p.regionName === regionName)
+        node[0].data.outputs.filter(o => o.name === ioName) :
+        node[0].data.parameters.filter(p => p.name === ioName)
       console.log(io)
       if (io.length === 1) {
         return { io: io[0], node: node[0] }
@@ -297,7 +296,7 @@ export const EditIODialog: React.FC<EditIODialogProps> = ({ type }) => {
     dispatch(closeEditIODialog())
     if (selectedNode === null) return
 
-    dispatch(selectNode({
+    const newNode: StackNodeType | StackSetNodeType = {
       ...selectedNode, data: {
         ...selectedNode.data,
         parameters: selectedNode.data.parameters.map((p) => {
@@ -305,18 +304,19 @@ export const EditIODialog: React.FC<EditIODialogProps> = ({ type }) => {
         }),
         outputs: selectedNode.data.outputs.map((o) => {
           return { ...o, selected: false }
-        })
+        }),
       }
-    }))
-    updateNode({ ...selectedNode })
+    }
+    dispatch(selectNode(newNode))
+    updateNode({ ...newNode })
 
     // remove previous edges
     if (ios.length === 0) {
       if (type === "Parameters" && selectedIO !== null) {
-        removeEdges(selectedNode.id, null, `${selectedNode.id}/${selectedIO.regionName}/${selectedIO.name}`, null)
+        removeEdges(selectedNode.id, null, `${selectedNode.id}/${selectedIO.name}`, null)
       }
       if (type === "Outputs" && selectedIO !== null) {
-        removeEdges(null, selectedNode.id, null, `${selectedNode.id}/${selectedIO.regionName}/${selectedIO.name}`)
+        removeEdges(null, selectedNode.id, null, `${selectedNode.id}/${selectedIO.name}`)
       }
     }
     // update edges
@@ -324,14 +324,11 @@ export const EditIODialog: React.FC<EditIODialogProps> = ({ type }) => {
       const sourceNodeId = type === "Parameters" ? selectedNode.id : io.node.id
       const targetNodeId = type === "Parameters" ? io.node.id : selectedNode.id
 
-      const sourceRegionName = type === "Parameters" ? selectedIO?.regionName : io.io.regionName
-      const targetRegionName = type === "Parameters" ? io.io.regionName : selectedIO?.regionName
-
       const sourceHandleId = type === "Parameters" ? selectedIO?.name : io.io.name
       const targetHandleId = type === "Parameters" ? io.io.name : selectedIO?.name
 
-      const sourceId = `${sourceNodeId}/${sourceRegionName}/${sourceHandleId}`
-      const targetId = `${targetNodeId}/${targetRegionName}/${targetHandleId}`
+      const sourceId = `${sourceNodeId}/${sourceHandleId}`
+      const targetId = `${targetNodeId}/${targetHandleId}`
 
       const id = `${sourceId}-${targetId}`
       const label = `${sourceHandleId}-${targetHandleId}`
@@ -424,11 +421,11 @@ export const EditIODialog: React.FC<EditIODialogProps> = ({ type }) => {
                   {selectableIOs.map((io) => {
                     return (
                       <MenuItem
-                        key={`${io.node.data.nodeName}/${io.io.regionName}/${io.io.name}`}
-                        value={`${io.node.data.nodeName}/${io.io.regionName}/${io.io.name}`}
+                        key={`${io.node.data.nodeName}/${io.io.name}`}
+                        value={`${io.node.data.nodeName}/${io.io.name}`}
                       // style={getStyles(name, parameters, theme)}
                       >
-                        {`${io.node.data.nodeName}/${io.io.regionName}/${io.io.name}`}
+                        {`${io.node.data.nodeName}/${io.io.name}`}
                       </MenuItem>
                     )
                   })}
@@ -466,7 +463,7 @@ export default function FlowDetail() {
 
   const [inProgress, setInProgress] = React.useState<boolean>(false)
 
-  const { nodes, edges, onNodesChange, onEdgesChange, onConnect, mergeNodes, updateNode, deleteNode } = useStore(selector, shallow);
+  const { nodes, edges, upsertNode,initNodes, onNodesChange, onEdgesChange, onConnect, mergeNodes, updateNode, deleteNode } = useStore(selector, shallow);
 
 
   const templates = useAppSelector(selectTemplates)
@@ -475,6 +472,8 @@ export default function FlowDetail() {
   const [open, setOpen] = React.useState(true)
 
   const reactFlowInstance = useAppSelector(selectReactFlowInstance)
+  const reactFlowWrapper = React.useRef<HTMLDivElement>(null);
+
 
   const handleIODependencyClick = React.useCallback(
     (params: GridRowParams, type: "Parameters" | "Outputs") => (event: React.MouseEvent<HTMLButtonElement, MouseEvent>) => {
@@ -483,19 +482,19 @@ export default function FlowDetail() {
         console.log("return")
         return
       }
-      const [regionName, ioName] = (params.id as string).split("/")
+      const ioName = params.id as string
       let newNode = { ...selectedNode }
       if (type === "Parameters") {
         newNode.data = {
           ...newNode.data, parameters: newNode.data.parameters.map((p) => {
-            return { ...p, selected: p.name === ioName && p.regionName === regionName }
+            return { ...p, selected: p.name === ioName }
           })
         }
       }
       if (type === "Outputs") {
         newNode.data = {
           ...newNode.data, outputs: newNode.data.outputs.map((o) => {
-            return { ...o, selected: o.name === ioName && o.regionName === regionName }
+            return { ...o, selected: o.name === ioName }
           })
         }
       }
@@ -511,10 +510,10 @@ export default function FlowDetail() {
       if (selectedNode === null) {
         return []
       }
-      const [regionName, ioName] = (params.id as string).split("/")
+      const ioName = params.id as string
       const io = type === "Parameters" ?
-        selectedNode.data.parameters.find((p) => p.name === ioName && p.regionName === regionName) :
-        selectedNode.data.outputs.find((o) => o.name === ioName && o.regionName === regionName)
+        selectedNode.data.parameters.find((p) => p.name === ioName ) :
+        selectedNode.data.outputs.find((o) => o.name === ioName )
       const isVisible = io !== undefined ? io.visible : false
       return [
         <GridActionsCellItem
@@ -532,9 +531,9 @@ export default function FlowDetail() {
       field: "source", headerName: "Source", align: "center", flex: 1,
       type: "actions", getActions: (params) => getIODependencyAction(params, "Parameters")
     } as GridColDef,
-    {
-      field: "regionName", headerName: "Region", flex: 1, align: "left",
-    },
+    // {
+    //   field: "regionName", headerName: "Region", flex: 1, align: "left",
+    // },
     {
       field: "name", headerName: "Name", flex: 1, align: "left",
     },
@@ -556,9 +555,9 @@ export default function FlowDetail() {
       field: "target", headerName: "Target", align: "center", flex: 1,
       type: "actions", getActions: (params) => getIODependencyAction(params, "Outputs")
     } as GridColDef,
-    {
-      field: "regionName", headerName: "Region", flex: 1, align: "left",
-    },
+    // {
+    //   field: "regionName", headerName: "Region", flex: 1, align: "left",
+    // },
     {
       field: "name", headerName: "Name", flex: 1, align: "left",
     },
@@ -607,13 +606,138 @@ export default function FlowDetail() {
     dispatch(selectNode(null))
   }
 
-  const onNodeDataChange = async (event: React.ChangeEvent<HTMLInputElement>|SelectChangeEvent<string[]>, fieldName: "nodeName" | "regionNames" | "templateName") => {
-    if (selectedNode === null) {
-      return
-    }
+  const onStackSetNodeDataChange = async (event: React.ChangeEvent<HTMLInputElement> | SelectChangeEvent<string[]>, fieldName: StackNodeDataType) => {
+    if (selectedNode === null) return
     const value = event.target.value
-    let newNode: StackNode | StackSetNode | null = null
+    let newNode: StackSetNodeType | null = null
+    let childNodes: StackNodeType[] = []
 
+    let parameters: StackNodeParameter[] = []
+    let outputs: StackNodeOutput[] = []
+
+    switch (fieldName) {
+      case "nodeName":
+        const prevName = selectedNode.data.nodeName
+        // replace child nodes' name suffix
+        childNodes = nodes.filter(n => n.parentNode === selectedNode.id).map((n: StackNodeType) => {
+          return {
+            ...n, data: {
+              ...n.data, [fieldName]: n.data.nodeName.replace(prevName, value as string)
+            }
+          }
+        })
+        newNode = {
+          ...selectedNode, data: {
+            ...selectedNode.data, [fieldName]: value as string
+          }
+        }
+        dispatch(selectNode(newNode))
+        childNodes.forEach(n => upsertNode(n))
+        break
+
+      case "regionNames":
+        const regionNames = value as string[]
+        newNode = {
+          ...selectedNode, data: {
+            ...selectedNode.data, [fieldName]: regionNames,
+            parameters: parameters, outputs: outputs
+          }
+        }
+
+        const prevChildNodes  = nodes.filter((n:StackNodeType) => n.parentNode === selectedNode.id)
+        console.log(prevChildNodes)
+        initNodes(nodes.filter(n => !prevChildNodes.some(cn => cn.id === n.id)))
+        regionNames.forEach((r, i) => {
+          const prevNode = prevChildNodes.filter((n:StackNodeType) => n.data.regionName === r)
+          if (prevNode.length === 0) {
+
+            // const reactFlowBounds = reactFlowWrapper.current?.getBoundingClientRect()
+            const position = reactFlowInstance === null ? {...selectedNode.position} : reactFlowInstance.project({...selectedNode.position}) 
+            // calc position
+            console.log(selectedNode.position)
+            console.log(position)
+            console.log(reactFlowInstance)
+            const nodeId = `${selectedNode.id}-${r}`
+            const nodeName = `${selectedNode.data.nodeName}-${r}`
+            const data: StackNodeData = {
+              nodeId: nodeId,
+              nodeName: nodeName,
+              toolbarVisible: true,
+              nodeDeletable: true,
+              regionName: r, templateName: selectedNode.data.templateName,
+              regionNames: [],
+              parameters: [...selectedNode.data.parameters],
+              outputs: [...selectedNode.data.outputs],
+            }
+            const newNode:StackNodeType = {
+              id: nodeId,
+              type: "stackNode",
+              position: {x: i*400, y: 100},
+              data: data,
+              selected: false,
+              selectable: true,
+              parentNode: selectedNode.id,
+              extent: "parent",
+              expandParent: true,
+              style: { 
+                border: '1px solid #777', padding: 10, background: "white" ,
+                height: "auto", width: "auto",
+              },
+            }
+            upsertNode({...newNode})
+          } else {
+            upsertNode({...prevNode[0]})
+          }
+          dispatch(selectNode(newNode))
+
+        })
+        break
+      case "templateName":
+        try {
+          const response = await getTemplateSummary(value as string, "Parameters")
+          parameters = (response.templateSummary.summary as ParameterSummary[]).map((p) => {
+            return { ...p, visible: false, selected: false, regionName: null, accountId: null }
+          })
+          console.log(parameters)
+          dispatch(setParameterRowSelectionModel([]))
+        } catch (e) {
+          console.error(e)
+        }
+        try {
+          const response = await getTemplateSummary(value as string, "Outputs")
+          outputs = (response.templateSummary.summary as OutputSummary[]).map((o) => {
+            return { ...o, visible: false, selected: false, regionName: null, accountId: null }
+          })
+          dispatch(setOutputRowSelectionModel([]))
+        } catch (e) {
+          console.error(e)
+        }
+        newNode = {
+          ...selectedNode, data: {
+            ...selectedNode.data, [fieldName]: value as string,
+            parameters: parameters, outputs: outputs
+          }
+        }
+        dispatch(selectNode(newNode))
+        nodes.filter(n => n.parentNode === selectedNode.id).forEach((n: StackNodeType) => {
+          upsertNode({
+            ...n, data: {
+              ...n.data, [fieldName]: value as string,
+              parameters: parameters, outputs: outputs,
+            }
+          })
+        })
+        break
+      default:
+        console.log(`invalid fieldName : ${fieldName}`)
+    }
+
+  }
+
+  const onStackNodeDataChange = async (event: React.ChangeEvent<HTMLInputElement> | SelectChangeEvent<string[]>, fieldName: StackNodeDataType) => {
+    if (selectedNode === null) return
+    const value = event.target.value
+    let newNode: StackNodeType | null = null
     let parameters: StackNodeParameter[] = []
     let outputs: StackNodeOutput[] = []
     switch (fieldName) {
@@ -624,40 +748,10 @@ export default function FlowDetail() {
           }
         }
         break
-      case "regionNames":
-        let regionNames: string[] = []
-        if (selectedNode.type === "stackNode") {
-          regionNames = [value as string]
-        }
-        if (selectedNode.type === "stackSetNode") {
-          regionNames = value as string[]
-        }
-        const removeDupulicate = (arr:(StackNodeParameter|StackNodeOutput)[]) => {
-          const uniqArr:(StackNodeParameter|StackNodeOutput)[] = []
-          arr.filter((a) => {
-            if (uniqArr.some((ua) => ua.name === a.name && ua.regionName === a.regionName)) {
-              return false
-            } else {
-              uniqArr.push(a)
-              return true
-            }
-          })
-          return uniqArr
-        }
-        parameters = removeDupulicate(selectedNode.data.parameters.map((p) => {
-          return regionNames.map((r) => {
-            return {...p, regionName: r}
-          })
-        }).flat()) as StackNodeParameter[]
-        outputs = removeDupulicate(selectedNode.data.outputs.map((o) => {
-          return regionNames.map((r) => {
-            return {...o, regionName: r}
-          })
-        }).flat()) as StackNodeOutput[]
+      case "regionName":
         newNode = {
           ...selectedNode, data: {
-            ...selectedNode.data, [fieldName]: regionNames,
-            parameters: parameters, outputs: outputs
+            ...selectedNode.data, [fieldName]: value as string,
           }
         }
         break
@@ -691,7 +785,7 @@ export default function FlowDetail() {
             }
           }).flat()
           dispatch(setOutputRowSelectionModel([]))
-          
+
         } catch (e) {
           console.error(e)
         }
@@ -705,8 +799,26 @@ export default function FlowDetail() {
       default:
         console.log(`invalid fieldName : ${fieldName}`)
     }
-
     dispatch(selectNode(newNode))
+  }
+
+  const onNodeDataChange = async (event: React.ChangeEvent<HTMLInputElement> | SelectChangeEvent<string[]>, fieldName: StackNodeDataType) => {
+    if (selectedNode === null) return
+    switch (selectedNode.type) {
+      case "stackNode": {
+        onStackNodeDataChange(event, fieldName)
+        break
+      }
+      case "stackSetNode": {
+        onStackSetNodeDataChange(event, fieldName)
+        break
+      }
+      default: {
+        console.log(`invalid node type : ${selectedNode.type}`)
+        break
+      }
+    }
+    return
   }
 
   const onSave = React.useCallback(() => {
@@ -745,46 +857,123 @@ export default function FlowDetail() {
   React.useEffect(() => {
     if (selectedNode === null) return
     dispatch(setParameterRowSelectionModel(
-      selectedNode.data.parameters.filter(p => p.visible).map(p => `${p.regionName}/${p.name}`) as GridRowId[])
+      selectedNode.data.parameters.filter(p => p.visible).map(p => p.name) as GridRowId[])
     )
     dispatch(setOutputRowSelectionModel(
-      selectedNode.data.outputs.filter(o => o.visible).map(o => `${o.regionName}/${o.name}`) as GridRowId[])
+      selectedNode.data.outputs.filter(o => o.visible).map(o => o.name) as GridRowId[])
     )
 
   }, [selectedNode])
 
-  const onRowSelectionChange = (e: GridRowSelectionModel, sectionName: TemplateSummarySection) => {
-    console.log(e)
+  const onStackNodeRowSelectionChange = (e: GridRowSelectionModel, sectionName: TemplateSummarySection) => {
     if (selectedNode === null) {
       return
     }
-    if (sectionName === "Parameters") {
-      const newParameters = selectedNode.data.parameters.map((p) => {
-        const hasEdge = edges.some(
-          e => e.sourceHandle === `${selectedNode.id}/${p.name}` || e.targetHandle === `${selectedNode.id}/${p.name}`)
-        return { ...p, visible: e.includes(`${p.regionName}/${p.name}`) || hasEdge }
-      })
-      dispatch(selectNode({
-        ...selectedNode, data: {
-          ...selectedNode.data, parameters: newParameters
-        }
-      }))
-      // setParameterRowSelectionModel(e)
+    switch (sectionName) {
+      case "Parameters": {
+        const newParameters = selectedNode.data.parameters.map((p) => {
+          const hasEdge = edges.some(
+            e => e.sourceHandle === `${selectedNode.id}/${p.name}` || e.targetHandle === `${selectedNode.id}/${p.name}`)
+          return { ...p, visible: e.includes(p.name) || hasEdge }
+        })
+        dispatch(selectNode({
+          ...selectedNode, data: {
+            ...selectedNode.data, parameters: newParameters
+          }
+        }))
+        // setParameterRowSelectionModel(e)  
+        break
+      }
+      case "Outputs": {
+        const newOutputs = selectedNode.data.outputs.map((o) => {
+          const hasEdge = edges.some(
+            e => e.sourceHandle === `${selectedNode.id}/${o.name}` || e.targetHandle === `${selectedNode.id}/${o.name}`
+          )
+          return { ...o, visible: e.includes(o.name) || hasEdge }
+        })
+        dispatch(selectNode({
+          ...selectedNode, data: {
+            ...selectedNode.data, outputs: newOutputs
+          }
+        }))
+        break
+      }
+      default: {
+        console.log(`invalid section name : ${sectionName}`)
+      }
     }
-    if (sectionName === "Outputs") {
-      const newOutputs = selectedNode.data.outputs.map((o) => {
-        const hasEdge = edges.some(
-          e => e.sourceHandle === `${selectedNode.id}/${o.name}` || e.targetHandle === `${selectedNode.id}/${o.name}`
-        )
-        return { ...o, visible: e.includes(`${o.regionName}/${o.name}`) || hasEdge }
-      })
-      dispatch(selectNode({
-        ...selectedNode, data: {
-          ...selectedNode.data, outputs: newOutputs
-        }
-      }))
+  }
 
+  const onStackSetNodeRowSelectionChange = (e: GridRowSelectionModel, sectionName: TemplateSummarySection) => {
+    if (selectedNode === null) {
+      return
     }
+    switch (sectionName) {
+      case "Parameters": {
+        const newParameters = selectedNode.data.parameters.map((p) => {
+          const hasEdge = edges.some(
+            e => e.sourceHandle === `${selectedNode.id}/${p.name}` || e.targetHandle === `${selectedNode.id}/${p.name}`)
+          return { ...p, visible: e.includes(p.name) || hasEdge }
+        })
+        dispatch(selectNode({
+          ...selectedNode, data: {
+            ...selectedNode.data, parameters: newParameters
+          }
+        }))
+        nodes.filter(n => n.parentNode === selectedNode.id).forEach((n:StackNodeType) => {
+          const newNode:StackNodeType = {
+            ...n, data: {
+              ...n.data, parameters: newParameters,
+            }
+          }
+          updateNode({...newNode})
+        })
+        break
+      }
+      case "Outputs": {
+        const newOutputs = selectedNode.data.outputs.map((o) => {
+          const hasEdge = edges.some(
+            e => e.sourceHandle === `${selectedNode.id}/${o.name}` || e.targetHandle === `${selectedNode.id}/${o.name}`
+          )
+          return { ...o, visible: e.includes(o.name) || hasEdge }
+        })
+        dispatch(selectNode({
+          ...selectedNode, data: {
+            ...selectedNode.data, outputs: newOutputs
+          }
+        }))
+        nodes.filter(n => n.parentNode === selectedNode.id).forEach((n:StackNodeType) => {
+          const newNode:StackNodeType = {
+            ...n, data: {
+              ...n.data, outputs: newOutputs,
+            }
+          }
+          updateNode({...newNode})
+        })
+        break
+      }
+      default: {
+        console.log(`invalid section name : ${sectionName}`)
+      }
+    }
+  }
+  const onRowSelectionChange = (e: GridRowSelectionModel, sectionName: TemplateSummarySection) => {
+    if (selectedNode === null) return
+    switch (selectedNode.type) {
+      case "stackNode": {
+        onStackNodeRowSelectionChange(e, sectionName)
+        break
+      }
+      case "stackSetNode": {
+        onStackSetNodeRowSelectionChange(e, sectionName)        
+        break
+      }
+      default: {
+        console.log(`invalid node type : ${selectedNode.type}`)
+      }
+    }
+
+
   }
 
   const onNodeDelete = () => {
@@ -987,6 +1176,7 @@ export default function FlowDetail() {
                   fullWidth
                   variant="outlined"
                   value={selectedNode?.data.nodeName}
+                  disabled={selectedNode.parentNode !== undefined}
                   onChange={(e: React.ChangeEvent<HTMLInputElement>) => onNodeDataChange(e, "nodeName")}
                   required
                   inputProps={{ "data-testid": "template-name" }}
@@ -1000,13 +1190,13 @@ export default function FlowDetail() {
                     label="Region name"
                     type={"tex"}
                     fullWidth
+                    disabled={selectedNode.parentNode !== undefined}
                     variant="outlined"
-                    value={selectedNode?.data.regionNames.length === 0 ? "-" : selectedNode?.data.regionNames[0]}
-                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => onNodeDataChange(e, "regionNames")}
+                    value={selectedNode?.data.regionName === null ? "" : selectedNode?.data.regionName}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => onNodeDataChange(e, "regionName")}
                     required
                     inputProps={{ "data-testid": "template-name" }}
                   >
-                    <MenuItem hidden={true} key={"default"} value={"-"}>-</MenuItem>
                     {getRegions().map((r, i) => {
                       return (
                         <MenuItem value={r} key={r}>{r}</MenuItem>
@@ -1023,11 +1213,10 @@ export default function FlowDetail() {
                       multiple
                       key={"RegionNames"}
                       value={selectedNode.data.regionNames}
-                      onChange={(e:SelectChangeEvent<string[]>) => onNodeDataChange(e, "regionNames")}
+                      onChange={(e: SelectChangeEvent<string[]>) => onNodeDataChange(e, "regionNames")}
                       input={<OutlinedInput id="select-multiple-chip" label="Chip" />}
                       fullWidth
                       renderValue={(selected) => {
-                        console.log(selected)
                         return (
                           <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, width: "auto" }}>
                             {selected.map((value) => (
@@ -1060,13 +1249,13 @@ export default function FlowDetail() {
                   label="Template name"
                   type={"tex"}
                   fullWidth
+                  disabled={selectedNode.parentNode !== undefined}
                   variant="outlined"
-                  value={selectedNode?.data.templateName === "" ? "-" : selectedNode?.data.templateName}
+                  value={selectedNode?.data.templateName === null ? "" : selectedNode?.data.templateName}
                   onChange={(e: React.ChangeEvent<HTMLInputElement>) => onNodeDataChange(e, "templateName")}
                   required
                   inputProps={{ "data-testid": "template-name" }}
                 >
-                  <MenuItem hidden={true} key={"default"} value={"-"}>-</MenuItem>
                   {templates.map((t, i) => {
                     return (
                       <MenuItem value={t.name} key={t.name}>{t.name}</MenuItem>
@@ -1088,7 +1277,7 @@ export default function FlowDetail() {
                         },
                       }}
                       pageSizeOptions={[10]}
-                      getRowId={(row) => `${row.regionName}/${row.name}`}
+                      getRowId={(row) => row.name}
                       checkboxSelection
                       disableRowSelectionOnClick
                       onRowSelectionModelChange={(e) => onRowSelectionChange(e, "Parameters")}
@@ -1112,7 +1301,7 @@ export default function FlowDetail() {
                         },
                       }}
                       pageSizeOptions={[10]}
-                      getRowId={(row) => `${row.regionName}/${row.name}`}
+                      getRowId={(row) => row.name}
                       checkboxSelection
                       disableRowSelectionOnClick
                       onRowSelectionModelChange={(e) => onRowSelectionChange(e, "Outputs")}

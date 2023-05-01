@@ -1,0 +1,91 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: ---
+
+Parameters: 
+  SYSTEM:
+    Description: system name
+    Type: String
+    Default: cfn-flow-test
+
+  ENV:
+    Description:  env type
+    Type: String
+    Default: dev
+    AllowedValues:
+      - dev
+      - prod
+
+  PrimaryAlbDomain:
+    Type: String
+  PrimaryAlbHostedZone:
+    Type: String
+  PrimaryOriginDomain:
+    Type: String
+  SecondaryAlbDomain:
+    Type: String
+  SecondaryAlbHostedZone:
+    Type: String
+  SecondaryOriginDomain:
+    Type: String
+
+  RootDomainName:
+    Type: String
+  RootDomainHostedZoneId:
+    Type: AWS::Route53::HostedZone::Id
+
+Resources: 
+
+  HealthCheck:
+    Type: AWS::Route53::HealthCheck
+    Properties: 
+      HealthCheckConfig: 
+        EnableSNI: true
+        FailureThreshold: 3
+        FullyQualifiedDomainName: !Ref PrimaryOriginDomain
+        # HealthThreshold: Integer
+        # InsufficientDataHealthStatus: String
+        Inverted: false
+        # IPAddress: String
+        MeasureLatency: false
+        Port: 443
+        # Regions: 
+        #   - String
+        RequestInterval: 30
+        ResourcePath: /
+        # RoutingControlArn: String
+        # SearchString: 
+        #   String
+        Type: HTTPS
+
+
+
+  PrimaryWwwRecord:
+    Type: AWS::Route53::RecordSet
+    Properties: 
+      AliasTarget: 
+        DNSName: !Ref PrimaryAlbDomain
+        HostedZoneId: !Ref PrimaryAlbHostedZone
+      HostedZoneId: !Ref RootDomainHostedZoneId
+      Name: !Sub www.${SYSTEM}.${RootDomainName}
+      Type: A
+      Failover: PRIMARY
+      HealthCheckId: !Ref HealthCheck
+      SetIdentifier: primary
+
+
+  SecondaryWwwRecord:
+    Type: AWS::Route53::RecordSet
+    Properties: 
+      AliasTarget: 
+        DNSName: !Ref SecondaryAlbDomain
+        HostedZoneId: !Ref SecondaryAlbHostedZone
+      HostedZoneId: !Ref RootDomainHostedZoneId
+      Name: !Sub www.${SYSTEM}.${RootDomainName}
+      Type: A
+      Failover: SECONDARY
+      SetIdentifier: secondary
+
+Outputs:
+  WwwUrl:
+    Description: url for cdn endpoint
+    Value: !Sub https://www.${SYSTEM}.${RootDomainName}

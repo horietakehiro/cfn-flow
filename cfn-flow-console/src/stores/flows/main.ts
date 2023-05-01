@@ -14,7 +14,7 @@ export interface NodeEditDrawerState {
     opened: boolean
 }
 export interface SelectedNodeState {
-    node: StackNode | null
+    node: StackNodeType | StackSetNodeType | null
 }
 export interface EditIODialogState {
     opened: boolean
@@ -79,6 +79,7 @@ export type RFState = {
 
     mergeNodes: (nodes: Node[]) => void
     updateNode: (node: Node) => void
+    upsertNode: (node: Node) => void
     initNodes: (nodes: Node[]) => void
     deleteNode: (node: Node) => void
     getNode: (nodeId:string) => Node | null
@@ -120,6 +121,20 @@ export const useStore = create<RFState>((set, get) => ({
                 return n
             })
         })
+    },
+    upsertNode: (node) => {
+        if (get().nodes.some(n => n.id === node.id)) {
+            set({
+                nodes: get().nodes.map((n) => {
+                    if (n.id === node.id) return node
+                    return n
+                })
+            })
+        } else {
+            set({
+                nodes: get().nodes.concat([node])
+            })
+        }
     },
     initNodes: (nodes) => {
         set({
@@ -302,7 +317,7 @@ export const SelectedNodeSlice = createSlice({
     name: "SelectedNode",
     initialState: SelectedNodeInitialState,
     reducers: {
-        select: (state, action: PayloadAction<Node | null>) => {
+        select: (state, action: PayloadAction<StackNodeType | StackSetNodeType | null>) => {
             state.node = action.payload
         },
     }
@@ -421,6 +436,7 @@ export const selector = (state: RFState) => ({
     onConnect: state.onConnect,
     mergeNodes: state.mergeNodes,
     updateNode: state.updateNode,
+    upsertNode: state.upsertNode,
     deleteNode: state.deleteNode,
     initNodes: state.initNodes,
     getNode: state.getNode,

@@ -36,10 +36,10 @@ type GetTemplateResponse = {
 }
 
 type ParameterSummary = {
-    name: String
-    type: String
+    name: string
+    type: string
     description: string | null
-    default: String | null
+    default: string | null
     noEcho: string | null
     minValue: Number | null
     maxValue: Number | null
@@ -121,37 +121,15 @@ type PostStackTemplateResponse = {
     httpUrl: string | null
 }
 
-type NodeType = "stackNode" | "StackSetNode"
+// type NodeType = "stackNode" | "StackSetNode"
 // type Node = import("reactflow").Node
 type BaseCUstomNodeData = {
     nodeId: string
     nodeName: string
     toolbarVisible: boolean
-    nodeDeletable: boolean
+    nodeDeletable: boolean,
 }
 
-type StartNodeData = BaseCUstomNodeData & {}
-type StartNode = import("reactflow").Node<StartNodeData>
-// type StackNodeIO = {
-//     node: StackNode
-//     io: StackNodeParameter | StackNodeOutput
-// }
-// type StackNodeParameterSource = {
-//     node: StackNode,
-//     output: OutputSummary
-// }
-// type StackNodeOutputTarget = {
-//     node: StackNode,
-//     parameter: ParameterSummary
-// }
-
-// type StackNodeIODependency = {
-//     id: string
-//     source: string
-//     target: string
-//     sourceHandle: string
-//     targetHandle: string
-// }
 type StackNodeIO = {
     node: StackNode
     io: StackNodeParameter | StackNodeOutput
@@ -161,7 +139,7 @@ type StackNodeParameter = ParameterSummary & {
     // source: StackNodeParameterSource[]
     // dependencies: StackNodeIODependency[]
     selected: boolean
-    regionName: string | null
+    // regionName: string | null
     accountId: string | null
 }
 type StackNodeOutput = OutputSummary & {
@@ -169,20 +147,35 @@ type StackNodeOutput = OutputSummary & {
     // target: StackNodeOutputTarget[]
     // dependencies: StackNodeIODependency[]
     selected: boolean
-    regionName: string | null
+    // regionName: string | null
     accountId: string | null
 }
 type StackNodeData = BaseCUstomNodeData & {
+    regionName: string | null
     regionNames: string[]
-    templateName: string
+    templateName: string | null
     parameters: StackNodeParameter[]
     outputs: StackNodeOutput[]
 }
 type StackSetNodeData = BaseCUstomNodeData & {
+    regionName: string | null
     regionNames: string[]
-    templateName: string
+    templateName: string | null
     parameters: StackNodeParameter[] 
     outputs: StackNodeOutput[]
 }
-type StackNode = import("reactflow").Node<StackNodeData>
-type StackSetNode = import("reactflow").Node<StackSetNodeData>
+
+
+type StackNodeType = import("reactflow").Node<StackNodeData> & {
+    // type: CustomNodeTypeName
+}
+type StackSetNodeType = import("reactflow").Node<StackSetNodeData> & {
+    // type: CustomNodeTypeName
+}
+
+type CustomNodeTypeName = "stackNode"| "stackSetNode"
+type CustomNodeTypes = {
+  [key in CustomNodeTypeName]: ComponentType<NodeProps>
+}
+
+type StackNodeDataType = "nodeName" | "regionNames" | "templateName" | "regionName"

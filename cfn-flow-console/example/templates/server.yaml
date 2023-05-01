@@ -15,20 +15,26 @@ Parameters:
       - dev
       - prod
   VpcId:
-    Type: AWS::EC2::VPC::Id
-
+    Type: String
   PublicSubnetIds:
-    Type: List<AWS::EC2::Subnet::Id>
-  AmiId:
-    Type: AWS::EC2::Image::Id
+    Type: CommaDelimitedList
+
+
   RootDomainName:
     Type: String
   RootDomainHostedZoneId:
     Type: AWS::Route53::HostedZone::Id
 
-  InstanceCount:
-    Type: Number
-    Default: 1
+
+Mappings:
+  AppConfig:
+    ap-northeast-1:
+      AmiId: ami-0df2ca8a354185e1e
+      DomainPrefix: origin.primary
+    ap-northeast-3:
+      AmiId: ami-0171e161a6e0c595c
+      DomainPrefix: origin.secondary
+      
 
 Resources: 
 
@@ -86,7 +92,7 @@ Resources:
       ManagedPolicyArns: 
         - arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
       Path: /
-      RoleName: !Sub ${SYSTEM}-${ENV}-instance-role
+      RoleName: !Sub ${SYSTEM}-${ENV}-${AWS::Region}-instance-role
   
   InstanceProfile:
     Type: AWS::IAM::InstanceProfile
@@ -107,7 +113,12 @@ Resources:
               VolumeType: gp2
         IamInstanceProfile: 
           Arn: !GetAtt InstanceProfile.Arn
-        ImageId: !Ref AmiId
+        ImageId:
+          Fn::FindInMap:
+            - AppConfig
+            - !Ref AWS::Region
+            - AmiId
+
         InstanceType: t2.micro
         SecurityGroupIds: 
           - !Ref InstanceSg
@@ -126,7 +137,7 @@ Resources:
     Type: AWS::AutoScaling::AutoScalingGroup
     Properties: 
       AutoScalingGroupName: !Sub ${SYSTEM}-${ENV}-asg
-      DesiredCapacity: !Ref InstanceCount
+      DesiredCapacity: 1
       DesiredCapacityType: units
       HealthCheckGracePeriod: 120
       HealthCheckType: ELB
@@ -134,22 +145,48 @@ Resources:
         LaunchTemplateId: !Ref LaunchTemplate
         Version: !GetAtt LaunchTemplate.LatestVersionNumber
       # LoadBalancerNames: 
-      MaxSize: !Ref InstanceCount
-      MinSize: !Ref InstanceCount
+      MaxSize: 1
+      MinSize: 1
       TargetGroupARNs: 
         - !Ref AlbTg
       VPCZoneIdentifier: !Ref PublicSubnetIds
 
 
-  AlbCert:
+  OriginCert:
     Type: AWS::CertificateManager::Certificate
     Properties: 
-      DomainName: !Sub alb.${SYSTEM}.${RootDomainName}
+      DomainName:
+        Fn::Sub:
+          - ${Prefix}.${SYSTEM}.${RootDomainName}
+          - Prefix:
+              Fn::FindInMap:
+                - AppConfig
+                - !Ref AWS::Region
+                - DomainPrefix
       DomainValidationOptions: 
         - 
-          DomainName: !Sub alb.${SYSTEM}.${RootDomainName}
+          DomainName:
+            Fn::Sub:
+              - ${Prefix}.${SYSTEM}.${RootDomainName}
+              - Prefix:
+                  Fn::FindInMap:
+                    - AppConfig
+                    - !Ref AWS::Region
+                    - DomainPrefix
+
           HostedZoneId: !Ref RootDomainHostedZoneId
 
+      ValidationMethod: DNS
+
+
+  WwwCert:
+    Type: AWS::CertificateManager::Certificate
+    Properties: 
+      DomainName: !Sub www.${SYSTEM}.${RootDomainName}
+      DomainValidationOptions: 
+        - 
+          DomainName: !Sub www.${SYSTEM}.${RootDomainName}
+          HostedZoneId: !Ref RootDomainHostedZoneId
       ValidationMethod: DNS
 
 
@@ -198,7 +235,7 @@ Resources:
     Type: AWS::ElasticLoadBalancingV2::Listener
     Properties: 
       Certificates: 
-        - CertificateArn: !Ref AlbCert
+        - CertificateArn: !Ref OriginCert
       DefaultActions: 
         - 
           ForwardConfig: 
@@ -211,21 +248,43 @@ Resources:
       Port: 443
       Protocol: HTTPS
 
-  AlbRecord:
+  AlbListenerCertificate:
+    Type: AWS::ElasticLoadBalancingV2::ListenerCertificate
+    Properties: 
+      Certificates: 
+        - CertificateArn: !Ref WwwCert
+      ListenerArn: !Ref AlbListener
+
+
+  OriginRecord:
     Type: AWS::Route53::RecordSet
     Properties: 
       AliasTarget: 
         DNSName: !GetAtt Alb.DNSName
         HostedZoneId: !GetAtt Alb.CanonicalHostedZoneID
       HostedZoneId: !Ref RootDomainHostedZoneId
-      Name: !Sub alb.${SYSTEM}.${RootDomainName}
+      Name:
+        Fn::Sub:
+          - ${Prefix}.${SYSTEM}.${RootDomainName}
+          - Prefix:
+              Fn::FindInMap:
+                - AppConfig
+                - !Ref AWS::Region
+                - DomainPrefix
       Type: A
 
 Outputs:
+  OriginDns:
+    Value:
+      Fn::Sub:
+        - ${Prefix}.${SYSTEM}.${RootDomainName}
+        - Prefix:
+            Fn::FindInMap:
+              - AppConfig
+              - !Ref AWS::Region
+              - DomainPrefix
   AlbDns:
-    Description: dns for alb endpoint
-    Value: !Sub alb.${SYSTEM}.${RootDomainName}
+    Value: !GetAtt Alb.DNSName
+  AlbHostedZone:
+    Value: !GetAtt Alb.CanonicalHostedZoneID
 
-  AlbUrl:
-    Description: url for alb endpoint
-    Value: !Sub https://alb.${SYSTEM}.${RootDomainName}/
