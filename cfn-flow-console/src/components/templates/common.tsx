@@ -727,6 +727,7 @@ export const DeleteTemplateDialog: React.FC = () => {
             opened: true, severity: "success"
           }))
         }
+        dispatch(selectTemplate(null))
 
       } catch (e) {
         let errorMessage = `Failed to delete template : ${templateName}`
@@ -743,13 +744,13 @@ export const DeleteTemplateDialog: React.FC = () => {
         setInProgress(false)
 
       }
+      if (templateName !== undefined) {
+        window.location.replace("/templates")
+      }
     }
-    dispatch(selectTemplate(null))
     dispatch(deleteDialogClose())
 
-    if (templateName !== undefined) {
-      window.location.replace("/templates")
-    }
+
   }
 
   return (

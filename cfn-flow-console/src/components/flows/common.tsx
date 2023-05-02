@@ -31,6 +31,7 @@ import {
 
 import axios from 'axios';
 import { useParams } from 'react-router-dom';
+import { ReactFlowJsonObject } from 'reactflow';
 import { getApiAuth, uploadObj } from '../../apis/common';
 import { deleteFlow, putFlow } from '../../apis/flows/apis';
 
@@ -63,6 +64,15 @@ enum FlowSourceType {
   Local = 2,
 }
 
+// export const CalcNodeDependencies = (nodes:Node[], edges:Edge[]):Node[] => {
+//   let newNodes = [...nodes]
+
+//   getOutgoers()
+
+
+
+//   return newNodes
+// }
 
 export const CreateFlowDialog: React.FC = () => {
   const dispatch = useAppDispatch()
@@ -118,10 +128,13 @@ export const CreateFlowDialog: React.FC = () => {
 
         setInProgress(true)
 
-        let requestFlow = {...newFlow}
+        let requestFlow = { ...newFlow }
 
         if (flowSourceType === FlowSourceType.New && requestFlow.name !== null) {
-          const fileObj = new File([], `${requestFlow.name}.json`)
+          const emptyFlowBody: ReactFlowJsonObject = {
+            nodes: [], edges: [], viewport: { x: 0, y: 0, zoom: -1 }
+          }
+          const fileObj = new File([JSON.stringify(emptyFlowBody)], `${requestFlow.name}.json`)
           const localFilename = fileObj.name
           const s3Filename = `flows/${String(Date.now())}/${localFilename}`
           try {
@@ -158,7 +171,7 @@ export const CreateFlowDialog: React.FC = () => {
         opened: true, severity: "error"
       }))
     } finally {
-      
+
       setInProgress(false)
     }
 
@@ -538,6 +551,7 @@ export const DeleteFlowDialog: React.FC = () => {
             opened: true, severity: "success"
           }))
         }
+        dispatch(selectFlow(null))
 
       } catch (e) {
         console.error(e)
@@ -554,12 +568,13 @@ export const DeleteFlowDialog: React.FC = () => {
       } finally {
         setInProgress(false)
       }
+      
       if (flowName !== undefined) {
         window.location.replace("/flows")
       }
-      
+
+
     }
-    dispatch(selectFlow(null))
     dispatch(deleteDialogClose())
 
   }

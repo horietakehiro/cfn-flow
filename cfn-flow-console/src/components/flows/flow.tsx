@@ -1,7 +1,7 @@
 import OpenInFullIcon from '@mui/icons-material/OpenInFull';
 import { CircularProgress, Stack, Typography } from '@mui/material';
 import axios from 'axios';
-import React, { useEffect } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import ReactFlow, {
   Background, BackgroundVariant, Controls,
   Edge,
@@ -10,7 +10,8 @@ import ReactFlow, {
   NodeProps,
   NodeResizeControl,
   Position,
-  ReactFlowProvider
+  ReactFlowProvider,
+  useUpdateNodeInternals
 } from 'reactflow';
 import 'reactflow/dist/base.css';
 import 'reactflow/dist/style.css';
@@ -29,37 +30,82 @@ export const getNodeId = () => {
   return `node_${currentTImestanmp}`
 }
 
+const nodeHandleStyle: React.CSSProperties = {
+  width: "20px", height: "10px", borderRadius: "3px", backgroundColor: "red",
+}
+
 const CustomResizer = () => {
   return (
-    <NodeResizeControl style={{border: "none", }} minWidth={250} minHeight={75}>
-      <OpenInFullIcon sx={{ position: "absolute", right: 5, bottom: 5, transform: "scale(-1, 1)"}}/>
+    <NodeResizeControl style={{ border: "none", }} minWidth={250} minHeight={75}>
+      <OpenInFullIcon sx={{ position: "absolute", right: 5, bottom: 5, transform: "scale(-1, 1)" }} />
     </NodeResizeControl>
   )
 }
-
-// export const StartNode = ({ data }: NodeProps<StartNodeData>) => {
-//   return (
-//     <>
-//       <Stack direction={"row"} spacing={1}>
-//         <Typography variant={"body1"}>START</Typography>
-//       </Stack>
-//     </>
-//   )
-// }
-
-
-export const StackNode = ({ data, selected }: NodeProps<StackNodeData>) => {
-  const dispatch = useAppDispatch()
-
+export const StartNode = React.memo(({ data }: NodeProps<StartNodeData>) => {
   return (
     <>
-      {selected && <CustomResizer/>}
-      {data.parameters.filter((p) => p.visible).map((p, i) => {
+      <Stack direction={"row"} spacing={1}>
+        <Typography variant={"body1"}>START</Typography>
+      </Stack>
+      <Handle
+        isConnectable type='target'
+        position={Position.Bottom} id={data.nodeId} key={data.nodeId}
+        style={nodeHandleStyle}
+      />
+    </>
+  )
+})
+
+export const StackNode = React.memo(({ data, selected }: NodeProps<StackNodeData>) => {
+  const [visibleParameters, setVisibleParameters] = React.useState<StackNodeParameter[]>([])
+  const [visibleOutputs, setVisibleOutputs] = React.useState<StackNodeOutput[]>([])
+  const updateNodeInternals = useUpdateNodeInternals()
+
+  useEffect(() => {
+    updateNodeInternals(data.nodeId)
+  }, [data, selected])
+
+  useEffect(() => {
+    setVisibleParameters(data.parameters.filter(p => p.visible))
+  }, [data.parameters])
+  useEffect(() => {
+    console.log(data.outputs)
+    setVisibleOutputs(data.outputs.filter(o => o.visible))
+  }, [data.outputs])
+
+  const sourceHandles = useMemo(() => {
+    return (
+      visibleParameters.map((p, i) => {
         const id = `${data.nodeId}/${p.name}`
         return (
           <Handle isConnectable type='source' position={Position.Top} id={id} key={id} style={{ left: 20 * (i + 1) }} />
         )
-      })}
+      })
+    )
+  }, [visibleParameters])
+  const targetHandles = useMemo(() => {
+    return (
+      visibleOutputs.map((o, i) => {
+        const id = `${data.nodeId}/${o.name}`
+        return (
+          <Handle isConnectable type='target' position={Position.Bottom} id={id} key={id} style={{ left: 20 * (i + 1) }} />
+        )
+      })
+    )
+  }, [visibleOutputs])
+
+
+  return (
+    <>
+      {selected && <CustomResizer />}
+      {sourceHandles}
+      {!data.isChild &&
+        <Handle
+          isConnectable type='source'
+          position={Position.Top} id={`${data.nodeId}/source`} key={`${data.nodeId}/source`}
+          style={nodeHandleStyle}
+        />
+      }
       <Stack direction={"row"} spacing={1}>
         <StackSVG />
         <Stack direction={"column"}>
@@ -67,28 +113,66 @@ export const StackNode = ({ data, selected }: NodeProps<StackNodeData>) => {
           <Typography variant={"body1"}>{data.nodeName}</Typography>
         </Stack>
       </Stack>
-      {data.outputs.filter((o) => o.visible).map((o, i) => {
-        const id = `${data.nodeId}/${o.name}`
-        return (
-          <Handle isConnectable type='target' position={Position.Bottom} id={id} key={id} style={{ left: 20 * (i + 1) }} />
-        )
-      })}
+      {!data.isChild &&
+        <Handle
+          isConnectable type='target'
+          position={Position.Bottom} id={`${data.nodeId}/target`} key={`${data.nodeId}/target`}
+          style={nodeHandleStyle}
+        />
+      }
+
+      {targetHandles}
     </>
   )
-}
+})
 
-export const StackSetNode = ({ data, selected }: NodeProps<StackSetNodeData>) => {
-  const dispatch = useAppDispatch()
+export const StackSetNode = React.memo(({ data, selected }: NodeProps<StackSetNodeData>) => {
+  const [visibleParameters, setVisibleParameters] = React.useState<StackNodeParameter[]>([])
+  const [visibleOutputs, setVisibleOutputs] = React.useState<StackNodeOutput[]>([])
+  const updateNodeInternals = useUpdateNodeInternals()
 
-  return (
-    <>
-      {selected && <CustomResizer/>}
-      {data.parameters.filter((p) => p.visible).map((p, i) => {
+  useEffect(() => {
+    updateNodeInternals(data.nodeId)
+  }, [data, selected])
+
+  useEffect(() => {
+    setVisibleParameters(data.parameters.filter(p => p.visible))
+  }, [data.parameters])
+  useEffect(() => {
+    console.log(data.outputs)
+    setVisibleOutputs(data.outputs.filter(o => o.visible))
+  }, [data.outputs])
+
+  const sourceHandles = useMemo(() => {
+    return (
+      visibleParameters.map((p, i) => {
         const id = `${data.nodeId}/${p.name}`
         return (
           <Handle isConnectable type='source' position={Position.Top} id={id} key={id} style={{ left: 20 * (i + 1) }} />
         )
-      })}
+      })
+    )
+  }, [visibleParameters])
+  const targetHandles = useMemo(() => {
+    return (
+      visibleOutputs.map((o, i) => {
+        const id = `${data.nodeId}/${o.name}`
+        return (
+          <Handle isConnectable type='target' position={Position.Bottom} id={id} key={id} style={{ left: 20 * (i + 1) }} />
+        )
+      })
+    )
+  }, [visibleOutputs])
+
+  return (
+    <>
+      {selected && <CustomResizer />}
+      {sourceHandles}
+      <Handle
+        isConnectable type='source'
+        position={Position.Top} id={`${data.nodeId}/source`} key={`${data.nodeId}/source`}
+        style={nodeHandleStyle}
+      />
       <Stack direction={"row"} spacing={1}>
         <StackSetSVG />
         <Stack direction={"column"}>
@@ -96,18 +180,19 @@ export const StackSetNode = ({ data, selected }: NodeProps<StackSetNodeData>) =>
           <Typography variant={"body1"}>{data.nodeName}</Typography>
         </Stack>
       </Stack>
-      {data.outputs.filter((o) => o.visible).map((o, i) => {
-        const id = `${data.nodeId}/${o.name}`
-        return (
-          <Handle isConnectable type='target' position={Position.Bottom} id={id} key={id} style={{ left: 20 * (i + 1) }} />
-        )
-      })}
+      <Handle
+        isConnectable type='target'
+        position={Position.Bottom} id={`${data.nodeId}/target`} key={`${data.nodeId}/target`}
+        style={nodeHandleStyle}
+      />
+      {targetHandles}
     </>
   )
-}
+})
 
 
 const nodeTypes: CustomNodeTypes = {
+  startNode: StartNode,
   stackNode: StackNode,
   stackSetNode: StackSetNode,
 }
@@ -121,7 +206,10 @@ export default function FlowCanvas() {
   const selectedNode = useAppSelector(selectSelectedNode)
 
   const reactFlowWrapper = React.useRef<HTMLDivElement>(null);
-  const { nodes, edges, onNodesChange, onEdgesChange, onConnect, mergeNodes, updateNode, initNodes, initEdges } = useStore(selector, shallow);
+  const {
+    nodes, edges,
+    onNodesChange, onEdgesChange, onConnect, mergeNodes, updateNode, initNodes, initEdges,
+  } = useStore(selector, shallow);
 
   const reactFlowInstance = useAppSelector(selectReactFlowInstance)
 
@@ -129,36 +217,22 @@ export default function FlowCanvas() {
 
   useEffect(() => {
     (async () => {
+      let initialNodes: Node[] = []
+      let initialEdges: Edge[] = []
       try {
         setInProgress(true)
+
         if (reactFlowWrapper.current === null || selectedFlow === null) return
-        let initialNodes: Node[] = []
-        let initialEdges: Edge[] = []
 
         const { accessLevel, baseObjname, s3PartialKey } = parseS3HttpUrl(selectedFlow.httpUrl)
         const flowBody = await downloadObj(s3PartialKey, accessLevel as "public" | "private" | "protected", "application/json")
         const flow = await JSON.parse(flowBody)
         if (flow) {
-          const { x = 0, y = 0, zoom = 1 } = flow.viewport
           initialNodes = flow.nodes
           initialEdges = flow.edges
-        } else {
-          const reactFlowBounds = reactFlowWrapper.current.getBoundingClientRect();
-          initialNodes = [
-            {
-              id: '1',
-              type: 'startNode',
-              data: { label: 'Start', },
-              position: { x: reactFlowBounds.width / 2, y: 50 },
-              style: { border: '1px solid #777', padding: 10, background: "yellow" },
-            },
-          ];
         }
-        initNodes(initialNodes)
-        // initEdges([])
-        initEdges(initialEdges)
-        console.log(initialNodes)
-      } catch(e) {
+
+      } catch (e) {
         console.log(e)
         let errorMessage = "Failed to get flow"
         if (axios.isAxiosError(e)) {
@@ -170,6 +244,33 @@ export default function FlowCanvas() {
           }))
         }
       } finally {
+
+        if (!initialNodes.some(n => n.type === "startNode")) {
+          if (reactFlowWrapper.current === null || selectedFlow === null) return
+          const reactFlowBounds = reactFlowWrapper.current.getBoundingClientRect();
+          const id = `startNode-${getNodeId()}`
+          const data: StartNodeData = {
+            nodeId: id,
+            nodeName: id,
+            nodeDeletable: false,
+            toolbarVisible: false,
+          }
+          initialNodes.push({
+            id: id,
+            type: 'startNode',
+            data: data,
+            draggable: false,
+            selectable: false,
+            position: { x: reactFlowBounds.width / 2, y: 50 },
+            style: { border: '1px solid #777', padding: 10, background: "yellow" },
+          })
+        }
+
+        initNodes(initialNodes)
+        // initEdges([])
+        initEdges(initialEdges)
+        console.log(initialNodes)
+
         setInProgress(false)
       }
     })()
@@ -178,6 +279,8 @@ export default function FlowCanvas() {
 
   useEffect(() => {
     if (selectedNode === null) return
+
+    console.log(selectedNode)
     updateNode({ ...selectedNode })
   }, [selectedNode])
 
@@ -219,6 +322,7 @@ export default function FlowCanvas() {
               regionNames: [],
               parameters: [],
               outputs: [],
+              isChild: false,
             }
             const newNode: StackNodeType = {
               id: id,
@@ -227,9 +331,9 @@ export default function FlowCanvas() {
               data,
               selected: false,
               selectable: true,
-              style: { 
-                border: '1px solid #777', padding: 10, background: "white" ,
-                height: 75, width: 400, 
+              style: {
+                border: '1px solid #777', padding: 10, background: "white",
+                height: 75, width: 400,
 
               },
             };
@@ -246,6 +350,7 @@ export default function FlowCanvas() {
               regionName: null,
               parameters: [],
               outputs: [],
+              isChild: false,
             }
             const newNode: StackSetNodeType = {
               id: id,
@@ -254,8 +359,8 @@ export default function FlowCanvas() {
               data,
               selected: false,
               selectable: true,
-              style: { 
-                border: '1px solid #777', padding: 10, background: "white" ,
+              style: {
+                border: '1px solid #777', padding: 10, background: "white",
                 height: 150, width: 600,
                 backgroundColor: 'rgba(255, 0, 0, 0.2)',
 
@@ -268,7 +373,7 @@ export default function FlowCanvas() {
             console.log(`invalid node type : ${type}`)
             break
           }
-    
+
         }
 
         // dispatch(createNodes([...nodes, newNode]))
@@ -281,18 +386,21 @@ export default function FlowCanvas() {
   )
 
   const onNodeClick = (event: React.MouseEvent, node: Node) => {
-    dispatch(setParameterRowSelectionModel([]))
-    dispatch(setOutputRowSelectionModel([]))
-    updateNode({ ...node, selected: true })
-    dispatch(selectNode(node))
-    dispatch(openNodeEditDrawer())
-
-    console.log(node.position)
-    console.log(node.positionAbsolute)
-    console.log(node.sourcePosition)
-    console.log(node.targetPosition)
-    console.log(node)
-    
+    if (node.type === undefined) return
+    const nodeType = node.type as CustomNodeTypeName
+    switch (nodeType) {
+      case "startNode": {
+        break
+      }
+      default: {
+        dispatch(setParameterRowSelectionModel([]))
+        dispatch(setOutputRowSelectionModel([]))
+        updateNode({ ...node, selected: true })
+        dispatch(selectNode(node))
+        dispatch(openNodeEditDrawer())
+      }
+    }
+    console.log(nodeType)
   }
 
   return (
@@ -311,7 +419,7 @@ export default function FlowCanvas() {
         />
       }
       <ReactFlowProvider>
-        <div className="reactflow-wrapper" ref={reactFlowWrapper} style={{ height: "80vh" }}>
+        <div className="reactflow-wrapper" ref={reactFlowWrapper} style={{ height: "100vh" }}>
           <ReactFlow
             // fitView
             nodes={nodes}

@@ -70,6 +70,7 @@ type GetTemplateSummaryResponse = {
 }
 
 
+
 type Flow = {
     name: string,
     description: string | null,
@@ -149,6 +150,7 @@ type StackNodeOutput = OutputSummary & {
     selected: boolean
     // regionName: string | null
     accountId: string | null
+
 }
 type StackNodeData = BaseCUstomNodeData & {
     regionName: string | null
@@ -156,6 +158,7 @@ type StackNodeData = BaseCUstomNodeData & {
     templateName: string | null
     parameters: StackNodeParameter[]
     outputs: StackNodeOutput[]
+    isChild: boolean,
 }
 type StackSetNodeData = BaseCUstomNodeData & {
     regionName: string | null
@@ -163,9 +166,14 @@ type StackSetNodeData = BaseCUstomNodeData & {
     templateName: string | null
     parameters: StackNodeParameter[] 
     outputs: StackNodeOutput[]
+    isChild: boolean,
+}
+type StartNodeData = BaseCUstomNodeData & {
 }
 
 
+type StartNodeType = import("reactflow").Node<StartNodeData> & {
+}
 type StackNodeType = import("reactflow").Node<StackNodeData> & {
     // type: CustomNodeTypeName
 }
@@ -173,9 +181,9 @@ type StackSetNodeType = import("reactflow").Node<StackSetNodeData> & {
     // type: CustomNodeTypeName
 }
 
-type CustomNodeTypeName = "stackNode"| "stackSetNode"
+type CustomNodeTypeName = "stackNode"| "stackSetNode" | "startNode"
 type CustomNodeTypes = {
-  [key in CustomNodeTypeName]: ComponentType<NodeProps>
+  [key in CustomNodeTypeName]: ComponentType<import("reactflow").NodeProps>
 }
 
 type StackNodeDataType = "nodeName" | "regionNames" | "templateName" | "regionName"

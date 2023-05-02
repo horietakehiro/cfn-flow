@@ -252,7 +252,7 @@ export const TemplateDetail: React.FC<TemplateDetailProps> = ({ templateName }) 
       </Stack>
       <Stack spacing={2} direction={"column"} sx={{}}>
         <Typography variant='h6'>Parameters</Typography>
-        <Box sx={{ height: 400, width: '100%', }}>
+        <Box sx={{  width: '100%', }}>
           <DataGrid
           rows={parameters}
           columns={parametersCols}
@@ -263,6 +263,7 @@ export const TemplateDetail: React.FC<TemplateDetailProps> = ({ templateName }) 
               },
             },
           }}
+          autoHeight
           pageSizeOptions={[10]}
           getRowId={(row) => row.name}
         // checkboxSelection
@@ -271,7 +272,7 @@ export const TemplateDetail: React.FC<TemplateDetailProps> = ({ templateName }) 
       </Stack>
       <Stack spacing={2} direction={"column"} sx={{}}>
         <Typography variant='h6'>Resources</Typography>
-        <Box sx={{ height: 400, width: '100%', }}>
+        <Box sx={{  width: '100%', }}>
           <DataGrid
           rows={resources}
           columns={resourcesCols}
@@ -282,6 +283,7 @@ export const TemplateDetail: React.FC<TemplateDetailProps> = ({ templateName }) 
               },
             },
           }}
+          autoHeight
           getRowId={(row) => row.name}
           pageSizeOptions={[10]}
         // checkboxSelection
@@ -290,7 +292,7 @@ export const TemplateDetail: React.FC<TemplateDetailProps> = ({ templateName }) 
       </Stack>
       <Stack spacing={2} direction={"column"} sx={{}}>
         <Typography variant='h6'>Outputs</Typography>
-        <Box sx={{ height: 400, width: '100%', }}>
+        <Box sx={{  width: '100%', }}>
           <DataGrid
           rows={outputs}
           columns={outputsCols}
@@ -301,6 +303,7 @@ export const TemplateDetail: React.FC<TemplateDetailProps> = ({ templateName }) 
               },
             },
           }}
+          autoHeight
           getRowId={(row) => row.name}
           pageSizeOptions={[10]}
         // checkboxSelection

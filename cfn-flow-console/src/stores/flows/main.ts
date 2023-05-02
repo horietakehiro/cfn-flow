@@ -73,6 +73,7 @@ const ReactFlowInstanceInitialState: ReactFlowInstanceState = {
 export type RFState = {
     nodes: Node[]
     edges: Edge[]
+    // updateNodeInternals: (nodeId:string) => void
     onNodesChange: OnNodesChange
     onEdgesChange: OnEdgesChange
     onConnect: OnConnect
@@ -93,6 +94,7 @@ export type RFState = {
 export const useStore = create<RFState>((set, get) => ({
     nodes: [],
     edges: [],
+    // updateNodeInternals: useUpdateNodeInternals(),
     onNodesChange: (changes: NodeChange[]) => {
         set({
             nodes: applyNodeChanges(changes, get().nodes),
@@ -444,5 +446,6 @@ export const selector = (state: RFState) => ({
     initEdges: state.initEdges,
     removeEdges: state.removeEdges,
     upsertEdge: state.upsertEdge,
+    // updateNodeInternals: state.updateNodeInternals,
 
 });

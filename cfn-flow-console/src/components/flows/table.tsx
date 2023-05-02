@@ -1,5 +1,5 @@
 import RefreshIcon from '@mui/icons-material/Refresh';
-import { Divider, Typography } from '@mui/material';
+import { CircularProgress, Divider, Typography } from '@mui/material';
 import Box from '@mui/material/Box';
 import Button from "@mui/material/Button";
 import Grid from '@mui/material/Grid';
@@ -42,6 +42,8 @@ const flowColumns: GridColDef[] = [
 export const FlowsTable: React.FC = () => {
   const dispatch = useAppDispatch()
 
+  const [inProgress, setInProgress] = React.useState(false)
+
   const selectedFlow = useAppSelector(selectSelectedFlow)
 
   const flows = useAppSelector(selectFlows)
@@ -51,6 +53,7 @@ export const FlowsTable: React.FC = () => {
     (async () => {
       dispatch(selectFlow(null))
       try {
+        setInProgress(true)
         const response = await getFlows()
         if (response.flows !== null) {
           console.log(response)
@@ -58,6 +61,8 @@ export const FlowsTable: React.FC = () => {
         }
       } catch (e) {
         console.log(e)
+      } finally {
+        setInProgress(false)
       }
     })()
   }, [])
@@ -135,12 +140,26 @@ export const FlowsTable: React.FC = () => {
         </Grid>
       </Stack>
       <Divider />
-      <Box sx={{ height: 400, width: '100%' }}>
+      <Box sx={{ width: '100%' }}>
+      {inProgress &&
+        <CircularProgress
+          size={24}
+          sx={{
+            // color: green[500],
+            position: 'absolute',
+            top: '50%',
+            left: '50%',
+            marginTop: '-12px',
+            marginLeft: '-12px',
+          }}
+        />
+      }
         <DataGrid
           data-testid="flows-table"
           rows={flows}
           getRowId={(row) => row.name}
           columns={flowColumns}
+          autoHeight
           initialState={{
             pagination: {
               paginationModel: {

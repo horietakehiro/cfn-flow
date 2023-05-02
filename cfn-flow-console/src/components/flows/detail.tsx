@@ -15,10 +15,10 @@ import { CSSObject, Theme, alpha, styled } from '@mui/material/styles';
 import * as React from 'react';
 import FlowCanvas from './flow';
 // import ReactFlow, { Background, BackgroundVariant,  ReactFlowInstance } from 'reactflow';
+import ClearIcon from '@mui/icons-material/Clear';
+import LaunchIcon from '@mui/icons-material/Launch';
 import SearchIcon from '@mui/icons-material/Search';
 import InputBase from '@mui/material/InputBase';
-
-import ClearIcon from '@mui/icons-material/Clear';
 import { ReactComponent as StackSetSVG } from "../../images/Arch_AWS-Organizations_48.svg";
 import { ReactComponent as StackSVG } from "../../images/Res_AWS-CloudFormation_Stack_48_Dark.svg";
 // import 'reactflow/dist/style.css';
@@ -36,6 +36,8 @@ import { deleteDialogOpen, editDialogClose } from '../../stores/flows/common';
 import { closeEditIODialog, closeNodeEditDrawe as closeNodeEditDrawer, openEditIODialog, selectEditIODialog, selectNode, selectNodeEditDrawer, selectOutputRowSelectionModel, selectParameterRowSelectionModel, selectReactFlowInstance, selectSelectedFlow, selectSelectedNode, selector, setOutputRowSelectionModel, setParameterRowSelectionModel } from '../../stores/flows/main';
 import { createTemplates, selectTemplates } from '../../stores/templates/main';
 // import { GetTemplatesResponse, OutputSummary, ParameterSummary, StackNodeIO, StackNodeOutput, StackNodeParameter, StackNodeType, StackSetNodeType, TemplateSummarySection } from '../../types';
+import { NavLink } from 'react-router-dom';
+import { getConnectedEdges } from 'reactflow';
 import { useStore } from './../../stores/flows/main';
 import { DeleteFlowDialog } from './common';
 
@@ -199,6 +201,7 @@ export const EditIODialog: React.FC<EditIODialogProps> = ({ type }) => {
   const [selectableIOs, setSelectableIOs] = React.useState<StackNodeIO[]>([])
   const [ios, setIOs] = React.useState<StackNodeIO[]>([])
 
+  const reactFlowInstance = useAppSelector(selectReactFlowInstance)
 
   React.useEffect(() => {
     console.log(selectedNode)
@@ -239,7 +242,7 @@ export const EditIODialog: React.FC<EditIODialogProps> = ({ type }) => {
 
 
   React.useEffect(() => {
-    const selectableIOs: StackNodeIO[] = nodes.map((n: StackNodeType | StackSetNodeType) => {
+    const selectableIOs: StackNodeIO[] = nodes.filter(n => n.type !== "startNode").map((n: StackNodeType | StackSetNodeType) => {
       const otherNodesIOs = type === "Parameters" ?
         n.data.outputs.filter(o => o.visible && n.id !== selectedNode?.id) :
         n.data.parameters.filter(p => p.visible && n.id !== selectedNode?.id)
@@ -249,13 +252,17 @@ export const EditIODialog: React.FC<EditIODialogProps> = ({ type }) => {
     }).flat()
     console.log(selectableIOs)
     setSelectableIOs(selectableIOs)
+
+    if (reactFlowInstance === null) return
+    const flow = JSON.stringify(reactFlowInstance.toObject(), null, 2)
+    console.log(flow)
   }, [selectedNode])
 
 
   const getStackNodeIO = (value: string): StackNodeIO | null => {
     const [nodeName, ioName] = value.split("/")
     const node: StackNodeType[] = nodes.filter(
-      n => true).filter((n: StackNodeType) => n.data.nodeName === nodeName
+      n => n.type !== "startNode").filter((n: StackNodeType) => n.data.nodeName === nodeName
       )
     console.log(node)
 
@@ -290,10 +297,12 @@ export const EditIODialog: React.FC<EditIODialogProps> = ({ type }) => {
   };
 
   const onClose = (submit: boolean) => {
-    setSelectableIOs([])
-    setIOs([])
-
-    dispatch(closeEditIODialog())
+    if (!submit) {
+      setSelectableIOs([])
+      setIOs([])
+      dispatch(closeEditIODialog())
+      return
+    }
     if (selectedNode === null) return
 
     const newNode: StackNodeType | StackSetNodeType = {
@@ -308,9 +317,10 @@ export const EditIODialog: React.FC<EditIODialogProps> = ({ type }) => {
       }
     }
     dispatch(selectNode(newNode))
-    updateNode({ ...newNode })
+    // updateNode({ ...newNode })
 
-    // remove previous edges
+    console.log(getConnectedEdges(nodes, edges))
+    // remove previous and unused edges
     if (ios.length === 0) {
       if (type === "Parameters" && selectedIO !== null) {
         removeEdges(selectedNode.id, null, `${selectedNode.id}/${selectedIO.name}`, null)
@@ -319,8 +329,9 @@ export const EditIODialog: React.FC<EditIODialogProps> = ({ type }) => {
         removeEdges(null, selectedNode.id, null, `${selectedNode.id}/${selectedIO.name}`)
       }
     }
+
     // update edges
-    const edges = ios.map((io) => {
+    const newEdges = ios.map((io) => {
       const sourceNodeId = type === "Parameters" ? selectedNode.id : io.node.id
       const targetNodeId = type === "Parameters" ? io.node.id : selectedNode.id
 
@@ -350,7 +361,12 @@ export const EditIODialog: React.FC<EditIODialogProps> = ({ type }) => {
         type: "step"
       }
     })
-    edges.forEach(e => upsertEdge(e))
+    newEdges.forEach(e => upsertEdge(e))
+
+    setSelectableIOs([])
+    setIOs([])
+    dispatch(closeEditIODialog())
+
   }
 
   return (
@@ -462,8 +478,10 @@ export default function FlowDetail() {
   const outputRowSelectionModel = useAppSelector(selectOutputRowSelectionModel)
 
   const [inProgress, setInProgress] = React.useState<boolean>(false)
+  const [parametersInProgress, setParametersInProgress] = React.useState<boolean>(false)
+  const [outputsInProgress, setOutputsInProgress] = React.useState<boolean>(false)
 
-  const { nodes, edges, upsertNode,initNodes, onNodesChange, onEdgesChange, onConnect, mergeNodes, updateNode, deleteNode } = useStore(selector, shallow);
+  const { nodes, edges, upsertNode, initNodes, onNodesChange, onEdgesChange, onConnect, mergeNodes, updateNode, deleteNode } = useStore(selector, shallow);
 
 
   const templates = useAppSelector(selectTemplates)
@@ -512,8 +530,8 @@ export default function FlowDetail() {
       }
       const ioName = params.id as string
       const io = type === "Parameters" ?
-        selectedNode.data.parameters.find((p) => p.name === ioName ) :
-        selectedNode.data.outputs.find((o) => o.name === ioName )
+        selectedNode.data.parameters.find((p) => p.name === ioName) :
+        selectedNode.data.outputs.find((o) => o.name === ioName)
       const isVisible = io !== undefined ? io.visible : false
       return [
         <GridActionsCellItem
@@ -644,15 +662,15 @@ export default function FlowDetail() {
           }
         }
 
-        const prevChildNodes  = nodes.filter((n:StackNodeType) => n.parentNode === selectedNode.id)
+        const prevChildNodes = nodes.filter((n: StackNodeType) => n.parentNode === selectedNode.id)
         console.log(prevChildNodes)
         initNodes(nodes.filter(n => !prevChildNodes.some(cn => cn.id === n.id)))
         regionNames.forEach((r, i) => {
-          const prevNode = prevChildNodes.filter((n:StackNodeType) => n.data.regionName === r)
+          const prevNode = prevChildNodes.filter((n: StackNodeType) => n.data.regionName === r)
           if (prevNode.length === 0) {
 
             // const reactFlowBounds = reactFlowWrapper.current?.getBoundingClientRect()
-            const position = reactFlowInstance === null ? {...selectedNode.position} : reactFlowInstance.project({...selectedNode.position}) 
+            const position = reactFlowInstance === null ? { ...selectedNode.position } : reactFlowInstance.project({ ...selectedNode.position })
             // calc position
             console.log(selectedNode.position)
             console.log(position)
@@ -668,25 +686,26 @@ export default function FlowDetail() {
               regionNames: [],
               parameters: [...selectedNode.data.parameters],
               outputs: [...selectedNode.data.outputs],
+              isChild: true,
             }
-            const newNode:StackNodeType = {
+            const newNode: StackNodeType = {
               id: nodeId,
               type: "stackNode",
-              position: {x: i*400, y: 100},
+              position: { x: i * 400, y: 100 },
               data: data,
               selected: false,
               selectable: true,
               parentNode: selectedNode.id,
               extent: "parent",
               expandParent: true,
-              style: { 
-                border: '1px solid #777', padding: 10, background: "white" ,
+              style: {
+                border: '1px solid #777', padding: 10, background: "white",
                 height: "auto", width: "auto",
               },
             }
-            upsertNode({...newNode})
+            upsertNode({ ...newNode })
           } else {
-            upsertNode({...prevNode[0]})
+            upsertNode({ ...prevNode[0] })
           }
           dispatch(selectNode(newNode))
 
@@ -694,6 +713,7 @@ export default function FlowDetail() {
         break
       case "templateName":
         try {
+          setParametersInProgress(true)
           const response = await getTemplateSummary(value as string, "Parameters")
           parameters = (response.templateSummary.summary as ParameterSummary[]).map((p) => {
             return { ...p, visible: false, selected: false, regionName: null, accountId: null }
@@ -702,8 +722,11 @@ export default function FlowDetail() {
           dispatch(setParameterRowSelectionModel([]))
         } catch (e) {
           console.error(e)
+        } finally {
+          setParametersInProgress(false)
         }
         try {
+          setOutputsInProgress(true)
           const response = await getTemplateSummary(value as string, "Outputs")
           outputs = (response.templateSummary.summary as OutputSummary[]).map((o) => {
             return { ...o, visible: false, selected: false, regionName: null, accountId: null }
@@ -711,6 +734,8 @@ export default function FlowDetail() {
           dispatch(setOutputRowSelectionModel([]))
         } catch (e) {
           console.error(e)
+        } finally {
+          setOutputsInProgress(false)
         }
         newNode = {
           ...selectedNode, data: {
@@ -824,6 +849,8 @@ export default function FlowDetail() {
   const onSave = React.useCallback(() => {
     (async () => {
       setInProgress(true)
+      // calc dependency and remove unused edges
+
       try {
         if (reactFlowInstance && selectedFlow) {
           const flow = JSON.stringify(reactFlowInstance.toObject(), null, 2)
@@ -878,7 +905,7 @@ export default function FlowDetail() {
         })
         dispatch(selectNode({
           ...selectedNode, data: {
-            ...selectedNode.data, parameters: newParameters
+            ...selectedNode.data, parameters: [...newParameters]
           }
         }))
         // setParameterRowSelectionModel(e)  
@@ -920,13 +947,13 @@ export default function FlowDetail() {
             ...selectedNode.data, parameters: newParameters
           }
         }))
-        nodes.filter(n => n.parentNode === selectedNode.id).forEach((n:StackNodeType) => {
-          const newNode:StackNodeType = {
+        nodes.filter(n => n.parentNode === selectedNode.id).forEach((n: StackNodeType) => {
+          const newNode: StackNodeType = {
             ...n, data: {
               ...n.data, parameters: newParameters,
             }
           }
-          updateNode({...newNode})
+          updateNode({ ...newNode })
         })
         break
       }
@@ -942,13 +969,13 @@ export default function FlowDetail() {
             ...selectedNode.data, outputs: newOutputs
           }
         }))
-        nodes.filter(n => n.parentNode === selectedNode.id).forEach((n:StackNodeType) => {
-          const newNode:StackNodeType = {
+        nodes.filter(n => n.parentNode === selectedNode.id).forEach((n: StackNodeType) => {
+          const newNode: StackNodeType = {
             ...n, data: {
               ...n.data, outputs: newOutputs,
             }
           }
-          updateNode({...newNode})
+          updateNode({ ...newNode })
         })
         break
       }
@@ -965,7 +992,7 @@ export default function FlowDetail() {
         break
       }
       case "stackSetNode": {
-        onStackSetNodeRowSelectionChange(e, sectionName)        
+        onStackSetNodeRowSelectionChange(e, sectionName)
         break
       }
       default: {
@@ -1165,7 +1192,7 @@ export default function FlowDetail() {
               <Divider />
               <Stack direction={"column"} spacing={2}>
                 <Stack direction={"row"} justifyContent={"right"}>
-                  <Button variant={"contained"} onClick={() => onNodeDelete()}>DELETE NODE</Button>
+                  <Button variant={"outlined"} onClick={() => onNodeDelete()}>DELETE NODE</Button>
                 </Stack>
                 <TextField
                   autoFocus={false}
@@ -1241,6 +1268,7 @@ export default function FlowDetail() {
                     </Select>
                   </FormControl>
                 }
+
                 <TextField
                   autoFocus={false}
                   select
@@ -1262,9 +1290,31 @@ export default function FlowDetail() {
                     )
                   })}
                 </TextField>
+                {(selectedNode !== null && selectedNode.data.templateName !== null) &&
+                  <NavLink target='_blank' to={`/templates/${selectedNode.data.templateName}`}>
+                    <Stack direction={"row"} justifyContent={"right"}>
+                      <div>Template's detail</div>
+                      <LaunchIcon/>
+                    </Stack>
+                  </NavLink>
+                }
+
                 <Stack spacing={0} direction={"column"} sx={{}}>
                   <Typography variant='h6'>Parameters</Typography>
                   <Box sx={{ width: '100%', }}>
+                    {parametersInProgress &&
+                      <CircularProgress
+                        size={24}
+                        sx={{
+                          // color: green[500],
+                          position: 'absolute',
+                          top: '50%',
+                          left: '50%',
+                          marginTop: '-12px',
+                          marginLeft: '-12px',
+                        }}
+                      />
+                    }
                     <DataGrid
                       rows={selectedNode !== null ? selectedNode.data.parameters : []}
                       columns={parametersCols}
@@ -1289,6 +1339,19 @@ export default function FlowDetail() {
                 <Stack spacing={0} direction={"column"} sx={{}}>
                   <Typography variant='h6'>Outputs</Typography>
                   <Box sx={{ width: '100%', }}>
+                    {outputsInProgress &&
+                      <CircularProgress
+                        size={24}
+                        sx={{
+                          // color: green[500],
+                          position: 'absolute',
+                          top: '50%',
+                          left: '50%',
+                          marginTop: '-12px',
+                          marginLeft: '-12px',
+                        }}
+                      />
+                    }
                     <DataGrid
                       rows={selectedNode !== null ? selectedNode.data.outputs : []}
                       columns={outputsCols}
