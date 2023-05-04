@@ -14,7 +14,7 @@ import ListItemButton from '@mui/material/ListItemButton';
 import ListItemText from '@mui/material/ListItemText';
 import { CSSObject, styled, Theme } from '@mui/material/styles';
 import Typography from '@mui/material/Typography';
-import { Link as RouterLink, NavLink, Route, Routes, useLocation } from 'react-router-dom';
+import { NavLink, Route, Link as RouterLink, Routes, useLocation } from 'react-router-dom';
 
 import {
   WithAuthenticatorProps
@@ -103,6 +103,8 @@ const Router = () => {
       <Route path='/templates/:templateName' element={<TemplatesMainMenu />} />
       <Route path='/flows' element={<FlowsMainMenu />} />
       <Route path='/flows/:flowName' element={<FlowsMainMenu />} />
+      <Route path='/flows/:flowName/deployments' element={<FlowsMainMenu />} />
+
     </Routes>
   );
 }

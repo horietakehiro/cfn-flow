@@ -106,9 +106,34 @@ export const useStore = create<RFState>((set, get) => ({
         });
     },
     onConnect: (connection: Connection) => {
+        console.log(connection)
+        const connectionType = connection.sourceHandle?.replace(`${connection.source}/`, "")
+        let newEdge:StackIOEdgeType | NodeOrderEdgeType | null = null
+        if (connectionType === "__source__") {
+            const id = `${connection.source}-${connection.target}`
+            newEdge = {
+                id: id,
+                ...connection,
+                type: "nodeOrderEdge"
+            } as NodeOrderEdgeType
+        } else {
+            if (connection.sourceHandle === null || connection.targetHandle === null) return
+            const id = `${connection.source}-${connection.target}`
+            const data:StackIOEdgeData = {
+                sourceLable: connection.sourceHandle.replace(`${connection.source}/`, ""),
+                targetLabel: connection.targetHandle.replace(`${connection.target}/`, "")
+            }
+            newEdge = {
+                ...connection,
+                id: id,
+                type: "stackIOEdge",
+                data: data,
+            } as StackIOEdgeType
+        }
         set({
-            edges: addEdge(connection, get().edges),
-        });
+            edges: addEdge(newEdge, get().edges)
+        })
+
     },
     mergeNodes: (nodes) => {
         console.log(nodes)

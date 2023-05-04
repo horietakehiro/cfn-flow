@@ -1,16 +1,19 @@
 import OpenInFullIcon from '@mui/icons-material/OpenInFull';
 import { CircularProgress, Stack, Typography } from '@mui/material';
 import axios from 'axios';
-import React, { useEffect, useMemo } from 'react';
+import React, { FC, useEffect, useMemo } from 'react';
 import ReactFlow, {
   Background, BackgroundVariant, Controls,
   Edge,
+  EdgeLabelRenderer,
+  EdgeProps,
   Handle,
   Node,
   NodeProps,
   NodeResizeControl,
   Position,
   ReactFlowProvider,
+  getBezierPath,
   useUpdateNodeInternals
 } from 'reactflow';
 import 'reactflow/dist/base.css';
@@ -29,6 +32,9 @@ export const getNodeId = () => {
   const currentTImestanmp = Date.now()
   return `node_${currentTImestanmp}`
 }
+
+let offset = 0
+const getOffset = () => offset++
 
 const nodeHandleStyle: React.CSSProperties = {
   width: "20px", height: "10px", borderRadius: "3px", backgroundColor: "red",
@@ -61,6 +67,9 @@ export const StackNode = React.memo(({ data, selected }: NodeProps<StackNodeData
   const [visibleOutputs, setVisibleOutputs] = React.useState<StackNodeOutput[]>([])
   const updateNodeInternals = useUpdateNodeInternals()
 
+  const initialPosition = 50
+  const offset = 10
+
   useEffect(() => {
     updateNodeInternals(data.nodeId)
   }, [data, selected])
@@ -77,18 +86,25 @@ export const StackNode = React.memo(({ data, selected }: NodeProps<StackNodeData
     return (
       visibleParameters.map((p, i) => {
         const id = `${data.nodeId}/${p.name}`
+        const mod = i % 2 // 0, 1, 0, 1,
+        const div = Math.floor(i / 2) // 0, 0, 1, 1, 2,2
+        const position = mod === 0 ? initialPosition + (div+1)*offset : initialPosition - (div+1)*offset
         return (
-          <Handle isConnectable type='source' position={Position.Top} id={id} key={id} style={{ left: 20 * (i + 1) }} />
+          <Handle isConnectable type='source' position={Position.Top} id={id} key={id} style={{ left: `${position}%` }} />
         )
       })
     )
   }, [visibleParameters])
   const targetHandles = useMemo(() => {
+    
     return (
       visibleOutputs.map((o, i) => {
         const id = `${data.nodeId}/${o.name}`
+        const mod = i % 2
+        const div = Math.floor(i / 2)
+        const position = mod === 0 ? initialPosition + (div+1)*offset : initialPosition - (div+1)*offset
         return (
-          <Handle isConnectable type='target' position={Position.Bottom} id={id} key={id} style={{ left: 20 * (i + 1) }} />
+          <Handle isConnectable type='target' position={Position.Bottom} id={id} key={id} style={{ left: `${position}%` }} />
         )
       })
     )
@@ -102,7 +118,7 @@ export const StackNode = React.memo(({ data, selected }: NodeProps<StackNodeData
       {!data.isChild &&
         <Handle
           isConnectable type='source'
-          position={Position.Top} id={`${data.nodeId}/source`} key={`${data.nodeId}/source`}
+          position={Position.Top} id={`${data.nodeId}/__source__`} key={`${data.nodeId}/__source__`}
           style={nodeHandleStyle}
         />
       }
@@ -116,7 +132,7 @@ export const StackNode = React.memo(({ data, selected }: NodeProps<StackNodeData
       {!data.isChild &&
         <Handle
           isConnectable type='target'
-          position={Position.Bottom} id={`${data.nodeId}/target`} key={`${data.nodeId}/target`}
+          position={Position.Bottom} id={`${data.nodeId}/__target__`} key={`${data.nodeId}/__target__`}
           style={nodeHandleStyle}
         />
       }
@@ -130,6 +146,8 @@ export const StackSetNode = React.memo(({ data, selected }: NodeProps<StackSetNo
   const [visibleParameters, setVisibleParameters] = React.useState<StackNodeParameter[]>([])
   const [visibleOutputs, setVisibleOutputs] = React.useState<StackNodeOutput[]>([])
   const updateNodeInternals = useUpdateNodeInternals()
+  const initialPosition = 50
+  const offset = 10
 
   useEffect(() => {
     updateNodeInternals(data.nodeId)
@@ -144,11 +162,16 @@ export const StackSetNode = React.memo(({ data, selected }: NodeProps<StackSetNo
   }, [data.outputs])
 
   const sourceHandles = useMemo(() => {
+
     return (
       visibleParameters.map((p, i) => {
         const id = `${data.nodeId}/${p.name}`
+        const mod = i % 2
+        const div = Math.floor(i / 2)
+        const position = mod === 0 ? initialPosition + (div+1)*offset : initialPosition - (div+1)*offset
+
         return (
-          <Handle isConnectable type='source' position={Position.Top} id={id} key={id} style={{ left: 20 * (i + 1) }} />
+          <Handle isConnectable type='source' position={Position.Top} id={id} key={id} style={{ left: position }} />
         )
       })
     )
@@ -157,8 +180,12 @@ export const StackSetNode = React.memo(({ data, selected }: NodeProps<StackSetNo
     return (
       visibleOutputs.map((o, i) => {
         const id = `${data.nodeId}/${o.name}`
+        const mod = i % 2
+        const div = Math.floor(i / 2)
+        const position = mod === 0 ? initialPosition + (div+1)*offset : initialPosition - (div+1)*offset
+
         return (
-          <Handle isConnectable type='target' position={Position.Bottom} id={id} key={id} style={{ left: 20 * (i + 1) }} />
+          <Handle isConnectable type='target' position={Position.Bottom} id={id} key={id} style={{ left: position }} />
         )
       })
     )
@@ -170,7 +197,7 @@ export const StackSetNode = React.memo(({ data, selected }: NodeProps<StackSetNo
       {sourceHandles}
       <Handle
         isConnectable type='source'
-        position={Position.Top} id={`${data.nodeId}/source`} key={`${data.nodeId}/source`}
+        position={Position.Top} id={`${data.nodeId}/__source__`} key={`${data.nodeId}/__source__`}
         style={nodeHandleStyle}
       />
       <Stack direction={"row"} spacing={1}>
@@ -182,7 +209,7 @@ export const StackSetNode = React.memo(({ data, selected }: NodeProps<StackSetNo
       </Stack>
       <Handle
         isConnectable type='target'
-        position={Position.Bottom} id={`${data.nodeId}/target`} key={`${data.nodeId}/target`}
+        position={Position.Bottom} id={`${data.nodeId}/__target__`} key={`${data.nodeId}/__target__`}
         style={nodeHandleStyle}
       />
       {targetHandles}
@@ -191,15 +218,123 @@ export const StackSetNode = React.memo(({ data, selected }: NodeProps<StackSetNo
 })
 
 
-const nodeTypes: CustomNodeTypes = {
-  startNode: StartNode,
-  stackNode: StackNode,
-  stackSetNode: StackSetNode,
+const EdgeLabel = ({ transform, label }: { transform: string; label: string }) => {
+  return (
+    <div
+      style={{
+        position: 'absolute',
+        background: 'transparent',
+        padding: 10,
+        // color: '#ff5050',
+        fontSize: 10,
+        fontWeight: 700,
+        transform,
+        overflowWrap: "break-word",
+        maxWidth: "50px",
+        pointerEvents: "all",
+      }}
+      className="nodrag nopan"
+    >
+      {label}
+    </div>
+  );
 }
+
+export const StackIOEdge: FC<EdgeProps> = React.memo(({
+  id,
+  sourceX,
+  sourceY,
+  targetX,
+  targetY,
+  sourcePosition,
+  targetPosition,
+  data,
+}) => {
+  const [edgePath, labelX, labelY] = getBezierPath({
+    sourceX,
+    sourceY,
+    sourcePosition,
+    targetX,
+    targetY,
+    targetPosition,
+  });
+
+  const [offset, setOffset] = React.useState(0)
+  React.useEffect(() => {
+    // const []
+
+    setOffset(getOffset())
+  }, [])
+  return (
+    <>
+      <path id={id} className="react-flow__edge-path" d={edgePath} />
+      <EdgeLabelRenderer>
+        {data.targetLabel && (
+          <EdgeLabel
+            transform={`translate(-50%, 0%) translate(${targetX}px,${targetY}px)`}
+            label={data.targetLabel}
+          />
+        )}
+        {data.sourceLable && (
+          <EdgeLabel
+            transform={`translate(-50%, -100%) translate(${sourceX}px,${sourceY}px)`}
+            label={data.sourceLable}
+          />
+        )}
+
+      </EdgeLabelRenderer>
+    </>
+  );
+})
+
+export const NodeOrderEdge: FC<EdgeProps> = React.memo(({
+  id,
+  sourceX,
+  sourceY,
+  targetX,
+  targetY,
+  sourcePosition,
+  targetPosition,
+  data,
+}) => {
+  const [edgePath, labelX, labelY] = getBezierPath({
+    sourceX,
+    sourceY,
+    sourcePosition,
+    targetX,
+    targetY,
+    targetPosition,
+  });
+
+  const [offset, setOffset] = React.useState(0)
+  React.useEffect(() => {
+    // const []
+
+    setOffset(getOffset())
+  }, [])
+  console.log(id)
+  return (
+    <>
+      <path id={id} className="react-flow__edge-path" d={edgePath} style={{strokeWidth: 5}}/>
+    </>
+  );
+})
 
 
 export default function FlowCanvas() {
 
+  const nodeTypes: CustomNodeTypes = React.useMemo(() => ({
+    startNode: StartNode,
+    stackNode: StackNode,
+    stackSetNode: StackSetNode,
+  }), [])
+  const edgeTypes: CustomEdgeTypes = React.useMemo(() => ({
+    stackIOEdge: StackIOEdge,
+    nodeOrderEdge: NodeOrderEdge,
+  }), [])
+
+  
+  
   const dispatch = useAppDispatch()
   const selectedFlow = useAppSelector(selectSelectedFlow)
   // const nodes = useAppSelector(selectNodes)
@@ -214,6 +349,35 @@ export default function FlowCanvas() {
   const reactFlowInstance = useAppSelector(selectReactFlowInstance)
 
   const [inProgress, setInProgress] = React.useState<boolean>(false)
+
+
+
+  // const setOrderNumber = (prevNode: Node<BaseCUstomNodeData>, newNodes:Node[] ,nodes:Node[], edges:Edge[]): Node<BaseCUstomNodeData>[] => {
+  //   // get incomming node from previous node
+  //   console.log(prevNode.data)
+  //   const curNodes: Node<BaseCUstomNodeData>[] = getIncomers(prevNode, nodes, edges)
+  //   console.log(curNodes)
+
+  //   const newCurNodes = curNodes.map((n) => {
+  //     if (prevNode.data.order === null) {
+  //       return {...n}
+  //     } else {
+  //         return { ...n, data: { ...n.data, order: prevNode.data.order + 1 } }
+  //     }
+  //   })
+
+  //   // const newCurNodes = curNodes.map((n) => {
+  //   //   if (prevNode.data.order === null) {
+  //   //     return setOrderNumber({...n}, newNodes, nodes, edges)
+  //   //   } else {
+  //   //     return setOrderNumber(
+  //   //       { ...n, data: { ...n.data, order: prevNode.data.order + 1 } },
+  //   //       newNodes, nodes, edges
+  //   //     )
+  //   //   }
+  //   // }).flat()
+  //   return newCurNodes
+  // }
 
   useEffect(() => {
     (async () => {
@@ -254,6 +418,7 @@ export default function FlowCanvas() {
             nodeName: id,
             nodeDeletable: false,
             toolbarVisible: false,
+            order: 0,
           }
           initialNodes.push({
             id: id,
@@ -265,6 +430,13 @@ export default function FlowCanvas() {
             style: { border: '1px solid #777', padding: 10, background: "yellow" },
           })
         }
+
+        // // set node orders
+        // const startNode = initialNodes.find(n => n.type === "startNode")
+        // console.log(startNode)
+        // if (startNode !== undefined) {
+        //   initialNodes = setOrderNumber(startNode, initialNodes, initialEdges)
+        // }     
 
         initNodes(initialNodes)
         // initEdges([])
@@ -323,6 +495,7 @@ export default function FlowCanvas() {
               parameters: [],
               outputs: [],
               isChild: false,
+              order: null,
             }
             const newNode: StackNodeType = {
               id: id,
@@ -351,6 +524,7 @@ export default function FlowCanvas() {
               parameters: [],
               outputs: [],
               isChild: false,
+              order: null,
             }
             const newNode: StackSetNodeType = {
               id: id,
@@ -433,6 +607,7 @@ export default function FlowCanvas() {
             onDrop={onDrop}
             onDragOver={onDragOver}
             nodeTypes={nodeTypes}
+            edgeTypes={edgeTypes}
             onNodeClick={(e, n) => onNodeClick(e, n)}
           // attributionPosition='bottom-left'
           // defaultViewport={defaultViewport}

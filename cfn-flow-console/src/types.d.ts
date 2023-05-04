@@ -128,7 +128,8 @@ type BaseCUstomNodeData = {
     nodeId: string
     nodeName: string
     toolbarVisible: boolean
-    nodeDeletable: boolean,
+    nodeDeletable: boolean
+    order: number | null
 }
 
 type StackNodeIO = {
@@ -158,7 +159,7 @@ type StackNodeData = BaseCUstomNodeData & {
     templateName: string | null
     parameters: StackNodeParameter[]
     outputs: StackNodeOutput[]
-    isChild: boolean,
+    isChild: boolean
 }
 type StackSetNodeData = BaseCUstomNodeData & {
     regionName: string | null
@@ -166,7 +167,7 @@ type StackSetNodeData = BaseCUstomNodeData & {
     templateName: string | null
     parameters: StackNodeParameter[] 
     outputs: StackNodeOutput[]
-    isChild: boolean,
+    isChild: boolean
 }
 type StartNodeData = BaseCUstomNodeData & {
 }
@@ -185,5 +186,17 @@ type CustomNodeTypeName = "stackNode"| "stackSetNode" | "startNode"
 type CustomNodeTypes = {
   [key in CustomNodeTypeName]: ComponentType<import("reactflow").NodeProps>
 }
-
 type StackNodeDataType = "nodeName" | "regionNames" | "templateName" | "regionName"
+
+type CustomEdgeTypeName = "stackIOEdge" | "nodeOrderEdge"
+type StackIOEdgeData = {
+    sourceLable: string
+    targetLabel: string
+    // offset: number
+}
+type NodeOrderEdgeData = {}
+type CustomEdgeTypes = {
+    [key in CustomEdgeTypeName]: ComponentType<EdgeProps>
+}
+type StackIOEdgeType = import("reactflow").Edge<StackIOEdgeData>
+type NodeOrderEdgeType = import("reactflow").Edge<NodeOrderEdgeData>

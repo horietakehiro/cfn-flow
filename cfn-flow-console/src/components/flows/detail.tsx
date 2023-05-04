@@ -1,6 +1,6 @@
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import MenuIcon from '@mui/icons-material/Menu';
-import { Box, Chip, CircularProgress, Dialog, DialogActions, DialogContent, DialogTitle, FormControl, InputLabel, ListItemIcon, OutlinedInput, Select, SelectChangeEvent, Stack, TextField } from '@mui/material';
+import { Box, Chip, CircularProgress, Dialog, DialogActions, DialogContent, DialogTitle, FormControl, FormControlLabel, InputLabel, ListItemIcon, OutlinedInput, Radio, RadioGroup, Select, SelectChangeEvent, Stack, TextField } from '@mui/material';
 import Button from "@mui/material/Button";
 import CssBaseline from '@mui/material/CssBaseline';
 import Divider from '@mui/material/Divider';
@@ -192,7 +192,7 @@ export const EditIODialog: React.FC<EditIODialogProps> = ({ type }) => {
   const {
     nodes, edges,
     onNodesChange, onEdgesChange, onConnect,
-    mergeNodes, updateNode, deleteNode, initNodes, getNode,
+    mergeNodes, updateNode, deleteNode, initNodes, getNode, initEdges,
     upsertEdge, removeEdges,
   } = useStore(selector, shallow);
   const selectedNode = useAppSelector(selectSelectedNode)
@@ -304,6 +304,7 @@ export const EditIODialog: React.FC<EditIODialogProps> = ({ type }) => {
       return
     }
     if (selectedNode === null) return
+    if (selectedIO === null) return
 
     const newNode: StackNodeType | StackSetNodeType = {
       ...selectedNode, data: {
@@ -350,6 +351,10 @@ export const EditIODialog: React.FC<EditIODialogProps> = ({ type }) => {
       if (type === "Outputs") {
         removeEdges(sourceNodeId, targetNodeId, null, targetId)
       }
+      const data: StackIOEdgeData = {
+        targetLabel: targetHandleId,
+        sourceLable: sourceHandleId,
+      }
       return {
         id: id,
         source: sourceNodeId,
@@ -358,7 +363,8 @@ export const EditIODialog: React.FC<EditIODialogProps> = ({ type }) => {
         targetHandle: targetId,
         updatable: true,
         label: label,
-        type: "step"
+        type: "stackIOEdge",
+        data: data,
       }
     })
     newEdges.forEach(e => upsertEdge(e))
@@ -466,6 +472,12 @@ export const EditIODialog: React.FC<EditIODialogProps> = ({ type }) => {
   )
 }
 
+enum VisibleEdgeType {
+  All = "All",
+  Node = "Node",
+  IO = "IO",
+}
+
 export default function FlowDetail() {
 
 
@@ -481,7 +493,7 @@ export default function FlowDetail() {
   const [parametersInProgress, setParametersInProgress] = React.useState<boolean>(false)
   const [outputsInProgress, setOutputsInProgress] = React.useState<boolean>(false)
 
-  const { nodes, edges, upsertNode, initNodes, onNodesChange, onEdgesChange, onConnect, mergeNodes, updateNode, deleteNode } = useStore(selector, shallow);
+  const { nodes, edges, upsertNode, initNodes, onNodesChange, onEdgesChange, onConnect, mergeNodes, updateNode, deleteNode, initEdges } = useStore(selector, shallow);
 
 
   const templates = useAppSelector(selectTemplates)
@@ -491,6 +503,8 @@ export default function FlowDetail() {
 
   const reactFlowInstance = useAppSelector(selectReactFlowInstance)
   const reactFlowWrapper = React.useRef<HTMLDivElement>(null);
+
+  const [visibleEdgeType, setVisibleEdgeType] = React.useState<string>(VisibleEdgeType.All)
 
 
   const handleIODependencyClick = React.useCallback(
@@ -687,6 +701,7 @@ export default function FlowDetail() {
               parameters: [...selectedNode.data.parameters],
               outputs: [...selectedNode.data.outputs],
               isChild: true,
+              order: null,
             }
             const newNode: StackNodeType = {
               id: nodeId,
@@ -846,13 +861,15 @@ export default function FlowDetail() {
     return
   }
 
-  const onSave = React.useCallback(() => {
-    (async () => {
-      setInProgress(true)
-      // calc dependency and remove unused edges
 
+  const onSave = React.useCallback(() => {
+
+    (async () => {
       try {
+        setInProgress(true)
+
         if (reactFlowInstance && selectedFlow) {
+
           const flow = JSON.stringify(reactFlowInstance.toObject(), null, 2)
           const { accessLevel, baseObjname, s3PartialKey } = parseS3HttpUrl(selectedFlow.httpUrl)
           const fileObj = new File([flow], baseObjname, { "type": "application/json" })
@@ -879,6 +896,7 @@ export default function FlowDetail() {
         setInProgress(false)
       }
     })()
+
   }, [reactFlowInstance])
 
   React.useEffect(() => {
@@ -1010,6 +1028,44 @@ export default function FlowDetail() {
     dispatch(selectNode(null))
   }
 
+  const onVisibleEdgeTypeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const visibleEdgeType = e.target.value
+    setVisibleEdgeType(visibleEdgeType)
+
+    console.log(visibleEdgeType)
+
+    switch (visibleEdgeType) {
+      case VisibleEdgeType.All: {
+        initEdges(edges.map((e) => {
+          return { ...e, hidden: false }
+        }))
+        break
+      }
+      case VisibleEdgeType.Node: {
+        initEdges(edges.map((e) => {
+          if (e.type === "nodeOrderEdge") {
+            return { ...e, hidden: false }
+          }
+          return { ...e, hidden: true }
+        }))
+        break
+      }
+      case VisibleEdgeType.IO: {
+        initEdges(edges.map((e) => {
+          if (e.type === "stackIOEdge") {
+            return { ...e, hidden: false }
+          }
+          return { ...e, hidden: true }
+        }))
+        break
+      }
+      default: {
+        console.log(`invalid edge type: ${visibleEdgeType}`)
+        break
+      }
+    }
+  }
+
   return (
     <Stack spacing={2} direction={"column"}>
       <Stack direction={"row"}>
@@ -1035,6 +1091,44 @@ export default function FlowDetail() {
               >
                 SAVE
               </Button>
+            </Stack>
+          </Grid>
+        </Grid>
+      </Stack>
+      <Stack direction={"row"}>
+        <Grid container spacing={2}>
+          <Grid item xs>
+            <Stack spacing={2} direction="row" justifyContent={"right"}>
+              <Box sx={{ display: "flex", justifyContent: "center", flexDirection: "column" }}>
+                <Typography align="justify" variant="body1" >Visible Edges: </Typography>
+              </Box>
+              <FormControl>
+                <RadioGroup
+                  row
+                  aria-labelledby="visible-edges"
+                  name="row-radio-buttons-group"
+                  onChange={onVisibleEdgeTypeChange}
+                >
+                  <FormControlLabel
+                    value={VisibleEdgeType.All}
+                    control={<Radio />}
+                    label={VisibleEdgeType.All}
+                    checked={visibleEdgeType === VisibleEdgeType.All}
+                  />
+                  <FormControlLabel
+                    value={VisibleEdgeType.Node}
+                    control={<Radio />}
+                    label={VisibleEdgeType.Node}
+                    checked={visibleEdgeType === VisibleEdgeType.Node}
+                  />
+                  <FormControlLabel
+                    value={VisibleEdgeType.IO}
+                    control={<Radio />}
+                    label={VisibleEdgeType.IO}
+                    checked={visibleEdgeType === VisibleEdgeType.IO}
+                  />
+                </RadioGroup>
+              </FormControl>
             </Stack>
           </Grid>
         </Grid>
@@ -1294,7 +1388,7 @@ export default function FlowDetail() {
                   <NavLink target='_blank' to={`/templates/${selectedNode.data.templateName}`}>
                     <Stack direction={"row"} justifyContent={"right"}>
                       <div>Template's detail</div>
-                      <LaunchIcon/>
+                      <LaunchIcon />
                     </Stack>
                   </NavLink>
                 }
