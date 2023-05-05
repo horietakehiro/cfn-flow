@@ -69,7 +69,30 @@ type GetTemplateSummaryResponse = {
     templateSummary: TemplateSummary
 }
 
+type GetPlansResponse = {
+    error: string | null
+    plans: Plan[] | null
+    nextToken: string | null
+}
+type PutPlanResponse = {
+    error: string | null
+    plan: Plan | null
+}
+type DeletePlanResponse = {
+    error: string | null
+    planName: string | null
+}
+type PutPlanRequest = Plan
 
+type PlanStatus = "inProgress" | "completed" | "failed" | "unused"
+type PlanDirection = "forward" | "backward"
+type Plan = {
+    planName: string
+    flowName: string
+    description: string | null
+    lastStatus: PlanStatus
+    direction: PlanDirection
+}
 
 type Flow = {
     name: string,

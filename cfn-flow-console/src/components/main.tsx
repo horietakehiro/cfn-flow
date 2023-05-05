@@ -24,6 +24,7 @@ import { TemplatesMainMenu } from './templates/main';
 
 import { useAppDispatch, useAppSelector } from '../hooks';
 import { invert, selectLeftDrawer } from "../stores/main";
+import { FlowDefinition } from './flows/definition';
 import { FlowsMainMenu } from './flows/main';
 const drawerWidth = 240;
 
@@ -103,7 +104,7 @@ const Router = () => {
       <Route path='/templates/:templateName' element={<TemplatesMainMenu />} />
       <Route path='/flows' element={<FlowsMainMenu />} />
       <Route path='/flows/:flowName' element={<FlowsMainMenu />} />
-      <Route path='/flows/:flowName/deployments' element={<FlowsMainMenu />} />
+      <Route path='/flows/:flowName/definition' element={<FlowDefinition />} />
 
     </Routes>
   );

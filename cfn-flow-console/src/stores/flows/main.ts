@@ -20,12 +20,6 @@ export interface EditIODialogState {
     opened: boolean
     type: "Parameters" | "Outputs" | null
 } 
-// export interface EditParameterSourceDialogState {
-//     opened: boolean
-// }
-// export interface EditOutputTargetDialogState {
-//     opened: boolean
-// }
 export interface ParameterRowSelectionModelState {
     rowIds: GridRowId[]
 }
@@ -35,9 +29,12 @@ export interface OutputRowSelectionModelState {
 export interface ReactFlowInstanceState {
     reactFlowInstance: ReactFlowInstance | null
 }
-// export interface FlowState = {
-
-// }
+export interface PlansState {
+    plans: Plan[]
+}
+export interface SelectedPlanState {
+    plan: Plan | null
+}
 
 const FlowsInitialState: FlowsState = {
     flows: []
@@ -55,12 +52,6 @@ const EditIODialogInitialState: EditIODialogState = {
     opened: false,
     type: null
 }
-// const EditParameterSourceDialogInitialState: EditParameterSourceDialogState = {
-//     opened: false
-// }
-// const EditOutputTargetDialogInitialState: EditOutputTargetDialogState = {
-//     opened: false
-// }
 const ParameterRowSelectionModelInitialState: ParameterRowSelectionModelState = {
     rowIds: []
 }
@@ -69,6 +60,12 @@ const OutputRowSelectionModelInitialState: OutputRowSelectionModelState = {
 }
 const ReactFlowInstanceInitialState: ReactFlowInstanceState = {
     reactFlowInstance: null
+}
+const PlansInitialState:PlansState = {
+    plans:[]
+}
+const SelectedPlanInitialState:SelectedPlanState = {
+    plan: null
 }
 export type RFState = {
     nodes: Node[]
@@ -319,12 +316,51 @@ export const FlowsSlice = createSlice({
         }
     }
 })
+export const PlansSlice = createSlice({
+    name: "Plans",
+    initialState: PlansInitialState,
+    reducers: {
+        create: (state, action: PayloadAction<Plan[]>) => {
+            state.plans = action.payload
+        },
+        push: (state, action: PayloadAction<Plan>) => {
+            state.plans.push(action.payload)
+        },
+        remove: (state, action: PayloadAction<Plan>) => {
+            state.plans = state.plans.filter((p) => {
+                return p.planName !== action.payload.planName
+            })
+        },
+        update: (state, action: PayloadAction<Plan>) => {
+            state.plans = state.plans.map((p) => {
+                if (p.planName === action.payload.planName) {
+                    return action.payload
+                } else {
+                    return p
+                }
+            })
+        },
+        clear: (state) => {
+            state.plans = []
+        }
+    }
+})
+
 export const SelectedFlowSlice = createSlice({
     name: "SelectedFlow",
     initialState: selectedFlowInitialState,
     reducers: {
         select: (state, action: PayloadAction<Flow | null>) => {
             state.flow = action.payload
+        },
+    }
+})
+export const SelectedPlanSlice = createSlice({
+    name: "SelectedPlan",
+    initialState: SelectedPlanInitialState,
+    reducers: {
+        select: (state, action: PayloadAction<Plan | null>) => {
+            state.plan = action.payload
         },
     }
 })
@@ -364,30 +400,6 @@ export const EditIODialogSlice = createSlice({
     }
 })
 
-// export const EditParameterSourceDialogSlice = createSlice({
-//     name: "EditParameterSourceDialog",
-//     initialState: EditParameterSourceDialogInitialState,
-//     reducers: {
-//         open: (state) => {
-//             state.opened = true
-//         },
-//         close: (state) => {
-//             state.opened = false
-//         }
-//     }
-// })
-// export const EditOutputTargetDialogSlice = createSlice({
-//     name: "EditOutputTargetDialog",
-//     initialState: EditOutputTargetDialogInitialState,
-//     reducers: {
-//         open: (state) => {
-//             state.opened = true
-//         },
-//         close: (state) => {
-//             state.opened = false
-//         }
-//     }
-// })
 export const ParameterRowSelectionModelSlice = createSlice({
     name: "ParameterRowSelectionModel",
     initialState: ParameterRowSelectionModelInitialState,
@@ -415,28 +427,32 @@ export const ReactFlowInstanceSlice = createSlice({
         }
     }
 })
+
 export const { select: selectFlow } = SelectedFlowSlice.actions
+export const {select: selectPlan } = SelectedPlanSlice.actions
 export const {
     create: createFlows, push: pushFlow, remove: removeFlow,
     update: updateFlow, clear: clearFlows,
 } = FlowsSlice.actions
+export const {
+    create: createPlans, push: pushPlan, remove: removePlan,
+    update: updatePlan, clear: clearPlans,
+} = PlansSlice.actions
 export const { open: openNodeEditDrawe, close: closeNodeEditDrawe } = NodeEditDrawerSlice.actions
 export const { select: selectNode } = SelectedNodeSlice.actions
 export const { open: openEditIODialog, close: closeEditIODialog } = EditIODialogSlice.actions
-// export const { open: openEditParameterSourceDialog, close: closeEditParameterSourceDialog } = EditParameterSourceDialogSlice.actions
-// export const { open: openEditOutputTargetDialog, close: closeEditOutputTargetDialog } = EditOutputTargetDialogSlice.actions
 export const { set: setParameterRowSelectionModel } = ParameterRowSelectionModelSlice.actions
 export const { set: setOutputRowSelectionModel } = OutputRowSelectionModelSlice.actions
 export const { set: setReactFlowInstance } = ReactFlowInstanceSlice.actions
 
 // export const {create: createNodes, update: updateNode} = NodesSlice.actions
 export const SelectFlowReducer = SelectedFlowSlice.reducer
+export const SelectPlanReducer = SelectedPlanSlice.reducer
 export const FlowsReducer = FlowsSlice.reducer
+export const PlansReducer = PlansSlice.reducer
 export const NodeEditDrawerReducer = NodeEditDrawerSlice.reducer
 export const SelectNodeReducer = SelectedNodeSlice.reducer
 export const EditIODialogReducer = EditIODialogSlice.reducer
-// export const EditParameterSourceDialogReducer = EditParameterSourceDialogSlice.reducer
-// export const EditOutputTargetDialogReducer = EditOutputTargetDialogSlice.reducer
 export const ParameterRowSelectionModelReducer = ParameterRowSelectionModelSlice.reducer
 export const OutputRowSelectionModelReducer = OutputRowSelectionModelSlice.reducer
 export const ReactFlowInstanceReducer = ReactFlowInstanceSlice.reducer
@@ -454,6 +470,8 @@ export const selectParameterRowSelectionModel = (state: RootState) => state.para
 export const selectOutputRowSelectionModel = (state: RootState) => state.outputRowSelectionModel.rowIds
 export const selectReactFlowInstance = (state: RootState) => state.reactFlowInstance.reactFlowInstance
 // export const selectNodes = (state: RootState) => state.nodes.nodes
+export const selectPlans = (state:RootState) => state.plans.plans
+export const selectSelectedPlan = (state:RootState) => state.selectedPlan.plan
 
 export const selector = (state: RFState) => ({
     nodes: state.nodes,

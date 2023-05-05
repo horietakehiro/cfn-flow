@@ -5,3 +5,4 @@ pytest-env
 boto3
 cfn-flip
 cfn-lint
+aws-xray-sdk

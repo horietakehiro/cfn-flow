@@ -156,6 +156,40 @@ Resources:
       # TimeToLiveSpecification: 
       #   TimeToLiveSpecification
 
+
+  FlowPlansTable:
+    DeletionPolicy: Delete
+    UpdateReplacePolicy: Delete
+    Type: AWS::DynamoDB::Table
+    Properties: 
+      AttributeDefinitions: 
+        - AttributeName: planName
+          AttributeType: S
+        - AttributeName: flowName
+          AttributeType: S
+      BillingMode: PAY_PER_REQUEST
+      GlobalSecondaryIndexes: 
+        - 
+          IndexName: flow-name-gsi
+          KeySchema: 
+            - AttributeName: flowName
+              KeyType: HASH
+          Projection: 
+            ProjectionType: ALL
+
+
+      KeySchema:
+        - AttributeName: planName
+          KeyType: HASH
+        - AttributeName: flowName
+          KeyType: RANGE
+      PointInTimeRecoverySpecification: 
+        PointInTimeRecoveryEnabled: false
+      TableClass: STANDARD
+      TableName: !Sub ${SolutionName}-${EnvName}-flow-plans-table
+      # TimeToLiveSpecification: 
+      #   TimeToLiveSpecification
+
 Outputs:
   TemplatesBucketName:
     Description: bucket name of templates bucket
@@ -185,3 +219,16 @@ Outputs:
     Value: !Ref FlowsTable
     Export: 
       Name: !Sub ${SolutionName}-${EnvName}-flows-table
+
+  FlowPlansTableName:
+    Description: dynamodb table name of flow plans table
+    Value: !Ref FlowPlansTable
+    Export: 
+      Name: !Sub ${SolutionName}-${EnvName}-flow-plans-table
+
+  FlowPlansGsiName:
+    Description: dynamodb gis name of flow plans table
+    Value: flow-name-gsi
+    Export: 
+      Name: !Sub ${SolutionName}-${EnvName}-flow-plans-gsi
+

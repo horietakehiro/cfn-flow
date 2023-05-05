@@ -16,3 +16,5 @@ test-flows:
 
 test-stacks:
 	pytest --cov=functions/ --cov-report=html -v  ./functions/stacks/
+test-plans:
+	pytest --cov=functions/ --cov-report=html -v  ./functions/plans/

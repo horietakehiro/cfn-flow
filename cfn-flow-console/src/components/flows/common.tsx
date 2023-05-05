@@ -17,10 +17,10 @@ import * as React from 'react';
 
 import { useAppDispatch, useAppSelector } from '../../hooks';
 import {
-  createDialogClose, deleteDialogClose, editDialogClose, selectCreateDialog, selectDeleteDialog, selectEditDialog
+  createDialogClose, createPlanDialogClose, deleteDialogClose, deletePlanDialogClose, editDialogClose, selectCreateDialog, selectCreatePlanDialog, selectDeleteDialog, selectEditDialog, selectPlanDeleteDialog
 } from '../../stores/flows/common';
 import {
-  pushFlow, removeFlow, selectFlow, selectSelectedFlow, updateFlow
+  pushFlow, pushPlan, removeFlow, removePlan, selectFlow, selectPlan, selectSelectedFlow, selectSelectedPlan, updateFlow
 } from "../../stores/flows/main";
 import {
   AlertSnackbar
@@ -33,7 +33,7 @@ import axios from 'axios';
 import { useParams } from 'react-router-dom';
 import { ReactFlowJsonObject } from 'reactflow';
 import { getApiAuth, uploadObj } from '../../apis/common';
-import { deleteFlow, putFlow } from '../../apis/flows/apis';
+import { deleteFlow, deletePlan, putFlow, putPlan } from '../../apis/flows/apis';
 
 // export const getApiAuth = async () => {
 //   return `Bearer ${(await Auth.currentSession()).getIdToken().getJwtToken()}`
@@ -309,6 +309,154 @@ export const CreateFlowDialog: React.FC = () => {
   );
 }
 
+enum PlanDirectionType {
+  Forward = "forward",
+  Backward = "backward",
+}
+type PlanDIalogProps = {
+  flowName: string
+} 
+export const CreatePlanDialog: React.FC<PlanDIalogProps> = ({flowName}) => {
+  const dispatch = useAppDispatch()
+  const open = useAppSelector(selectCreatePlanDialog)
+
+  const [planDirectionType, setPlanDirectionType] = React.useState<string>(PlanDirectionType.Forward)
+  const [inProgress, setInProgress] = React.useState<boolean>(false)
+
+  const [newPlan, setNewPlan] = React.useState<PutPlanRequest>({
+    planName: "", flowName: flowName, description: "", lastStatus: "unused", direction: "forward",
+  })
+
+  const onPlanDirectionTypeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setPlanDirectionType(e.target.value)
+    setNewPlan({...newPlan, direction: e.target.value as PlanDirection})
+  }
+
+  const onPlanPropsChange = (e: React.ChangeEvent<HTMLInputElement>, fieldName: string) => {
+    setNewPlan({ ...newPlan, [fieldName]: e.target.value })
+  }
+
+  const onSubmit = async (submit: Boolean) => {
+    try {
+      if (submit) {
+        setInProgress(true)
+
+        let requestPlan = { ...newPlan }
+
+        const response = await putPlan(requestPlan)
+        if (response.plan !== null) {
+          dispatch(pushPlan(response.plan))
+          dispatch(setAlert({
+            persist: 5000, message: `Successfully create plan : ${response.plan.planName}`,
+            opened: true, severity: "success"
+          }))
+        }
+      }
+    } catch (e) {
+      let errorMessage = `Failed to create plan : ${newPlan.planName}`
+
+      if (axios.isAxiosError(e)) {
+        const response: PutPlanResponse = e.response?.data
+        errorMessage += ` : ${response.error}`
+        console.error(e.response)
+      }
+      dispatch(setAlert({
+        persist: null, message: errorMessage,
+        opened: true, severity: "error"
+      }))
+    } finally {
+
+      setInProgress(false)
+    }
+
+    setNewPlan({planName: "", flowName: flowName, direction: PlanDirectionType.Forward, lastStatus: "unused", description: ""})
+    dispatch(createPlanDialogClose())
+  }
+
+  return (
+    <div>
+      <AlertSnackbar />
+      <Dialog open={open} onClose={() => onSubmit(false)}>
+        <DialogTitle>New Plan</DialogTitle>
+        <DialogContent sx={{ margin: "100" }}>
+          <TextField
+            autoFocus
+            margin="normal"
+            id="name"
+            label="Plan Name"
+            type={"tex"}
+            fullWidth
+            variant="outlined"
+            value={newPlan.planName}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => onPlanPropsChange(e, "planName")}
+            required
+          />
+          <TextField
+            autoFocus
+            margin="normal"
+            id="description"
+            label="Description"
+            type={"tex"}
+            fullWidth
+            variant="outlined"
+            multiline
+            value={newPlan.description}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => onPlanPropsChange(e, "description")}
+          />
+          <FormControl>
+            <FormLabel id="flow-source">Plan Direction</FormLabel>
+            <RadioGroup
+              row
+              aria-labelledby="flow-source"
+              name="row-radio-buttons-group"
+              onChange={onPlanDirectionTypeChange}
+            >
+              <FormControlLabel
+                value={PlanDirectionType.Forward}
+                control={<Radio />}
+                label={PlanDirectionType.Forward}
+                checked={planDirectionType === PlanDirectionType.Forward}
+              />
+              <FormControlLabel
+                value={PlanDirectionType.Backward}
+                control={<Radio />}
+                label={PlanDirectionType.Backward}
+                checked={planDirectionType === PlanDirectionType.Backward}
+              />
+            </RadioGroup>
+          </FormControl>
+        </DialogContent>
+        <DialogActions>
+          <Button data-testid="cancel-button" onClick={(e) => onSubmit(false)}>CANCEL</Button>
+          <Box sx={{ m: 1, position: 'relative' }}>
+            <Button
+              data-testid="create-button"
+              onClick={(e) => onSubmit(true)}
+              variant={"contained"}
+              disabled={inProgress}
+            >
+              CREATE
+            </Button>
+            {inProgress &&
+              <CircularProgress
+                size={24}
+                sx={{
+                  // color: green[500],
+                  position: 'absolute',
+                  top: '50%',
+                  left: '50%',
+                  marginTop: '-12px',
+                  marginLeft: '-12px',
+                }}
+              />
+            }
+          </Box>
+        </DialogActions>
+      </Dialog>
+    </div>
+  );
+}
+
 
 export const EditFlowDialog: React.FC = () => {
   const { flowName } = useParams()
@@ -531,6 +679,88 @@ export const EditFlowDialog: React.FC = () => {
   );
 }
 
+export const DeletePlanDialog: React.FC<PlanDIalogProps> = ({flowName}) => {
+  const dispatch = useAppDispatch()
+  const open = useAppSelector(selectPlanDeleteDialog)
+  const selectedPlan = useAppSelector(selectSelectedPlan)
+  const [inProgress, setInProgress] = React.useState<boolean>(false)
+
+  const onSubmit = async (submit: boolean) => {
+    if (submit) {
+      try {
+        setInProgress(true)
+        if (selectedPlan !== null) {
+          const response = await deletePlan(selectedPlan.flowName, selectedPlan.planName)
+          dispatch(removePlan(selectedPlan))
+          dispatch(setAlert({
+            persist: 5000, message: `Successfully delete plan : ${response.planName}`,
+            opened: true, severity: "success"
+          }))
+        }
+        dispatch(selectPlan(null))
+
+      } catch (e) {
+        console.error(e)
+        let errorMessage = `Failed to delete plan : ${selectedPlan?.planName}`
+        if (axios.isAxiosError(e)) {
+          const response: DeletePlanResponse = e.response?.data
+          errorMessage += ` : ${response.error}`
+          console.error(e.response)
+        }
+        dispatch(setAlert({
+          persist: null, message: errorMessage,
+          opened: true, severity: "error"
+        }))
+      } finally {
+        setInProgress(false)
+      }
+      
+    }
+    dispatch(deletePlanDialogClose())
+  }
+
+  return (
+    <div>
+      <AlertSnackbar />
+      <Dialog open={open} onClose={() => onSubmit(false)}>
+        <DialogTitle>Delete {selectedPlan?.planName}?</DialogTitle>
+        <DialogContent sx={{ margin: "100" }}>
+          <DialogContentText>
+            Are you sure that you want to delete plan {selectedPlan?.planName}?
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button data-testid="cancel-button" onClick={(e) => { onSubmit(false) }}>CANCEL</Button>
+          <Box sx={{ m: 1, position: 'relative' }}>
+            <Button
+              data-testid="delete-button"
+              onClick={(e) => { onSubmit(true) }}
+              variant={"contained"}
+              disabled={inProgress}
+            >
+              DELETE
+            </Button>
+            {inProgress &&
+              <CircularProgress
+                size={24}
+                sx={{
+                  // color: green[500],
+                  position: 'absolute',
+                  top: '50%',
+                  left: '50%',
+                  marginTop: '-12px',
+                  marginLeft: '-12px',
+                }}
+              />
+            }
+          </Box>
+        </DialogActions>
+      </Dialog>
+    </div>
+  );
+}
+
+
 export const DeleteFlowDialog: React.FC = () => {
   const { flowName } = useParams()
 
@@ -619,5 +849,7 @@ export const DeleteFlowDialog: React.FC = () => {
     </div>
   );
 }
+
+
 export { getApiAuth };
 

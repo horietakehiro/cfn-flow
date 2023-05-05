@@ -3,14 +3,17 @@ import { persistReducer } from "redux-persist";
 import storage from "redux-persist/lib/storage";
 
 import { AlertReducer } from "./stores/common";
+import { CreatePlanDialogReducer, DeletePlanDialogReducer } from "./stores/flows/common";
 import {
     EditIODialogReducer,
     // EditOutputTargetDialogReducer, EditParameterSourceDialogReducer, 
     FlowsReducer, NodeEditDrawerReducer,
     OutputRowSelectionModelReducer,
     ParameterRowSelectionModelReducer,
+    PlansReducer,
     ReactFlowInstanceReducer,
-    SelectFlowReducer, SelectNodeReducer
+    SelectFlowReducer, SelectNodeReducer,
+    SelectPlanReducer,
 } from "./stores/flows/main";
 import leftDrawerReducer from "./stores/main";
 import { CreateTemplateDialogReducer, DeleteTemplateDialogReducer, EditTemplateDialogReducer } from "./stores/templates/common";
@@ -35,6 +38,10 @@ const reducers = combineReducers({
     outputRowSelectionModel: OutputRowSelectionModelReducer,
     reactFlowInstance: ReactFlowInstanceReducer,
     // nodes: NodesReducer,
+    selectedPlan: SelectPlanReducer,
+    plans: PlansReducer,
+    createPlanDIalog: CreatePlanDialogReducer,
+    deletePlanDialog: DeletePlanDialogReducer,
 })
 
 const persistConfig = {
@@ -43,15 +50,19 @@ const persistConfig = {
     blacklist: [
         "templates",
         "flows",
+        "plans",
         "createTemplateDialog",
         "editTemplateDialog",
         "deleteTemplateDialog",
+        "createPlanDIalog",
+        "deletePlanDialog",
         "alert",
         "nodeEditDrawer",
         "selectedNode",
         "editParameterSourceDialog",
         "parametersRowSelectionModel",
-        "reactFlowInstance"
+        "reactFlowInstance",
+        "selectedPlan",
     ]
     // black
 }

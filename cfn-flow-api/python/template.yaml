@@ -42,7 +42,12 @@ Globals:
         DYNAMO_FLOW_TABLE_NAME:
           Fn::ImportValue: !Sub ${SolutionName}-${EnvName}-flows-table
         S3_FLOW_BUCKET_NAME:
-          Fn::ImportValue: !Sub ${SolutionName}-${EnvName}-flows-bucket 
+          Fn::ImportValue: !Sub ${SolutionName}-${EnvName}-flows-bucket
+        DYNAMO_FLOW_PLANS_TABLE_NAME:
+          Fn::ImportValue: !Sub ${SolutionName}-${EnvName}-flow-plans-table
+        DYNAMO_FLOW_PLANS_GSI_NAME:
+          Fn::ImportValue: !Sub ${SolutionName}-${EnvName}-flow-plans-gsi
+
     Tracing: Active
     Layers:
       - !Ref UtilLayer
@@ -300,6 +305,57 @@ Resources:
       Handler: delete_flow.lambda_handler
       PackageType: Zip
       Role: !GetAtt FunctionsRole.Arn
+
+
+
+  ListPlans:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ./functions/plans/
+      Events:
+        GetApi:
+          Type: Api
+          Properties:
+            Method: get
+            Path: /flows/{flowName}/plans
+            RestApiId:  !Ref BackendApi
+      FunctionName: !Sub ${SolutionName}-${EnvName}-plans-list-function
+      Handler: list_plans.lambda_handler
+      PackageType: Zip
+      Role: !GetAtt FunctionsRole.Arn
+
+  PutPlans:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ./functions/plans/
+      Events:
+        PutApi:
+          Type: Api
+          Properties:
+            Method: put
+            Path: /flows/{flowName}/plans/{planName}
+            RestApiId:  !Ref BackendApi
+      FunctionName: !Sub ${SolutionName}-${EnvName}-plans-put-function
+      Handler: put_plan.lambda_handler
+      PackageType: Zip
+      Role: !GetAtt FunctionsRole.Arn
+
+  DeletePlan:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ./functions/plans/
+      Events:
+        GetApi:
+          Type: Api
+          Properties:
+            Method: delete
+            Path: /flows/{flowName}/plans/{planName}
+            RestApiId:  !Ref BackendApi
+      FunctionName: !Sub ${SolutionName}-${EnvName}-plans-delete-function
+      Handler: delete_plan.lambda_handler
+      PackageType: Zip
+      Role: !GetAtt FunctionsRole.Arn
+
 
   BackendApiCert:
     Type: AWS::CertificateManager::Certificate
