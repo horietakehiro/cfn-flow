@@ -6,6 +6,7 @@ import { AlertReducer } from "./stores/common";
 import { CreatePlanDialogReducer, DeletePlanDialogReducer } from "./stores/flows/common";
 import {
     EditIODialogReducer,
+    EditParameterValueDialogReducer,
     // EditOutputTargetDialogReducer, EditParameterSourceDialogReducer, 
     FlowsReducer, NodeEditDrawerReducer,
     OutputRowSelectionModelReducer,
@@ -32,6 +33,7 @@ const reducers = combineReducers({
     nodeEditDrawer: NodeEditDrawerReducer,
     selectedNode: SelectNodeReducer,
     editIODialog: EditIODialogReducer,
+    editParameterValueDialog: EditParameterValueDialogReducer,
     // editParameterSourceDialog: EditParameterSourceDialogReducer,
     // editOutputTargetDialog: EditOutputTargetDialogReducer,
     parametersRowSelectionModel: ParameterRowSelectionModelReducer,

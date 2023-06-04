@@ -212,8 +212,10 @@ export const FlowDetail: React.FC = () => {
             <Button
                 variant="outlined"
                 style={{ textTransform: 'none' }}
-                onClick={() => dispatch(deletePlanDialogOpen())}
+                // onClick={() => dispatch(deletePlanDialogOpen())}
                 disabled={selectedPlan === null}
+                component={Link}
+                to={`deploymentPlans/${selectedPlan?.planName}/definition`}
               >
                 Edit Definition
               </Button>

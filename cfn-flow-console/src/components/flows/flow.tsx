@@ -419,6 +419,7 @@ export default function FlowCanvas() {
             nodeDeletable: false,
             toolbarVisible: false,
             order: 0,
+            deploymentPlans: {}
           }
           initialNodes.push({
             id: id,
@@ -496,6 +497,7 @@ export default function FlowCanvas() {
               outputs: [],
               isChild: false,
               order: null,
+              deploymentPlans: {}
             }
             const newNode: StackNodeType = {
               id: id,
@@ -525,6 +527,7 @@ export default function FlowCanvas() {
               outputs: [],
               isChild: false,
               order: null,
+              deploymentPlans: {}
             }
             const newNode: StackSetNodeType = {
               id: id,

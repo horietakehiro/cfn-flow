@@ -106,6 +106,7 @@ Resources:
         - arn:aws:iam::aws:policy/AmazonDynamoDBFullAccess
         - arn:aws:iam::aws:policy/AWSXRayDaemonWriteAccess
         - arn:aws:iam::aws:policy/AWSCloudFormationFullAccess
+        - arn:aws:iam::aws:policy/AmazonEC2ReadOnlyAccess
       # Policies:
 
 
@@ -366,6 +367,24 @@ Resources:
           DomainName: !Ref ApiDomainName
           HostedZoneId: !Ref ApiHostedZoneId
       ValidationMethod: DNS
+
+
+
+  ListParameterResources:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ./functions/utilities/
+      Events:
+        GetApi:
+          Type: Api
+          Properties:
+            Method: get
+            Path: /utilities/{regionName}/{resourceType}
+            RestApiId:  !Ref BackendApi
+      FunctionName: !Sub ${SolutionName}-${EnvName}-parameter-resources-list-function
+      Handler: list_parameter_resources.lambda_handler
+      PackageType: Zip
+      Role: !GetAtt FunctionsRole.Arn
 
 
   BackendApi:

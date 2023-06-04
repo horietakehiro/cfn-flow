@@ -716,6 +716,7 @@ export const FlowDefinition = () => {
               outputs: [...selectedNode.data.outputs],
               isChild: true,
               order: null,
+              deploymentPlans: {}
             }
             const newNode: StackNodeType = {
               id: nodeId,

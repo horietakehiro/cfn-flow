@@ -35,9 +35,49 @@ type GetTemplateResponse = {
     template: Template | null
 }
 
+type AvailabilityZonesResponse = {
+    error: string | null
+    availabilityZones: string[]
+}
+type InstanceDetail = {
+    id: string
+    name: string | null
+}
+type InstanceDetailsResponse = {
+    error: string | null
+    instanceDetails: InstanceDetail[]
+}
+
+type ParameterType = 
+    "String" | "Number" | "List<Number>" | "CommaDelimitedList" |
+    "AWS::EC2::AvailabilityZone::Name" | "List<AWS::EC2::AvailabilityZone::Name>" |
+    "AWS::EC2::Image::Id" | "List<AWS::EC2::Image::Id>" |
+    "AWS::EC2::Instance::Id" | "List<AWS::EC2::Instance::Id>" |
+    "AWS::EC2::KeyPair::KeyName" |
+    "AWS::EC2::SecurityGroup::GroupName" | "List<AWS::EC2::SecurityGroup::GroupName>" |
+    "AWS::EC2::SecurityGroup::Id" | "List<AWS::EC2::SecurityGroup::Id>" |
+    "AWS::EC2::Subnet::Id" | "List<AWS::EC2::Subnet::Id>" |
+    "AWS::EC2::Volume::Id" | "List<AWS::EC2::Volume::Id>" |
+    "AWS::EC2::VPC::Id" | "List<AWS::EC2::VPC::Id>" |
+    "AWS::Route53::HostedZone::Id" | "List<AWS::Route53::HostedZone::Id>" |
+    "AWS::SSM::Parameter::Name" |
+    "AWS::SSM::Parameter::Value<String>" |
+    "AWS::SSM::Parameter::Value<List<String>>" | "AWS::SSM::Parameter::Value<CommaDelimitedList>" |
+    "AWS::SSM::Parameter::Value<AWS::EC2::AvailabilityZone::Name>" | "AWS::SSM::Parameter::Value<List<AWS::EC2::AvailabilityZone::Name>>" |
+    "AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>" | "AWS::SSM::Parameter::Value<List<AWS::EC2::Image::Id>>" |
+    "AWS::SSM::Parameter::Value<AWS::EC2::Instance::Id>" | "AWS::SSM::Parameter::Value<List<AWS::EC2::Instance::Id>>" |
+    "AWS::SSM::Parameter::Value<AWS::EC2::KeyPair::KeyName>" | "AWS::SSM::Parameter::Value<List<AWS::EC2::KeyPair::KeyName>>" |
+    "AWS::SSM::Parameter::Value<AWS::EC2::SecurityGroup::GroupName>" | "AWS::SSM::Parameter::Value<List<AWS::EC2::SecurityGroup::GroupName>>" |
+    "AWS::SSM::Parameter::Value<AWS::EC2::SecurityGroup::Id>" | "AWS::SSM::Parameter::Value<List<AWS::EC2::SecurityGroup::Id>>" |
+    "AWS::SSM::Parameter::Value<AWS::EC2::Subnet::Id>" | "AWS::SSM::Parameter::Value<List<AWS::EC2::Subnet::Id>>" |
+    "AWS::SSM::Parameter::Value<AWS::EC2::Volume::Id>" | "AWS::SSM::Parameter::Value<List<AWS::EC2::Volume::Id>>" |
+    "AWS::SSM::Parameter::Value<AWS::EC2::VPC::Id>" | "AWS::SSM::Parameter::Value<List<AWS::EC2::VPC::Id>>" |
+    "AWS::SSM::Parameter::Value<AWS::Route53::HostedZone::Id>" | "AWS::SSM::Parameter::Value<List<AWS::Route53::HostedZone::Id>>"
+
+
 type ParameterSummary = {
     name: string
-    type: string
+    type: ParameterType
     description: string | null
     default: string | null
     noEcho: string | null
@@ -69,6 +109,11 @@ type GetTemplateSummaryResponse = {
     templateSummary: TemplateSummary
 }
 
+
+type getAvailabilityZonesResponse = {
+    error: string | null
+    availabilityZones: string[] | null
+}
 type GetPlansResponse = {
     error: string | null
     plans: Plan[] | null
@@ -147,12 +192,16 @@ type PostStackTemplateResponse = {
 
 // type NodeType = "stackNode" | "StackSetNode"
 // type Node = import("reactflow").Node
+type DeploymentConfig = {}
 type BaseCUstomNodeData = {
     nodeId: string
     nodeName: string
     toolbarVisible: boolean
     nodeDeletable: boolean
     order: number | null
+    deploymentPlans: {
+        [name: string]: DeploymentConfig
+    }
 }
 
 type StackNodeIO = {

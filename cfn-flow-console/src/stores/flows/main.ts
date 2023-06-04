@@ -35,6 +35,9 @@ export interface PlansState {
 export interface SelectedPlanState {
     plan: Plan | null
 }
+export interface EditParameterValueDialogState {
+    opened: boolean
+}
 
 const FlowsInitialState: FlowsState = {
     flows: []
@@ -66,6 +69,9 @@ const PlansInitialState:PlansState = {
 }
 const SelectedPlanInitialState:SelectedPlanState = {
     plan: null
+}
+const EditParameterValueDialogInitialState: EditParameterValueDialogState = {
+    opened: false
 }
 export type RFState = {
     nodes: Node[]
@@ -428,6 +434,19 @@ export const ReactFlowInstanceSlice = createSlice({
     }
 })
 
+export const EditParameterValueDialogSlice = createSlice({
+    name: "EditParameterValueDialog",
+    initialState: EditParameterValueDialogInitialState,
+    reducers: {
+        open: (state) => {
+            state.opened = true
+        },
+        close: (state) => {
+            state.opened = false
+        }
+    }
+})
+
 export const { select: selectFlow } = SelectedFlowSlice.actions
 export const {select: selectPlan } = SelectedPlanSlice.actions
 export const {
@@ -441,6 +460,7 @@ export const {
 export const { open: openNodeEditDrawe, close: closeNodeEditDrawe } = NodeEditDrawerSlice.actions
 export const { select: selectNode } = SelectedNodeSlice.actions
 export const { open: openEditIODialog, close: closeEditIODialog } = EditIODialogSlice.actions
+export const { open: openEditParameterValueDialog, close: closeEditParameterValueDialog } = EditParameterValueDialogSlice.actions
 export const { set: setParameterRowSelectionModel } = ParameterRowSelectionModelSlice.actions
 export const { set: setOutputRowSelectionModel } = OutputRowSelectionModelSlice.actions
 export const { set: setReactFlowInstance } = ReactFlowInstanceSlice.actions
@@ -453,6 +473,7 @@ export const PlansReducer = PlansSlice.reducer
 export const NodeEditDrawerReducer = NodeEditDrawerSlice.reducer
 export const SelectNodeReducer = SelectedNodeSlice.reducer
 export const EditIODialogReducer = EditIODialogSlice.reducer
+export const EditParameterValueDialogReducer = EditParameterValueDialogSlice.reducer
 export const ParameterRowSelectionModelReducer = ParameterRowSelectionModelSlice.reducer
 export const OutputRowSelectionModelReducer = OutputRowSelectionModelSlice.reducer
 export const ReactFlowInstanceReducer = ReactFlowInstanceSlice.reducer
@@ -472,6 +493,7 @@ export const selectReactFlowInstance = (state: RootState) => state.reactFlowInst
 // export const selectNodes = (state: RootState) => state.nodes.nodes
 export const selectPlans = (state:RootState) => state.plans.plans
 export const selectSelectedPlan = (state:RootState) => state.selectedPlan.plan
+export const selectEditParameterValueDialog = (state:RootState) => state.editParameterValueDialog.opened
 
 export const selector = (state: RFState) => ({
     nodes: state.nodes,
