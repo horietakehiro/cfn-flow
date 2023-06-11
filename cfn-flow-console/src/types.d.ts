@@ -47,7 +47,58 @@ type InstanceDetailsResponse = {
     error: string | null
     instanceDetails: InstanceDetail[]
 }
-
+type KeyNamesResponse = {
+    keyNames: string[] | null
+    error: string | null
+}
+type SecurityGroupNamesResponse = {
+    securityGroupNames: string[] | null
+    error: string | null
+}
+type SecurityGroupDetail = {
+    id: string
+    name: string
+}
+type SecurityGroupDetailsResponse = {
+    securityGroupDetails: SecurityGroupDetail[] | null 
+    error: string | null
+}
+type SubnetDetail = {
+    id: string
+    name: string | null
+    vpcId: string
+    availabilityZone: string
+    cidrBlock: string
+}
+type SubnetDetailsResponse = {
+    subnetDetails: SubnetDetail[] | null
+    error: string | null
+}
+type VpcDetail = {
+    id: string
+    name: string | null
+    cidrBlock: string
+}
+type VpcDetailsResponse = {
+    vpcDetails: VpcDetail[] | null
+    error: string | null
+}
+type VolumeDetail = {
+    id: string
+    name: string | null
+}
+type VolumeDetailsResponse = {
+    volumeDetails: VolumeDetail[] | null
+    error: string | null
+}
+type HostedZoneDetail = {
+    id: string
+    name: string | null
+}
+type HostedZoneDetailsResponse = {
+    hostedZoneDetails: HostedZoneDetail[] | null
+    error: string | null
+}
 type ParameterType = 
     "String" | "Number" | "List<Number>" | "CommaDelimitedList" |
     "AWS::EC2::AvailabilityZone::Name" | "List<AWS::EC2::AvailabilityZone::Name>" |
@@ -192,7 +243,13 @@ type PostStackTemplateResponse = {
 
 // type NodeType = "stackNode" | "StackSetNode"
 // type Node = import("reactflow").Node
-type DeploymentConfig = {}
+type DeploymentConfig = {
+    manualApproval: boolean
+}
+type ManualApproval = {
+    enabled: boolean
+    approver: string | null
+}
 type BaseCUstomNodeData = {
     nodeId: string
     nodeName: string
@@ -202,6 +259,7 @@ type BaseCUstomNodeData = {
     deploymentPlans: {
         [name: string]: DeploymentConfig
     }
+    manualApprovals: Record<string, ManualApproval>
 }
 
 type StackNodeIO = {
@@ -215,6 +273,11 @@ type StackNodeParameter = ParameterSummary & {
     selected: boolean
     // regionName: string | null
     accountId: string | null
+    // actualValues: {
+    //     [planName: string]: string | null
+    // }
+    actualValues: Record<string, string | null>
+
 }
 type StackNodeOutput = OutputSummary & {
     visible: boolean

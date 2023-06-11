@@ -1,5 +1,6 @@
 
 import typing
+import urllib.parse
 from logging import INFO
 from os import name
 from typing import List, Literal, Optional, TypedDict
@@ -286,7 +287,7 @@ def list_hosted_zone_details(region_name:str) -> List[HostedZoneDetail]:
     res = client.list_hosted_zones()
     for hosted_zone in res["HostedZones"]:
         hosted_zone_details.append({
-            "id": hosted_zone["Id"],
+            "id": hosted_zone["Id"].replace("/hostedzone/", ""),
             "name": hosted_zone["Name"],
         })
     return hosted_zone_details
@@ -300,11 +301,15 @@ def validate_path_params(region_name:str, resource_type:ResourceType):
 
 def lambda_handler(event:dict, context) -> Response:
 
+    logger.info(utils.jdumps(event))
+
     # get region name and resource type from path params
     try:
         params:RequestPathParams = event.get("pathParameters", None)
         region_name = params.get("regionName", "") if params is not None else ""
-        resource_type:ResourceType = params.get("resourceType", "") if params is not None else "" # type: ignore
+        resource_type = params.get("resourceType", "") if params is not None else "" # type: ignore
+        resource_type:ResourceType = urllib.parse.unquote(resource_type) # type: ignore
+
         validate_path_params(region_name, resource_type) # type: ignore
     except Exception as ex:
         msg = "invalid path parameters : "

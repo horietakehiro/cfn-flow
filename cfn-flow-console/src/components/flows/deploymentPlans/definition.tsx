@@ -1,4 +1,4 @@
-import { Box, Chip, CircularProgress, Dialog, DialogActions, DialogContent, DialogTitle, FormControl, FormControlLabel, InputLabel, OutlinedInput, Radio, RadioGroup, Select, SelectChangeEvent, Stack, TextField } from '@mui/material';
+import { Box, Checkbox, Chip, CircularProgress, Dialog, DialogActions, DialogContent, DialogTitle, FormControl, FormControlLabel, FormGroup, InputLabel, OutlinedInput, Radio, RadioGroup, Select, SelectChangeEvent, Stack, TextField } from '@mui/material';
 import Button from "@mui/material/Button";
 import CssBaseline from '@mui/material/CssBaseline';
 import Divider from '@mui/material/Divider';
@@ -24,7 +24,7 @@ import { getTemplates } from '../../../apis/templates/api';
 import { useAppDispatch, useAppSelector } from '../../../hooks';
 import { setAlert } from '../../../stores/common';
 import { deleteDialogOpen } from '../../../stores/flows/common';
-import { closeEditParameterValueDialog, closeNodeEditDrawe as closeNodeEditDrawer, openEditParameterValueDialog, selectEditIODialog, selectEditParameterValueDialog, selectFlow, selectNode, selectNodeEditDrawer, selectOutputRowSelectionModel, selectParameterRowSelectionModel, selectReactFlowInstance, selectSelectedFlow, selectSelectedNode, selector, setOutputRowSelectionModel, setParameterRowSelectionModel } from '../../../stores/flows/main';
+import { closeEditParameterValueDialog, closeNodeEditDrawe as closeNodeEditDrawer, openEditParameterValueDialog, selectEditIODialog, selectEditParameterValueDialog, selectFlow, selectNode, selectNodeEditDrawer, selectOutputRowSelectionModel, selectParameterRowSelectionModel, selectReactFlowInstance, selectSelectedFlow, selectSelectedNode, selectSelectedPlan, selector, setOutputRowSelectionModel, setParameterRowSelectionModel } from '../../../stores/flows/main';
 import { createTemplates, selectTemplates } from '../../../stores/templates/main';
 // import { GetTemplatesResponse, OutputSummary, ParameterSummary, StackNodeIO, StackNodeOutput, StackNodeParameter, StackNodeType, StackSetNodeType, TemplateSummarySection } from '../../types';
 import { NavLink, useParams } from 'react-router-dom';
@@ -103,11 +103,24 @@ export const EditParameterValueDialog: React.FC = () => {
   const dispatch = useAppDispatch()
   const opened = useAppSelector(selectEditParameterValueDialog)
   const selectedNode = useAppSelector(selectSelectedNode)
+  const selectedPlan = useAppSelector(selectSelectedPlan)
 
   const [selectedParameter, setSelectedParameter] = React.useState<StackNodeParameter | null>(null)
+  const [actualValue, setActualValue] = React.useState<string | null>(null)
+  const [displayValue, setDisplayValue] = React.useState<string | null>(null)
+  const [displayMultipleValue, setDisplayMultipleValue] = React.useState<string[]>([])
+
 
   const [availabilityZones, setAvailabilityZones] = React.useState<string[]>([])
   const [instanceDetails, setInstanceDetails] = React.useState<InstanceDetail[]>([])
+  const [keyNames, setKeyNames] = React.useState<string[]>([])
+  const [securityGroupNames, setSecurityGroupNames] = React.useState<string[]>([])
+  const [securityGroupDetails, setSecurityGroupDetails] = React.useState<SecurityGroupDetail[]>([])
+  const [subnetDetails, setSubnetDetails] = React.useState<SubnetDetail[]>([])
+  const [vpcDetails, setVpcDetails] = React.useState<VpcDetail[]>([])
+  const [volumeDetails, setVolumeDetails] = React.useState<VolumeDetail[]>([])
+  const [hostedZoneDetails, setHostedZoneDetails] = React.useState<HostedZoneDetail[]>([])
+
 
   React.useEffect(() => {
     (async () => {
@@ -115,8 +128,8 @@ export const EditParameterValueDialog: React.FC = () => {
       if (selectedNode === null) return
       const selectedParameter = selectedNode.data.parameters.find(p => p.selected)
       if (selectedParameter === undefined) return
-      setSelectedParameter({...selectedParameter})
-  
+      setSelectedParameter({ ...selectedParameter })
+
       if (selectedNode.data.regionName === null) return
       const regionName = selectedNode.data.regionName
       const parameterType = selectedParameter.type
@@ -143,29 +156,65 @@ export const EditParameterValueDialog: React.FC = () => {
             )
             if (resp.instanceDetails === null) break
             setInstanceDetails([...resp.instanceDetails])
+            break
           }
+          case "AWS::EC2::KeyPair::KeyName": {
+            const resp = await getParameterResources<KeyNamesResponse>(
+              regionName, parameterType,
+            )
+            if (resp.keyNames === null) break
+            setKeyNames([...resp.keyNames])
+            break
 
+          }
+          case "AWS::EC2::SecurityGroup::GroupName": case "List<AWS::EC2::SecurityGroup::GroupName>": {
+            const resp = await getParameterResources<SecurityGroupNamesResponse>(
+              regionName, parameterType
+            )
+            if (resp.securityGroupNames === null) break
+            setSecurityGroupNames([...resp.securityGroupNames])
             break
-          case "AWS::EC2::KeyPair::KeyName":
+          }
+          case "AWS::EC2::SecurityGroup::Id": case "List<AWS::EC2::SecurityGroup::Id>": {
+            const resp = await getParameterResources<SecurityGroupDetailsResponse>(
+              regionName, parameterType
+            )
+            if (resp.securityGroupDetails === null) break
+            setSecurityGroupDetails([...resp.securityGroupDetails])
             break
-          case "AWS::EC2::SecurityGroup::GroupName":
-          case "List<AWS::EC2::SecurityGroup::GroupName>":
+          }
+          case "AWS::EC2::Subnet::Id": case "List<AWS::EC2::Subnet::Id>": {
+            const resp = await getParameterResources<SubnetDetailsResponse>(
+              regionName, parameterType
+            )
+            if (resp.subnetDetails === null) break
+            setSubnetDetails([...resp.subnetDetails])
             break
-          case "AWS::EC2::SecurityGroup::Id":
-          case "List<AWS::EC2::SecurityGroup::Id>":
+          }
+          case "AWS::EC2::VPC::Id": case "List<AWS::EC2::VPC::Id>": {
+            const resp = await getParameterResources<VpcDetailsResponse>(
+              regionName, parameterType
+            )
+            if (resp.vpcDetails === null) break
+            setVpcDetails([...resp.vpcDetails])
             break
-          case "AWS::EC2::Subnet::Id":
-          case "List<AWS::EC2::Subnet::Id>":
+          }
+          case "AWS::EC2::Volume::Id": case "List<AWS::EC2::Volume::Id>": {
+            const resp = await getParameterResources<VolumeDetailsResponse>(
+              regionName, parameterType
+            )
+            if (resp.volumeDetails === null) break
+            setVolumeDetails([...resp.volumeDetails])
             break
-          case "AWS::EC2::VPC::Id":
-          case "List<AWS::EC2::VPC::Id>":
+          }
+          case "AWS::Route53::HostedZone::Id": case "List<AWS::Route53::HostedZone::Id>": {
+            const resp = await getParameterResources<HostedZoneDetailsResponse>(
+              regionName, parameterType
+            )
+            if (resp.hostedZoneDetails === null) break
+            setHostedZoneDetails([...resp.hostedZoneDetails])
             break
-          case "AWS::EC2::Volume::Id":
-          case "List<AWS::EC2::Volume::Id>":
-            break
-          case "AWS::Route53::HostedZone::Id":
-          case "List<AWS::Route53::HostedZone::Id>":
-            break
+          }
           case "AWS::SSM::Parameter::Name":
           case "AWS::SSM::Parameter::Value<AWS::EC2::AvailabilityZone::Name>":
           case "AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>":
@@ -191,22 +240,20 @@ export const EditParameterValueDialog: React.FC = () => {
           case "AWS::SSM::Parameter::Value<List<String>>":
           case "AWS::SSM::Parameter::Value<String>":
             break
-  
-  
           default:
             console.log(`invalid type : ${selectedParameter.type}`)
             break
-        }  
-      } catch(e) {
+        }
+      } catch (e) {
         console.error(e)
       }
     })()
   }, [])
 
 
-  const handleChange = (event: SelectChangeEvent<ParameterType>) => {
+  const handleChange = (event: React.ChangeEvent<HTMLTextAreaElement | HTMLInputElement>) => {
     const { target: { value } } = event;
-    console.log(value)
+    setActualValue(value)
   };
 
   const onClose = (submit: boolean) => {
@@ -216,38 +263,413 @@ export const EditParameterValueDialog: React.FC = () => {
     }
     if (selectedNode === null) return
     if (selectedParameter === null) return
+    if (selectedPlan === null) return
 
     const newNode: StackNodeType | StackSetNodeType = {
       ...selectedNode, data: {
         ...selectedNode.data,
         parameters: selectedNode.data.parameters.map((p) => {
-          return { ...p, selected: false }
+          if (p.name === selectedParameter.name) {
+            return { ...p, selected: false, actualValues: {...p.actualValues, [selectedPlan.planName]: actualValue}}
+          } else {
+            return { ...p, selected: false, }
+          }
         }),
       }
     }
+    console.log(newNode)
     dispatch(selectNode(newNode))
     // updateNode({ ...newNode })
 
     dispatch(closeEditParameterValueDialog())
   }
 
-  const getValueField: React.FC = () => {
-    if (selectedParameter === null) return
+  const handleSelectValueChange = (event: SelectChangeEvent<string>) => {
+    const { target: { value } } = event;
+    console.log(value)
+    setActualValue(value)
+  }
+
+  const handleSelectMultipleValueChange = (event: SelectChangeEvent<string | string[]>) => {
+    const { target: { value } } = event;
+    console.log(value)
+    setActualValue(
+      typeof value === "string" ? value : value.join(",")
+    )
+  }
+
+
+  const ActualValueField: React.FC = () => {
+    if (selectedParameter === null) {
+      return (
+        <></>
+      )
+    }
     switch (selectedParameter.type) {
-      case "String":
-      case "CommaDelimitedList":
-      case "List<Number>":
+      case "AWS::EC2::AvailabilityZone::Name":
         return (
-          <TextField
-            autoFocus
-            margin="normal"
-            id="ActualValue"
-            label="Actual Value"
-            type={selectedParameter.noEcho ? "password" : "text"}
-            fullWidth
-            variant="outlined"
-            value={selectedParameter.default !== null ? selectedParameter.default : ""}
-          />
+          <FormControl fullWidth>
+            <InputLabel id={selectedParameter.type.toLowerCase().replace("::", "-")}>{selectedParameter.type}</InputLabel>
+            <Select
+              labelId={selectedParameter.type.toLowerCase().replace("::", "-")}
+              id={selectedParameter.type.toLowerCase().replace("::", "-")}
+              value={actualValue !== null ? actualValue : ""}
+              label={selectedParameter.type}
+              onChange={handleSelectValueChange}
+            >
+              {availabilityZones.map(v => <MenuItem value={v} key={v}>{v}</MenuItem>)}
+            </Select>
+          </FormControl>
+        )
+      case "List<AWS::EC2::AvailabilityZone::Name>":
+        return (
+          <FormControl fullWidth>
+            <InputLabel id={selectedParameter.type.toLowerCase().replace("::", "-")}>{selectedParameter.type}</InputLabel>
+            <Select
+              id={selectedParameter.type.toLowerCase().replace("::", "-")}
+              multiple
+              value={actualValue !== null ? actualValue.split(",") : []}
+              onChange={handleSelectMultipleValueChange}
+              input={<OutlinedInput id="select-multiple-chip" label="Chip" />}
+              renderValue={(selected) => {
+                return (
+                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, width: "auto" }}>
+                    {selected.map((value) => (
+                      <Chip key={value} label={value} />
+                    ))}
+                  </Box>
+                )
+              }}
+              MenuProps={{ PaperProps: { style: { maxHeight: 48 * 4.5 + 8, width: "auto" } } }}
+            >
+              {availabilityZones.map((v) => {
+                return (
+                  <MenuItem key={v} value={v}>{v}</MenuItem>
+                )
+              })}
+            </Select>
+          </FormControl>
+        )
+      case "AWS::EC2::Instance::Id":
+        return (
+          <FormControl fullWidth>
+            <InputLabel id={selectedParameter.type.toLowerCase().replace("::", "-")}>{selectedParameter.type}</InputLabel>
+            <Select
+              labelId={selectedParameter.type.toLowerCase().replace("::", "-")}
+              id={selectedParameter.type.toLowerCase().replace("::", "-")}
+              value={actualValue !== null ? actualValue : ""}
+              label={selectedParameter.type}
+              onChange={handleSelectValueChange}
+            >
+              {instanceDetails.map(v => <MenuItem value={v.id} key={v.id}>
+                {v.name === null ? `${v.id}` : `${v.id} (${v.name})`}
+              </MenuItem>
+              )}
+            </Select>
+          </FormControl>
+        )
+      case "List<AWS::EC2::Instance::Id>":
+        return (
+          <FormControl fullWidth>
+            <InputLabel id={selectedParameter.type.toLowerCase().replace("::", "-")}>{selectedParameter.type}</InputLabel>
+            <Select
+              id={selectedParameter.type.toLowerCase().replace("::", "-")}
+              multiple
+              value={actualValue !== null ? actualValue.split(",") : []}
+              onChange={handleSelectMultipleValueChange}
+              input={<OutlinedInput id="select-multiple-chip" label="Chip" />}
+              renderValue={(selected) => {
+                return (
+                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, width: "auto" }}>
+                    {selected.map((value) => (
+                      <Chip key={value} label={value} />
+                    ))}
+                  </Box>
+                )
+              }}
+              MenuProps={{ PaperProps: { style: { maxHeight: 48 * 4.5 + 8, width: "auto" } } }}
+            >
+              {instanceDetails.map((v) => {
+                return (
+                  <MenuItem key={v.id} value={v.id}>
+                    {v.name === null ? `${v.id}` : `${v.id} (${v.name})`}
+                  </MenuItem>
+                )
+              })}
+            </Select>
+          </FormControl>
+        )
+      case "AWS::EC2::KeyPair::KeyName":
+        return (
+          <FormControl fullWidth>
+            <InputLabel id={selectedParameter.type.toLowerCase().replace("::", "-")}>{selectedParameter.type}</InputLabel>
+            <Select
+              labelId={selectedParameter.type.toLowerCase().replace("::", "-")}
+              id={selectedParameter.type.toLowerCase().replace("::", "-")}
+              value={actualValue !== null ? actualValue : ""}
+              label={selectedParameter.type}
+              onChange={handleSelectValueChange}
+            >
+              {keyNames.map(v => <MenuItem value={v} key={v}>{v}</MenuItem>)}
+            </Select>
+          </FormControl>
+        )
+      case "AWS::EC2::SecurityGroup::GroupName":
+        return (
+          <FormControl fullWidth>
+            <InputLabel id={selectedParameter.type.toLowerCase().replace("::", "-")}>{selectedParameter.type}</InputLabel>
+            <Select
+              labelId={selectedParameter.type.toLowerCase().replace("::", "-")}
+              id={selectedParameter.type.toLowerCase().replace("::", "-")}
+              value={actualValue !== null ? actualValue : ""}
+              label={selectedParameter.type}
+              onChange={handleSelectValueChange}
+            >
+              {securityGroupNames.map(v => <MenuItem value={v} key={v}>{v}</MenuItem>)}
+            </Select>
+          </FormControl>
+        )
+      case "List<AWS::EC2::SecurityGroup::GroupName>":
+        return (
+          <FormControl fullWidth>
+            <InputLabel id={selectedParameter.type.toLowerCase().replace("::", "-")}>{selectedParameter.type}</InputLabel>
+            <Select
+              id={selectedParameter.type.toLowerCase().replace("::", "-")}
+              multiple
+              value={actualValue !== null ? actualValue.split(",") : []}
+              onChange={handleSelectMultipleValueChange}
+              input={<OutlinedInput id="select-multiple-chip" label="Chip" />}
+              renderValue={(selected) => {
+                return (
+                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, width: "auto" }}>
+                    {selected.map((value) => (
+                      <Chip key={value} label={value} />
+                    ))}
+                  </Box>
+                )
+              }}
+              MenuProps={{ PaperProps: { style: { maxHeight: 48 * 4.5 + 8, width: "auto" } } }}
+            >
+              {securityGroupNames.map((v) => {
+                return (
+                  <MenuItem key={v} value={v}>{v}</MenuItem>
+                )
+              })}
+            </Select>
+          </FormControl>
+        )
+      case "AWS::EC2::SecurityGroup::Id":
+        return (
+          <FormControl fullWidth>
+            <InputLabel id={selectedParameter.type.toLowerCase().replace("::", "-")}>{selectedParameter.type}</InputLabel>
+            <Select
+              labelId={selectedParameter.type.toLowerCase().replace("::", "-")}
+              id={selectedParameter.type.toLowerCase().replace("::", "-")}
+              value={actualValue !== null ? actualValue : ""}
+              label={selectedParameter.type}
+              onChange={handleSelectValueChange}
+            >
+              {securityGroupNames.map(v => <MenuItem value={v} key={v}>{v}</MenuItem>)}
+            </Select>
+          </FormControl>
+        )
+      case "List<AWS::EC2::SecurityGroup::Id>":
+        return (
+          <FormControl fullWidth>
+            <InputLabel id={selectedParameter.type.toLowerCase().replace("::", "-")}>{selectedParameter.type}</InputLabel>
+            <Select
+              id={selectedParameter.type.toLowerCase().replace("::", "-")}
+              multiple
+              value={actualValue !== null ? actualValue.split(",") : []}
+              onChange={handleSelectMultipleValueChange}
+              input={<OutlinedInput id="select-multiple-chip" label="Chip" />}
+              renderValue={(selected) => {
+                return (
+                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, width: "auto" }}>
+                    {selected.map((value) => (
+                      <Chip key={value} label={value} />
+                    ))}
+                  </Box>
+                )
+              }}
+              MenuProps={{ PaperProps: { style: { maxHeight: 48 * 4.5 + 8, width: "auto" } } }}
+            >
+              {securityGroupDetails.map((v) => {
+                return (
+                  <MenuItem key={v.id} value={v.id}>{`${v.id} (${v.name})`}</MenuItem>
+                )
+              })}
+            </Select>
+          </FormControl>
+        )
+      case "AWS::EC2::VPC::Id":
+        return (
+          <FormControl fullWidth>
+            <InputLabel id={selectedParameter.type.toLowerCase().replace("::", "-")}>{selectedParameter.type}</InputLabel>
+            <Select
+              labelId={selectedParameter.type.toLowerCase().replace("::", "-")}
+              id={selectedParameter.type.toLowerCase().replace("::", "-")}
+              value={actualValue !== null ? actualValue : ""}
+              label={selectedParameter.type}
+              onChange={handleSelectValueChange}
+            >
+              {vpcDetails.map(v => <MenuItem value={v.id} key={v.id}>
+                {v.name === null ?
+                  `${v.id} (${v.cidrBlock})` :
+                  `${v.id} (${v.name}) (${v.cidrBlock})`
+                }
+              </MenuItem>)}
+            </Select>
+          </FormControl>
+        )
+      case "List<AWS::EC2::VPC::Id>":
+        return (
+          <FormControl fullWidth>
+            <InputLabel id={selectedParameter.type.toLowerCase().replace("::", "-")}>{selectedParameter.type}</InputLabel>
+            <Select
+              id={selectedParameter.type.toLowerCase().replace("::", "-")}
+              multiple
+              value={actualValue !== null ? actualValue.split(",") : []}
+              onChange={handleSelectMultipleValueChange}
+              input={<OutlinedInput id="select-multiple-chip" label="Chip" />}
+              renderValue={(selected) => {
+                return (
+                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, width: "auto" }}>
+                    {selected.map((value) => (
+                      <Chip key={value} label={value} />
+                    ))}
+                  </Box>
+                )
+              }}
+              MenuProps={{ PaperProps: { style: { maxHeight: 48 * 4.5 + 8, width: "auto" } } }}
+            >
+              {vpcDetails.map((v) => {
+                return (
+                  <MenuItem key={v.id} value={v.id}>
+                    {v.name === null ?
+                      `${v.id} (${v.cidrBlock})` :
+                      `${v.id} (${v.name}) (${v.cidrBlock})`
+                    }
+                  </MenuItem>
+                )
+              })}
+            </Select>
+          </FormControl>
+        )
+      case "AWS::EC2::Volume::Id":
+        return (
+          <FormControl fullWidth>
+            <InputLabel id={selectedParameter.type.toLowerCase().replace("::", "-")}>{selectedParameter.type}</InputLabel>
+            <Select
+              labelId={selectedParameter.type.toLowerCase().replace("::", "-")}
+              id={selectedParameter.type.toLowerCase().replace("::", "-")}
+              value={actualValue !== null ? actualValue : ""}
+              label={selectedParameter.type}
+              onChange={handleSelectValueChange}
+            >
+              {volumeDetails.map(v => <MenuItem value={v.id} key={v.id}>
+                {v.name === null ? `${v.id}` : `${v.id} (${v.name})`}
+              </MenuItem>)}
+            </Select>
+          </FormControl>
+        )
+      case "List<AWS::EC2::Volume::Id>":
+        return (
+          <FormControl fullWidth>
+            <InputLabel id={selectedParameter.type.toLowerCase().replace("::", "-")}>{selectedParameter.type}</InputLabel>
+            <Select
+              id={selectedParameter.type.toLowerCase().replace("::", "-")}
+              multiple
+              value={actualValue !== null ? actualValue.split(",") : []}
+              onChange={handleSelectMultipleValueChange}
+              input={<OutlinedInput id="select-multiple-chip" label="Chip" />}
+              renderValue={(selected) => {
+                return (
+                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, width: "auto" }}>
+                    {selected.map((value) => (
+                      <Chip key={value} label={value} />
+                    ))}
+                  </Box>
+                )
+              }}
+              MenuProps={{ PaperProps: { style: { maxHeight: 48 * 4.5 + 8, width: "auto" } } }}
+            >
+              {volumeDetails.map(v => <MenuItem value={v.id} key={v.id}>
+                {v.name === null ? `${v.id}` : `${v.id} (${v.name})`}
+              </MenuItem>
+              )}
+            </Select>
+          </FormControl>
+        )
+      case "AWS::EC2::Subnet::Id":
+        return (
+          <FormControl fullWidth>
+            <InputLabel id={selectedParameter.type.toLowerCase().replace("::", "-")}>{selectedParameter.type}</InputLabel>
+            <Select
+              labelId={selectedParameter.type.toLowerCase().replace("::", "-")}
+              id={selectedParameter.type.toLowerCase().replace("::", "-")}
+              value={actualValue !== null ? actualValue : ""}
+              label={selectedParameter.type}
+              onChange={handleSelectValueChange}
+            >
+              {subnetDetails.map(v => <MenuItem value={v.id} key={v.id}>
+                {v.name === null ?
+                  `${v.id} (${v.vpcId}) (${v.availabilityZone}) (${v.cidrBlock})` :
+                  `${v.id} (${v.name}) (${v.vpcId}) (${v.availabilityZone}) (${v.cidrBlock})`
+                }
+              </MenuItem>
+              )}
+            </Select>
+          </FormControl>
+        )
+      case "List<AWS::EC2::Subnet::Id>":
+        return (
+          <FormControl fullWidth>
+            <InputLabel id={selectedParameter.type.toLowerCase().replace("::", "-")}>{selectedParameter.type}</InputLabel>
+            <Select
+              id={selectedParameter.type.toLowerCase().replace("::", "-")}
+              multiple
+              value={actualValue !== null ? actualValue.split(",") : []}
+              onChange={handleSelectMultipleValueChange}
+              input={<OutlinedInput id="select-multiple-chip" label="Chip" />}
+              renderValue={(selected) => {
+                return (
+                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, width: "auto" }}>
+                    {selected.map((value) => (
+                      <Chip key={value} label={value} />
+                    ))}
+                  </Box>
+                )
+              }}
+              MenuProps={{ PaperProps: { style: { maxHeight: 48 * 4.5 + 8, width: "auto" } } }}
+            >
+              {subnetDetails.map((v) => {
+                return (
+                  <MenuItem key={v.id} value={v.id}>
+                    {v.name === null ?
+                      `${v.id} (${v.vpcId}) (${v.availabilityZone}) (${v.cidrBlock})` :
+                      `${v.id} (${v.name}) (${v.vpcId}) (${v.availabilityZone}) (${v.cidrBlock})`
+                    }
+                  </MenuItem>
+                )
+              })}
+            </Select>
+          </FormControl>
+        )
+      case "AWS::Route53::HostedZone::Id":
+        return (
+          <FormControl fullWidth>
+            <InputLabel id={selectedParameter.type.toLowerCase().replace("::", "-")}>{selectedParameter.type}</InputLabel>
+            <Select
+              labelId={selectedParameter.type.toLowerCase().replace("::", "-")}
+              id={selectedParameter.type.toLowerCase().replace("::", "-")}
+              value={actualValue !== null ? actualValue : ""}
+              label={selectedParameter.type}
+              onChange={handleSelectValueChange}
+            >
+              {hostedZoneDetails.map(v => <MenuItem value={v.id} key={v.id}>{`${v.id} (${v.name})`}</MenuItem>)}
+            </Select>
+          </FormControl>
         )
       case "Number":
         return (
@@ -255,16 +677,27 @@ export const EditParameterValueDialog: React.FC = () => {
             autoFocus
             margin="normal"
             id="ActualValue"
-            label="Actual Value"
-            type={"number"}
+            label={selectedParameter.type}
+            type={selectedParameter.noEcho ? "password" : "number"}
             fullWidth
             variant="outlined"
-            value={selectedParameter.default !== null ? selectedParameter.default : ""}
-          />
+            onChange={handleChange}
+            value={actualValue !== null ? actualValue : ""}
+            />
         )
       default:
         return (
-          <></>
+          <TextField
+            autoFocus
+            margin="normal"
+            id={selectedParameter.type.toLowerCase().replace("::", "-")}
+            label={selectedParameter.type}
+            type={selectedParameter.noEcho ? "password" : "text"}
+            fullWidth
+            variant="outlined"
+            onChange={handleChange}
+            value={actualValue !== null ? actualValue : ""}
+            />
         )
     }
   }
@@ -309,6 +742,7 @@ export const EditParameterValueDialog: React.FC = () => {
                   },
                 }}
               />
+              <ActualValueField />
               {/* <FormControl sx={{ m: 1, width: 300 }}>
                 <InputLabel id="actualValue">Actual Value</InputLabel>
                 <Select
@@ -368,11 +802,13 @@ export const EditParameterValueDialog: React.FC = () => {
 
 export const DeploymentDefinition = () => {
 
-  const {flowName} = useParams()
+  const { flowName } = useParams()
 
   const dispatch = useAppDispatch()
   const selectedFlow = useAppSelector(selectSelectedFlow)
   const selectedNode = useAppSelector(selectSelectedNode)
+  const selectedPlan = useAppSelector(selectSelectedPlan)
+  const selectedDeploymentPlan = useAppSelector(selectSelectedPlan)
   const opened = useAppSelector(selectEditParameterValueDialog)
   const EditIODialogState = useAppSelector(selectEditIODialog)
   const nodeEditDrawerOpened = useAppSelector(selectNodeEditDrawer)
@@ -382,6 +818,7 @@ export const DeploymentDefinition = () => {
   const [inProgress, setInProgress] = React.useState<boolean>(false)
   const [parametersInProgress, setParametersInProgress] = React.useState<boolean>(false)
   const [outputsInProgress, setOutputsInProgress] = React.useState<boolean>(false)
+
 
   const { nodes, edges, upsertNode, initNodes, onNodesChange, onEdgesChange, onConnect, mergeNodes, updateNode, deleteNode, initEdges } = useStore(selector, shallow);
 
@@ -440,6 +877,24 @@ export const DeploymentDefinition = () => {
       ]
     }, [handleParameterValueEditClick])
 
+  // const getParameterActualValueAction = React.useCallback(
+  //   (params: GridRowParams) => {
+  //     if (selectedNode === null) return []
+  //     if (selectedPlan === null) return []
+
+  //     const paramName = params.id as string
+  //     const param = selectedNode.data.parameters.find(p => p.name === paramName)
+  //     if (param === undefined) return
+  //     const value = param.actualValues[selectedPlan.planName]
+  //     return [
+  //       <GridActionsCellItem
+  //         label="edit"
+  //         color='inherit'
+  //         value={value !== null ? value : ""}
+  //       />
+  //     ]
+  //   }, [])
+
   const parametersCols: GridColDef[] = [
     {
       field: "edit", headerName: "Edit", align: "center", flex: 1,
@@ -458,8 +913,15 @@ export const DeploymentDefinition = () => {
       field: "default", headerName: "Default", flex: 1, align: "left",
     },
     {
-      field: "actual", headerName: "Actual", align: "left", flex: 1,
-    } as GridColDef,
+      field: "actualValue", headerName: "Actual", align: "left", flex: 1,
+      valueGetter: (params) => {
+        if (selectedPlan === null) return ""
+        const actualValues = (params.row as StackNodeParameter).actualValues
+        const actualValue = actualValues[selectedPlan.planName]
+        if (actualValue === null) return ""
+        return actualValue
+      }
+    }
   ]
 
   React.useEffect(() => {
@@ -471,7 +933,7 @@ export const DeploymentDefinition = () => {
         if (response.flow !== null) {
           dispatch(selectFlow(response.flow))
         }
-      } catch(e) {
+      } catch (e) {
         console.log(e)
         dispatch(selectFlow(null))
       }
@@ -493,6 +955,7 @@ export const DeploymentDefinition = () => {
     })()
 
   }, [])
+
 
   const onNodeEditDrawerClose = () => {
     dispatch(closeNodeEditDrawer())
@@ -722,6 +1185,23 @@ export const DeploymentDefinition = () => {
     }
   }
 
+  const handleManualApproveChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (selectedNode === null || selectedPlan === null) return
+    console.log(selectedNode.data.manualApprovals)
+    dispatch(selectNode({
+      ...selectedNode, data: {
+        ...selectedNode.data,
+        manualApprovals: {
+          ...selectedNode.data.manualApprovals,
+          [selectedPlan.planName]: {
+            enabled: e.target.checked,
+            approver: null
+          }
+        }
+      }
+    }))
+  }
+
   return (
     <Stack spacing={2} direction={"column"}>
       <Stack direction={"row"}>
@@ -792,7 +1272,7 @@ export const DeploymentDefinition = () => {
       <Divider />
       <CssBaseline />
       <Grid container spacing={2}>
-        {opened && <EditParameterValueDialog/>}
+        {opened && <EditParameterValueDialog />}
         <Grid item sx={{ height: "80vh" }} xs={true}>
           <FlowCanvas />
         </Grid>
@@ -934,6 +1414,26 @@ export const DeploymentDefinition = () => {
                       <LaunchIcon />
                     </Stack>
                   </NavLink>
+                }
+                {(selectedNode !== null && selectedPlan !== null) && 
+                  <>
+                  <FormGroup>
+                    <FormControlLabel 
+                      control={
+                        <Checkbox 
+                          onChange={handleManualApproveChange}
+                          checked={
+                            selectedPlan.planName in selectedNode.data.manualApprovals ?
+                            selectedNode.data.manualApprovals[selectedPlan.planName].enabled : false
+                          }
+                        />}
+                      label="Manual Approval"
+                    />
+                  </FormGroup>
+                  {(selectedNode !== null && selectedPlan !== null && selectedNode.data.manualApprovals[selectedPlan.planName].enabled) &&
+                    <div>hoge</div>
+                  }
+                  </>
                 }
 
                 <Stack spacing={0} direction={"column"} sx={{}}>

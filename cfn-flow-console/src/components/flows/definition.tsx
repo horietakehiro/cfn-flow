@@ -716,7 +716,8 @@ export const FlowDefinition = () => {
               outputs: [...selectedNode.data.outputs],
               isChild: true,
               order: null,
-              deploymentPlans: {}
+              deploymentPlans: {},
+              manualApprovals: {},
             }
             const newNode: StackNodeType = {
               id: nodeId,
@@ -746,7 +747,7 @@ export const FlowDefinition = () => {
           setParametersInProgress(true)
           const response = await getTemplateSummary(value as string, "Parameters")
           parameters = (response.templateSummary.summary as ParameterSummary[]).map((p) => {
-            return { ...p, visible: false, selected: false, regionName: null, accountId: null }
+            return { ...p, visible: false, selected: false, regionName: null, accountId: null,  actualValues: {}}
           })
           console.log(parameters)
           dispatch(setParameterRowSelectionModel([]))
@@ -817,10 +818,10 @@ export const FlowDefinition = () => {
           parameters = (response.templateSummary.summary as ParameterSummary[]).map((p) => {
             if (selectedNode.data.regionNames.length !== 0) {
               return selectedNode.data.regionNames.map((r) => {
-                return { ...p, visible: false, selected: false, regionName: r, accountId: null }
+                return { ...p, visible: false, selected: false, regionName: r, accountId: null, actualValues: {} }
               })
             } else {
-              return { ...p, visible: false, selected: false, regionName: null, accountId: null }
+              return { ...p, visible: false, selected: false, regionName: null, accountId: null, actualValues: {} }
             }
           }).flat()
           console.log(parameters)

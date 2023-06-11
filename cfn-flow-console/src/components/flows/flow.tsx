@@ -24,7 +24,7 @@ import { useAppDispatch, useAppSelector } from '../../hooks';
 import { ReactComponent as StackSetSVG } from "../../images/Arch_AWS-Organizations_48.svg";
 import { ReactComponent as StackSVG } from "../../images/Res_AWS-CloudFormation_Stack_48_Dark.svg";
 import { setAlert } from '../../stores/common';
-import { openNodeEditDrawe as openNodeEditDrawer, selectNode, selectReactFlowInstance, selectSelectedFlow, selectSelectedNode, selector, setOutputRowSelectionModel, setParameterRowSelectionModel, setReactFlowInstance } from '../../stores/flows/main';
+import { openNodeEditDrawe as openNodeEditDrawer, selectNode, selectReactFlowInstance, selectSelectedFlow, selectSelectedNode, selectSelectedPlan, selector, setOutputRowSelectionModel, setParameterRowSelectionModel, setReactFlowInstance } from '../../stores/flows/main';
 // import { CustomNodeTypeName, CustomNodeTypes, StackNodeData, StackNodeType, StackSetNodeData, StackSetNodeType } from '../../types';
 import { useStore } from './../../stores/flows/main';
 
@@ -78,7 +78,6 @@ export const StackNode = React.memo(({ data, selected }: NodeProps<StackNodeData
     setVisibleParameters(data.parameters.filter(p => p.visible))
   }, [data.parameters])
   useEffect(() => {
-    console.log(data.outputs)
     setVisibleOutputs(data.outputs.filter(o => o.visible))
   }, [data.outputs])
 
@@ -337,6 +336,7 @@ export default function FlowCanvas() {
   
   const dispatch = useAppDispatch()
   const selectedFlow = useAppSelector(selectSelectedFlow)
+  const selectedPlan = useAppSelector(selectSelectedPlan)
   // const nodes = useAppSelector(selectNodes)
   const selectedNode = useAppSelector(selectSelectedNode)
 
@@ -351,33 +351,6 @@ export default function FlowCanvas() {
   const [inProgress, setInProgress] = React.useState<boolean>(false)
 
 
-
-  // const setOrderNumber = (prevNode: Node<BaseCUstomNodeData>, newNodes:Node[] ,nodes:Node[], edges:Edge[]): Node<BaseCUstomNodeData>[] => {
-  //   // get incomming node from previous node
-  //   console.log(prevNode.data)
-  //   const curNodes: Node<BaseCUstomNodeData>[] = getIncomers(prevNode, nodes, edges)
-  //   console.log(curNodes)
-
-  //   const newCurNodes = curNodes.map((n) => {
-  //     if (prevNode.data.order === null) {
-  //       return {...n}
-  //     } else {
-  //         return { ...n, data: { ...n.data, order: prevNode.data.order + 1 } }
-  //     }
-  //   })
-
-  //   // const newCurNodes = curNodes.map((n) => {
-  //   //   if (prevNode.data.order === null) {
-  //   //     return setOrderNumber({...n}, newNodes, nodes, edges)
-  //   //   } else {
-  //   //     return setOrderNumber(
-  //   //       { ...n, data: { ...n.data, order: prevNode.data.order + 1 } },
-  //   //       newNodes, nodes, edges
-  //   //     )
-  //   //   }
-  //   // }).flat()
-  //   return newCurNodes
-  // }
 
   useEffect(() => {
     (async () => {
@@ -419,7 +392,8 @@ export default function FlowCanvas() {
             nodeDeletable: false,
             toolbarVisible: false,
             order: 0,
-            deploymentPlans: {}
+            deploymentPlans: {},
+            manualApprovals: {},
           }
           initialNodes.push({
             id: id,
@@ -431,6 +405,43 @@ export default function FlowCanvas() {
             style: { border: '1px solid #777', padding: 10, background: "yellow" },
           })
         }
+
+        initialNodes = initialNodes.map(n => {
+          if (n.type === "startNode") return n
+          if (selectedPlan === null) return n
+
+          let manualApprovals = {
+            ...(n.data as BaseCUstomNodeData).manualApprovals
+          }
+          if (!(selectedPlan.planName in manualApprovals)) {
+            manualApprovals = {
+              ...manualApprovals, [selectedPlan.planName]: {
+                approver: null, enabled: false
+              }
+            }
+          } 
+          const data:StackNodeData = {
+            ...n.data,
+            manualApprovals: {...manualApprovals},
+            parameters: (n.data as StackNodeData).parameters.map(
+              (p) => {
+                if (selectedPlan === null) return {...p}
+
+                let actualValues = p.actualValues
+                if (selectedPlan.planName in actualValues) {
+                  actualValues[selectedPlan.planName] = actualValues[selectedPlan.planName]
+                } else {
+                  actualValues[selectedPlan.planName] = p.default
+                }
+                return {...p, actualValues: {...actualValues}}
+              }
+            )
+          }
+          console.log(data)
+          return {
+            ...n, data: {...data}
+          }
+        })
 
         // // set node orders
         // const startNode = initialNodes.find(n => n.type === "startNode")
@@ -497,7 +508,8 @@ export default function FlowCanvas() {
               outputs: [],
               isChild: false,
               order: null,
-              deploymentPlans: {}
+              deploymentPlans: {},
+              manualApprovals: {},
             }
             const newNode: StackNodeType = {
               id: id,
@@ -527,7 +539,8 @@ export default function FlowCanvas() {
               outputs: [],
               isChild: false,
               order: null,
-              deploymentPlans: {}
+              deploymentPlans: {},
+              manualApprovals: {},
             }
             const newNode: StackSetNodeType = {
               id: id,

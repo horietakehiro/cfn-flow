@@ -15,6 +15,10 @@ const AmplifyConfig = {
         {
           name: "StacksApi",
           endpoint: "https://api.cfn-flow.ht-burdock.com/dev",
+        },
+        {
+          name: "UtilitiesApi",
+          endpoint: "https://api.cfn-flow.ht-burdock.com/dev",
         }
       ]
     },

@@ -1,0 +1,21 @@
+AWSTemplateFormatVersion: 2010-09-09
+Parameters:
+  az:
+    Type: AWS::EC2::AvailabilityZone::Name
+  azs:
+    Type: List<AWS::EC2::AvailabilityZone::Name>
+
+  sn:
+    Type: AWS::EC2::Subnet::Id
+  sns:
+    Type: List<AWS::EC2::Subnet::Id>
+
+
+Resources: 
+  Parameter:
+    Type: AWS::SSM::Parameter
+    Properties: 
+      DataType: text
+      Name: param1
+      Type: String
+      Value: hogefuga

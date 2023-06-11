@@ -64,7 +64,6 @@ const persistConfig = {
         "editParameterSourceDialog",
         "parametersRowSelectionModel",
         "reactFlowInstance",
-        "selectedPlan",
     ]
     // black
 }
